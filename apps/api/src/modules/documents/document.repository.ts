@@ -62,6 +62,38 @@ export async function findByIdInWorkspace(
   return row;
 }
 
+/**
+ * 文档处理状态(状态可观察,见 pipeline.md §13)。按 workspaceId 过滤实现租户隔离。
+ */
+export async function getStatusById(id: string, workspaceId: string) {
+  const [row] = await db
+    .select({
+      id: documents.id,
+      title: documents.title,
+      status: documents.status,
+      currentStage: documents.currentStage,
+      progress: documents.progress,
+      sizeBytes: documents.sizeBytes,
+      pageCount: documents.pageCount,
+      textLength: documents.textLength,
+      chunkCount: documents.chunkCount,
+      errorCode: documents.errorCode,
+      errorMessage: documents.errorMessage,
+      createdAt: documents.createdAt,
+      updatedAt: documents.updatedAt,
+    })
+    .from(documents)
+    .where(
+      and(
+        eq(documents.id, id),
+        eq(documents.workspaceId, workspaceId),
+        isNull(documents.deletedAt),
+      ),
+    )
+    .limit(1);
+  return row;
+}
+
 export async function sumStorageBytes(workspaceId: string): Promise<number> {
   const [row] = await db
     .select({ total: sql<number>`coalesce(sum(${documents.sizeBytes}), 0)` })

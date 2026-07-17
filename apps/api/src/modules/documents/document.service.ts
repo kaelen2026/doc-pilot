@@ -138,3 +138,14 @@ export async function completeUpload(params: {
 export async function listDocuments(workspaceId: string) {
   return repo.listByWorkspace(workspaceId);
 }
+
+/**
+ * 单个文档的处理状态。租户隔离在查询里按 workspaceId 过滤;不存在 → 404。
+ */
+export async function getDocument(params: { workspaceId: string; documentId: string }) {
+  const document = await repo.getStatusById(params.documentId, params.workspaceId);
+  if (!document) {
+    throw new NotFoundError("document not found");
+  }
+  return { document };
+}
