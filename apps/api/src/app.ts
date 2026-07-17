@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { requireAuth } from "./middleware/auth.middleware";
+import { DomainError } from "./modules/documents/document.errors";
 import { createDocumentRoutes } from "./modules/documents/document.routes";
 import { createHealthRoutes } from "./modules/health/health.routes";
 import { createMeRoutes } from "./modules/me/me.routes";
@@ -35,6 +36,15 @@ export function createApp() {
   app.use("/documents/*", guard);
   app.route("/me", createMeRoutes());
   app.route("/documents", createDocumentRoutes());
+
+  // 统一错误映射：领域错误 → 对应 HTTP 状态。
+  app.onError((err, c) => {
+    if (err instanceof DomainError) {
+      return c.json({ error: err.code, message: err.message }, err.status as 400);
+    }
+    console.error("[api] unhandled error:", err);
+    return c.json({ error: "internal_error" }, 500);
+  });
 
   return app;
 }

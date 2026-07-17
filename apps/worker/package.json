@@ -10,8 +10,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@doc-pilot/database": "workspace:*",
+    "@doc-pilot/queue": "workspace:*",
     "bullmq": "^5.80.6",
-    "ioredis": "^5.4.0"
+    "drizzle-orm": "^0.45.2",
+    "ioredis": "^5.4.0",
+    "postgres": "^3.4.9"
   },
   "devDependencies": {
     "@doc-pilot/config": "workspace:*",

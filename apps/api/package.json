@@ -11,8 +11,12 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1089.0",
+    "@aws-sdk/s3-request-presigner": "^3.1089.0",
     "@doc-pilot/auth": "workspace:*",
+    "@doc-pilot/contracts": "workspace:*",
     "@doc-pilot/database": "workspace:*",
+    "@doc-pilot/storage": "workspace:*",
     "@hono/node-server": "^1.14.0",
     "better-auth": "^1.6.23",
     "drizzle-orm": "^0.45.2",

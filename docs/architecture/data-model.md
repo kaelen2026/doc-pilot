@@ -125,6 +125,10 @@ WHERE deleted_at IS NULL;
 }
 ```
 
+> 实现补充（Phase 3）：`documents` 增加 `idempotency_key VARCHAR(255)` 列，配合
+> `UNIQUE(owner_id, idempotency_key)`，用于创建上传的幂等（见 §23.1）。`owner_id`
+> 为 TEXT 引用 `user(id)`（见 §8.1.1）。
+
 ### 8.3 document_files
 
 ```sql
