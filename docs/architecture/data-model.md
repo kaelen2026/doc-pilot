@@ -44,6 +44,46 @@ failed
 cancelled
 ```
 
+### 8.1.1 认证、Workspace 与 Membership（Phase 2 新增）
+
+**认证表（由 Better Auth 管理）**
+
+用户与会话由 Better Auth 管理，使用其默认单数表名：`user` / `session` / `account` / `verification`。字段与类型以 Better Auth 的 Drizzle schema 为准，**不要手改**。
+
+> ⚠️ 重要：Better Auth 的 `user.id` 是 **TEXT**（非 UUID）。因此所有引用用户的外键（如后文 `documents.owner_id`、`memberships.user_id`、`workspaces.owner_id`）在实现中应为 **TEXT** 引用 `user(id)`，即便后续表格的 SQL 示例写作 `UUID`——以本条为准。
+
+**workspaces**（租户边界，见 ADR-008）
+
+```sql
+CREATE TABLE workspaces (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(255) NOT NULL,
+  type VARCHAR(32) NOT NULL DEFAULT 'personal',
+  owner_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX workspaces_owner_id_idx ON workspaces(owner_id);
+```
+
+MVP：每个用户注册后自动创建一个 `personal` workspace（Better Auth `user.create.after` 钩子）。
+
+**memberships**（用户 ↔ workspace，MVP 角色仅 `owner`，见 §25）
+
+```sql
+CREATE TABLE memberships (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  role VARCHAR(32) NOT NULL DEFAULT 'owner' CHECK (role IN ('owner')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(workspace_id, user_id)
+);
+CREATE INDEX memberships_user_id_idx ON memberships(user_id);
+```
+
+`role` 用 `VARCHAR + CHECK`，不用 PostgreSQL ENUM（与 §8.1 一致）。
+
 ### 8.2 documents
 
 ```sql

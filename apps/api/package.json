@@ -11,8 +11,14 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@doc-pilot/auth": "workspace:*",
+    "@doc-pilot/database": "workspace:*",
     "@hono/node-server": "^1.14.0",
-    "hono": "^4.12.30"
+    "better-auth": "^1.6.23",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.12.30",
+    "nodemailer": "^9.0.3",
+    "postgres": "^3.4.9"
   },
   "devDependencies": {
     "@doc-pilot/config": "workspace:*",
