@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /*
  * 设计基线：墨水纸感
@@ -29,8 +30,71 @@
   --radius-lg: 12px;
 }
 
+/*
+ * shadcn/ui 语义 token → 全部指向上面的墨水纸感取值。
+ * shadcn 组件只认 background/foreground/primary/border/ring… 这一层桥接让组件
+ * 天然长成墨水纸的样子，而不是 shadcn 默认的中性灰。改视觉只需动上面的 @theme。
+ */
+:root {
+  --background: var(--color-paper);
+  --foreground: var(--color-ink);
+
+  --card: var(--color-paper-raised);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-paper-raised);
+  --popover-foreground: var(--color-ink);
+
+  /* 主按钮 = 墨底纸字，沿用原首页/登录的实心墨按钮 */
+  --primary: var(--color-ink);
+  --primary-foreground: var(--color-paper-raised);
+
+  --secondary: var(--color-paper-sunken);
+  --secondary-foreground: var(--color-ink-soft);
+  --muted: var(--color-paper-sunken);
+  --muted-foreground: var(--color-ink-faint);
+  --accent: var(--color-paper-sunken);
+  --accent-foreground: var(--color-ink);
+
+  /* 破坏性/错误 = 朱红印章色 */
+  --destructive: var(--color-seal);
+  --destructive-foreground: var(--color-paper-raised);
+
+  --border: var(--color-hairline);
+  --input: var(--color-hairline);
+  --ring: var(--color-seal);
+}
+
+/* 生成 bg-background / text-muted-foreground / border-border 等工具类。
+   半径不映射：沿用上面 @theme 的 --radius-sm/md/lg（4/8/12px）。 */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
 @layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
   body {
+    @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }

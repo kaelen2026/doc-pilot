@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Literata } from "next/font/google";
 import type { ReactNode } from "react";
+import { Providers } from "./providers";
 import "./globals.css";
 
 // display 字体：TypeTogether 为屏上长文阅读设计（Google Play Books 正文字体），
@@ -19,7 +20,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="zh" className={literata.variable}>
-      <body className="min-h-screen bg-paper font-sans text-ink antialiased">{children}</body>
+      <body className="min-h-screen bg-paper font-sans text-ink antialiased">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
