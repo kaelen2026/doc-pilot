@@ -1,0 +1,22 @@
+{
+  "name": "@doc-pilot/queue",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@doc-pilot/contracts": "workspace:*",
+    "bullmq": "^5.80.6",
+    "ioredis": "^5.4.0"
+  },
+  "devDependencies": {
+    "@doc-pilot/config": "workspace:*",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@doc-pilot/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@doc-pilot/config": "workspace:*",
+    "typescript": "^5.9.3"
+  }
+}
