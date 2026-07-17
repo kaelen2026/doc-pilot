@@ -1,0 +1,9 @@
+{"caseId":"auth-001","expectedPages":[12,13]}
+{"caseId":"auth-002","expectedPages":[3]}
+{"caseId":"auth-003","expectedPages":[4]}
+{"caseId":"auth-004","expectedPages":[17,18]}
+{"caseId":"auth-005","expectedPages":[14]}
+{"caseId":"pipe-001","expectedPages":[2]}
+{"caseId":"pipe-002","expectedPages":[6]}
+{"caseId":"pipe-003","expectedPages":[10]}
+{"caseId":"pipe-004","expectedPages":[12]}

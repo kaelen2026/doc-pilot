@@ -5,7 +5,15 @@
 export const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50MB
 export const MAX_PAGES = 500;
 export const MAX_CHUNKS_PER_DOCUMENT = 5000;
-export const STORAGE_QUOTA_BYTES = 1024 * 1024 * 1024; // 1GB / 用户
+
+/**
+ * Workspace 配额（见 cross-cutting.md §27.2）。按 workspace 维度统计与拦截;
+ * MVP 每用户一个 personal workspace,等价于按用户配额。以下为 MVP 默认额度。
+ */
+export const STORAGE_QUOTA_BYTES = 1024 * 1024 * 1024; // 1GB
+export const MAX_DOCUMENTS_PER_WORKSPACE = 200;
+export const MONTHLY_AI_TOKENS_QUOTA = 2_000_000; // input + output,按自然月
+export const MONTHLY_QUESTIONS_QUOTA = 1_000; // 自然月内提问次数
 
 export const ALLOWED_MIME_TYPES = ["application/pdf"] as const;
 export type AllowedMimeType = (typeof ALLOWED_MIME_TYPES)[number];
