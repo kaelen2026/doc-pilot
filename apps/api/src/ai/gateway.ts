@@ -1,6 +1,5 @@
 import {
   type AIGateway,
-  ANSWER_CITATIONS_MARKER,
   createAIGateway,
   createAnthropicAdapter,
   createMockAdapter,
@@ -11,13 +10,15 @@ import {
 import { EMBEDDING_DIMENSIONS } from "@doc-pilot/contracts";
 import { createAiGenerationRecorder, db } from "@doc-pilot/database";
 import { aiMetrics, logger } from "@doc-pilot/observability";
+import { mockAnswerChunks } from "./mock-answer";
 
 let instance: AIGateway | undefined;
 
 /**
  * API 侧 AI Gateway 单例(ADR-006):问答 streamText 走 Anthropic,
- * 查询向量化走 OpenAI 兼容端点;对应 Key 缺失时回落 Mock(本地/CI 零网络可跑,
- * mock 的问答输出固定为符合两段式协议的显式拒答)。
+ * 查询向量化走 OpenAI 兼容端点;对应 Key 缺失时回落 Mock(本地/CI 零网络可跑)。
+ * mock 问答按注入的检索片段派生出一条有效引用(见 mock-answer.ts),
+ * 因此零真实模型也能跑通「回答 + 引用」链路;检索为空时上游直接拒答、不调本函数。
  */
 export function apiAIGateway(): AIGateway {
   if (!instance) {
@@ -75,12 +76,7 @@ function build(): AIGateway {
       ...(hasOpenAI ? { openai: createOpenAIEmbeddingAdapter() } : {}),
       mock: createMockAdapter({
         embeddingDim: EMBEDDING_DIMENSIONS,
-        streamChunks: [
-          "未配置 ANTHROPIC_API_KEY,",
-          "无法基于文档生成回答,这是本地占位拒答。",
-          `\n${ANSWER_CITATIONS_MARKER}\n`,
-          '{"insufficientEvidence": true, "citations": []}',
-        ],
+        streamChunks: mockAnswerChunks,
       }),
     },
     prompts: createPromptRegistry([documentAnswerPromptV1]),
