@@ -41,7 +41,7 @@ export function DocumentsView() {
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 py-16">
       <header className={`space-y-2 ${rise}`}>
         <h1 className="font-display text-3xl font-medium tracking-[-0.018em]">我的文档</h1>
-        <p className="text-sm text-ink-faint">Phase 4 · 解析流水线</p>
+        <p className="text-sm text-ink-faint">就绪的文档可以直接问答,回答附原文引用</p>
       </header>
 
       <section className={rise} style={{ animationDelay: "100ms" }}>
@@ -66,7 +66,17 @@ export function DocumentsView() {
                 <li key={d.id} className="flex flex-col gap-1.5 px-4 py-3.5">
                   <div className="flex items-center justify-between gap-4">
                     <span className="truncate text-sm text-ink">{d.title}</span>
-                    <Badge className="shrink-0">{STATUS_LABEL[d.status] ?? d.status}</Badge>
+                    <span className="flex shrink-0 items-center gap-2.5">
+                      {d.status === "ready" || d.status === "partially_ready" ? (
+                        <Link
+                          href={`/documents/${d.id}/chat`}
+                          className="text-xs text-seal underline-offset-4 transition-colors duration-150 [@media(hover:hover)]:hover:text-seal-deep [@media(hover:hover)]:hover:underline"
+                        >
+                          问答
+                        </Link>
+                      ) : null}
+                      <Badge>{STATUS_LABEL[d.status] ?? d.status}</Badge>
+                    </span>
                   </div>
                   {d.status === "processing" ? (
                     <div className="flex items-center gap-2">

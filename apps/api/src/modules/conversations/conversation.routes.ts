@@ -118,6 +118,8 @@ function serializeMessage(message: MessageRow & { citations: CitationRow[] }) {
     content: message.content,
     status: message.status,
     errorCode: message.errorCode,
+    // user 消息携带幂等键,前端对 failed 回答重试时原样重发(rag.md §23.3)。
+    clientRequestId: message.clientRequestId,
     createdAt: message.createdAt,
     citations: message.citations.map((c) => ({
       id: c.id,
