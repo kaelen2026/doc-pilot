@@ -1,0 +1,36 @@
+# DocPilot — AI 文档工作台
+
+DocPilot 是一个 **AI Native 的个人文档工作台**。它把一个确定性的业务系统、异步数据处理管线、非确定性的 AI 能力、权限与安全、成本与可观测性，以及 Evaluation 组合成一个完整的产品工程闭环。
+
+核心闭环：
+
+```
+登录 → 上传 PDF → 异步解析 → 文本切片 → 生成向量 → 生成摘要
+      → 基于文档问答 → 返回带页码引用的答案 → 记录质量/成本/调用链
+```
+
+第一版目标不是构建企业级知识库，而是完成一个 **可运行、可测试、可部署、可扩展、可验证 AI 输出** 的个人 AI 文档工作台。
+
+> 本仓库当前只包含 **设计文档**，尚未包含应用代码。文档是后续实现的唯一权威参考。
+
+## 文档索引
+
+### 产品
+- [产品概述、目标与验收标准](docs/product/overview.md) — 方案目标、非功能指标、文件限制、第一版明确不做、最终验收标准
+
+### 架构
+- [架构总览](docs/architecture/overview.md) — 技术栈、总体架构、仓库结构、模块边界、核心领域模型
+- [数据模型与存储](docs/architecture/data-model.md) — 数据库 Schema、枚举、对象存储设计
+- [处理管线](docs/architecture/pipeline.md) — 上传 API、Transactional Outbox、异步任务、状态机、PDF 解析、Chunk、Embedding、删除流程
+- [RAG 与 AI](docs/architecture/rag.md) — 向量检索、上下文构建、Prompt 管理、AI Gateway、摘要、问答流式接口、幂等性
+- [横切关注点](docs/architecture/cross-cutting.md) — 权限、安全、限流与配额、成本统计、可观测性、本地开发、CI、部署
+- [测试与 Evaluation](docs/architecture/testing-and-eval.md) — 测试策略、Evaluation 体系
+
+### 决策记录
+- [ADR 索引](docs/adr/README.md) — 10 条关键架构决策
+
+### 运维手册
+- [故障恢复](docs/runbooks/failure-recovery.md) — Reconciliation Job、超时任务、租约机制
+
+### 实施计划
+- [分阶段路线图](.ai/plans/roadmap.md) — Phase 1–7 的产出与验收标准
