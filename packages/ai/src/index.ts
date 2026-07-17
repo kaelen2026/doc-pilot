@@ -10,6 +10,19 @@ export {
   type ModelRoute,
   resolveRoute,
 } from "./capabilities";
+export {
+  type Answer,
+  type AnswerCitation,
+  AnswerSchema,
+  type AnswerValidationResult,
+  type CitationIssue,
+  type CitationIssueCode,
+  type CitationSource,
+  quoteMatchScore,
+  type ValidateAnswerOptions,
+  type ValidatedCitation,
+  validateAnswer,
+} from "./citations";
 export { AI_ERROR_CODES, AIError, type AIErrorCode, isAIError, normalizeAIError } from "./errors";
 export {
   type AIGatewayHooks,
