@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "../../shared/types";
 import { ForbiddenError } from "./document.errors";
 import { parseCreateUpload } from "./document.schema";
-import { completeUpload, createUpload, listDocuments } from "./document.service";
+import { completeUpload, createUpload, getDocument, listDocuments } from "./document.service";
 
 /**
  * 解析当前活跃 workspace。MVP：用户只有一个 personal workspace，取第一个 membership。
@@ -40,5 +40,10 @@ export function createDocumentRoutes() {
       const workspaceId = activeWorkspaceId(c.get("memberships"));
       const documents = await listDocuments(workspaceId);
       return c.json({ documents });
+    })
+    .get("/:id", async (c) => {
+      const workspaceId = activeWorkspaceId(c.get("memberships"));
+      const result = await getDocument({ workspaceId, documentId: c.req.param("id") });
+      return c.json(result);
     });
 }

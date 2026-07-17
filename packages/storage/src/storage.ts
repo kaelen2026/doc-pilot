@@ -1,4 +1,13 @@
-import { DeleteObjectCommand, HeadObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { createWriteStream } from "node:fs";
+import { mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
+import { pipeline } from "node:stream/promises";
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { bucket, s3 } from "./client";
 
@@ -41,6 +50,21 @@ export async function headObject(
 
 export async function deleteObject(key: string): Promise<void> {
   await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+}
+
+/**
+ * 将对象流式下载到本地文件(见 pipeline.md §14.2)。
+ * Worker 下载原始 PDF 到临时目录后再解析,避免整份文件常驻内存;
+ * 目标目录不存在时自动创建。对象不存在会抛错(交由调用方按可重试/不可重试处理)。
+ */
+export async function downloadObjectToFile(key: string, filePath: string): Promise<void> {
+  const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+  if (!res.Body) {
+    throw new Error(`empty body for object ${key}`);
+  }
+  await mkdir(dirname(filePath), { recursive: true });
+  // SDK v3 在 Node 下返回 Node 可读流,直接 pipe 到文件写入流。
+  await pipeline(res.Body as NodeJS.ReadableStream, createWriteStream(filePath));
 }
 
 function isNotFound(err: unknown): boolean {

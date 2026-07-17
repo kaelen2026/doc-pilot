@@ -7,21 +7,26 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsup",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@doc-pilot/contracts": "workspace:*",
     "@doc-pilot/database": "workspace:*",
     "@doc-pilot/queue": "workspace:*",
+    "@doc-pilot/storage": "workspace:*",
     "bullmq": "^5.80.6",
     "drizzle-orm": "^0.45.2",
     "ioredis": "^5.4.0",
-    "postgres": "^3.4.9"
+    "postgres": "^3.4.9",
+    "unpdf": "^1.6.2"
   },
   "devDependencies": {
     "@doc-pilot/config": "workspace:*",
     "@types/node": "^24.0.0",
     "tsup": "^8.5.0",
     "tsx": "^4.23.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   }
 }

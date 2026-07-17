@@ -4,6 +4,7 @@ import {
   buildParseJobId,
   getDocumentProcessingQueue,
   JOB_NAMES,
+  PROCESSING_RETRY,
   type Redis,
 } from "@doc-pilot/queue";
 import { asc, eq } from "drizzle-orm";
@@ -51,6 +52,8 @@ export function startOutboxPublisher(opts: {
           );
           await queue.add(JOB_NAMES.processDocument, payload, {
             jobId,
+            attempts: PROCESSING_RETRY.attempts,
+            backoff: { ...PROCESSING_RETRY.backoff },
             removeOnComplete: true,
             removeOnFail: false,
           });
