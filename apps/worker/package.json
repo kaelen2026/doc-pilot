@@ -14,6 +14,7 @@
     "@doc-pilot/ai": "workspace:*",
     "@doc-pilot/contracts": "workspace:*",
     "@doc-pilot/database": "workspace:*",
+    "@doc-pilot/observability": "workspace:*",
     "@doc-pilot/queue": "workspace:*",
     "@doc-pilot/storage": "workspace:*",
     "bullmq": "^5.80.6",

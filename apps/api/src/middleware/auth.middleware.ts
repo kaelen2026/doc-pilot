@@ -1,3 +1,4 @@
+import { withSpan } from "@doc-pilot/observability";
 import type { MiddlewareHandler } from "hono";
 import type { AppEnv, AuthUser, Membership } from "../shared/types";
 
@@ -14,7 +15,7 @@ export function requireAuth(deps: {
   loadMemberships: MembershipLoader;
 }): MiddlewareHandler<AppEnv> {
   return async (c, next) => {
-    const session = await deps.getSession(c.req.raw.headers);
+    const session = await withSpan("auth.verify", () => deps.getSession(c.req.raw.headers));
     if (!session) {
       return c.json({ error: "unauthorized" }, 401);
     }

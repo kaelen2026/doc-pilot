@@ -2,6 +2,7 @@ import type { AIGateway, AIMetadata, CitationSource } from "@doc-pilot/ai";
 import { RETRIEVAL } from "@doc-pilot/contracts";
 import { db } from "@doc-pilot/database";
 import { documentChunks } from "@doc-pilot/database/schema";
+import { withSpan } from "@doc-pilot/observability";
 import { and, cosineDistance, eq, isNotNull, sql } from "drizzle-orm";
 
 export interface ChunkCandidate {
@@ -34,39 +35,43 @@ export async function retrieveCandidates(input: {
   processingVersion: number;
   metadata: AIMetadata;
 }): Promise<ChunkCandidate[]> {
-  const { embeddings } = await input.gateway.embed({
-    capability: "embedding",
-    texts: [input.question],
-    metadata: input.metadata,
-  });
+  const { embeddings } = await withSpan("retrieval.embed_query", () =>
+    input.gateway.embed({
+      capability: "embedding",
+      texts: [input.question],
+      metadata: input.metadata,
+    }),
+  );
   const queryVector = embeddings[0];
   if (!queryVector) {
     return [];
   }
 
   const distance = cosineDistance(documentChunks.embedding, queryVector);
-  return db
-    .select({
-      chunkId: documentChunks.id,
-      chunkIndex: documentChunks.chunkIndex,
-      content: documentChunks.content,
-      contentHash: documentChunks.contentHash,
-      tokenCount: documentChunks.tokenCount,
-      pageStart: documentChunks.pageStart,
-      pageEnd: documentChunks.pageEnd,
-      score: sql<number>`1 - (${distance})`,
-    })
-    .from(documentChunks)
-    .where(
-      and(
-        eq(documentChunks.workspaceId, input.workspaceId),
-        eq(documentChunks.documentId, input.documentId),
-        eq(documentChunks.processingVersion, input.processingVersion),
-        isNotNull(documentChunks.embedding),
-      ),
-    )
-    .orderBy(distance)
-    .limit(RETRIEVAL.candidateLimit);
+  return withSpan("retrieval.vector_search", () =>
+    db
+      .select({
+        chunkId: documentChunks.id,
+        chunkIndex: documentChunks.chunkIndex,
+        content: documentChunks.content,
+        contentHash: documentChunks.contentHash,
+        tokenCount: documentChunks.tokenCount,
+        pageStart: documentChunks.pageStart,
+        pageEnd: documentChunks.pageEnd,
+        score: sql<number>`1 - (${distance})`,
+      })
+      .from(documentChunks)
+      .where(
+        and(
+          eq(documentChunks.workspaceId, input.workspaceId),
+          eq(documentChunks.documentId, input.documentId),
+          eq(documentChunks.processingVersion, input.processingVersion),
+          isNotNull(documentChunks.embedding),
+        ),
+      )
+      .orderBy(distance)
+      .limit(RETRIEVAL.candidateLimit),
+  );
 }
 
 /**

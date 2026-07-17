@@ -1,5 +1,6 @@
 import { db } from "@doc-pilot/database";
 import { outboxEvents } from "@doc-pilot/database/schema";
+import { errToLog, logger } from "@doc-pilot/observability";
 import {
   buildParseJobId,
   getDocumentProcessingQueue,
@@ -66,14 +67,14 @@ export function startOutboxPublisher(opts: {
       }
 
       if (events.length > 0) {
-        console.log(`[outbox] published ${events.length} event(s)`);
+        logger.info("outbox.published", { count: events.length });
       }
     });
   }
 
   const timer = setInterval(() => {
     if (!stopped) {
-      tick().catch((err) => console.error("[outbox] tick failed:", err));
+      tick().catch((err) => logger.error("outbox.tick_failed", errToLog(err)));
     }
   }, opts.intervalMs);
 
