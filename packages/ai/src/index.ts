@@ -1,4 +1,8 @@
 export type { AdapterUsage, ProviderAdapter } from "./adapter";
+export {
+  type AnthropicAdapterOptions,
+  createAnthropicAdapter,
+} from "./adapters/anthropic";
 export { createMockAdapter, type MockAdapterOptions } from "./adapters/mock";
 export {
   type CapabilityRoutes,

@@ -20,12 +20,14 @@ export interface ProviderAdapter {
     model: string;
     system: string;
     messages: AIMessage[];
+    maxTokens?: number;
   }): Promise<{ text: string; usage: AdapterUsage }>;
 
   streamText(input: {
     model: string;
     system: string;
     messages: AIMessage[];
+    maxTokens?: number;
   }): Promise<{ textStream: AsyncIterable<string>; usage: Promise<AdapterUsage> }>;
 
   embed(input: {
