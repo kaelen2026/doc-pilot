@@ -1,16 +1,12 @@
-import { buildParseJobId, STORAGE_QUOTA_BYTES } from "@doc-pilot/contracts";
+import { buildParseJobId } from "@doc-pilot/contracts";
 import {
   bucket,
   buildOriginalObjectKey,
   createPresignedPutUrl,
   headObject,
 } from "@doc-pilot/storage";
-import {
-  NotFoundError,
-  QuotaExceededError,
-  UploadNotFoundError,
-  ValidationError,
-} from "./document.errors";
+import { assertUploadQuota } from "../quota/quota.service";
+import { NotFoundError, UploadNotFoundError, ValidationError } from "./document.errors";
 import * as repo from "./document.repository";
 import { type CreateUploadInput, validateUploadConstraints } from "./document.schema";
 
@@ -41,11 +37,11 @@ export async function createUpload(params: {
     throw new ValidationError(constraintError);
   }
 
-  // 配额检查（在昂贵操作之前，见 cross-cutting.md §27）。
-  const used = await repo.sumStorageBytes(params.workspaceId);
-  if (used + params.input.sizeBytes > STORAGE_QUOTA_BYTES) {
-    throw new QuotaExceededError();
-  }
+  // 配额检查（在昂贵操作之前，见 cross-cutting.md §27.2）:存储字节 + 文档数量。
+  await assertUploadQuota({
+    workspaceId: params.workspaceId,
+    additionalBytes: params.input.sizeBytes,
+  });
 
   // 创建幂等（§23.1）：同一 owner + Idempotency-Key 复用已有文档。
   let document = params.idempotencyKey
