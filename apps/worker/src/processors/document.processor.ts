@@ -1,10 +1,13 @@
 import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { type DocumentSummary, isAIError } from "@doc-pilot/ai";
 import { buildParseJobId } from "@doc-pilot/contracts";
 import { downloadObjectToFile } from "@doc-pilot/storage";
 import { type Job, UnrecoverableError } from "bullmq";
+import { workerAIGateway } from "../ai/gateway";
 import { chunkDocument, cleanDocument, errorCodeOf, isRetryable, parseDocument } from "../pipeline";
+import { summarizeDocument } from "../pipeline/summarize";
 import * as repo from "../repository/document.repository";
 
 interface DocumentJobData {
@@ -14,7 +17,8 @@ interface DocumentJobData {
 }
 
 /**
- * document-processing 队列处理器:parse → clean → chunk → finalize(见 pipeline.md §12–§16)。
+ * document-processing 队列处理器:parse → clean → chunk → summarize → finalize
+ * (见 pipeline.md §12–§16、rag.md §21)。
  *
  * 关键保证:
  * - 处理前 + 写入前两次校验 processing_version(陈旧任务不复活数据)。
@@ -50,6 +54,28 @@ export async function processDocumentJob(job: Job<DocumentJobData>): Promise<{
     await repo.markStage({ documentId, jobIdempotencyKey, stage: "chunk", progress: 70 });
     const chunks = chunkDocument(cleaned);
 
+    // 摘要失败不阻断管线:文档仍可问答,状态落为 partially_ready(pipeline.md §13)。
+    await repo.markStage({ documentId, jobIdempotencyKey, stage: "summarize", progress: 85 });
+    let summary: DocumentSummary | null = null;
+    let summaryError: { code: string; message: string } | null = null;
+    try {
+      summary = await summarizeDocument({
+        gateway: workerAIGateway(),
+        chunks,
+        metadata: {
+          workspaceId: claim.workspaceId,
+          documentId,
+          traceId: jobIdempotencyKey,
+        },
+      });
+    } catch (err) {
+      summaryError = {
+        code: isAIError(err) ? err.code : "SUMMARY_FAILED",
+        message: err instanceof Error ? err.message : String(err),
+      };
+      console.error(`[worker] summarize failed ${documentId}: ${summaryError.code}`);
+    }
+
     const written = await repo.saveChunksAndFinalize({
       documentId,
       workspaceId: claim.workspaceId,
@@ -58,6 +84,8 @@ export async function processDocumentJob(job: Job<DocumentJobData>): Promise<{
       pageCount: cleaned.pageCount,
       textLength: cleaned.textLength,
       chunks,
+      summary,
+      summaryError,
     });
 
     if (!written) {
