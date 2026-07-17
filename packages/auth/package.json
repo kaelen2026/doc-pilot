@@ -1,26 +1,24 @@
 {
-  "name": "@doc-pilot/database",
+  "name": "@doc-pilot/auth",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./schema": "./src/schema/index.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@doc-pilot/database": "workspace:*",
+    "better-auth": "^1.6.23",
     "drizzle-orm": "^0.45.2",
-    "postgres": "^3.4.9"
+    "nodemailer": "^9.0.3"
   },
   "devDependencies": {
     "@doc-pilot/config": "workspace:*",
     "@types/node": "^24.0.0",
-    "drizzle-kit": "^0.31.10",
+    "@types/nodemailer": "^8.0.1",
     "typescript": "^5.9.3"
   }
 }
