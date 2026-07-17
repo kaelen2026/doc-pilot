@@ -6,7 +6,14 @@ import { buildParseJobId } from "@doc-pilot/contracts";
 import { downloadObjectToFile } from "@doc-pilot/storage";
 import { type Job, UnrecoverableError } from "bullmq";
 import { workerAIGateway } from "../ai/gateway";
-import { chunkDocument, cleanDocument, errorCodeOf, isRetryable, parseDocument } from "../pipeline";
+import {
+  chunkDocument,
+  cleanDocument,
+  embedChunks,
+  errorCodeOf,
+  isRetryable,
+  parseDocument,
+} from "../pipeline";
 import { summarizeDocument } from "../pipeline/summarize";
 import * as repo from "../repository/document.repository";
 
@@ -17,7 +24,7 @@ interface DocumentJobData {
 }
 
 /**
- * document-processing 队列处理器:parse → clean → chunk → summarize → finalize
+ * document-processing 队列处理器:parse → clean → chunk → embed → summarize → finalize
  * (见 pipeline.md §12–§16、rag.md §21)。
  *
  * 关键保证:
@@ -51,11 +58,23 @@ export async function processDocumentJob(job: Job<DocumentJobData>): Promise<{
     await repo.markStage({ documentId, jobIdempotencyKey, stage: "clean", progress: 45 });
     const cleaned = cleanDocument(parsed);
 
-    await repo.markStage({ documentId, jobIdempotencyKey, stage: "chunk", progress: 70 });
+    await repo.markStage({ documentId, jobIdempotencyKey, stage: "chunk", progress: 60 });
     const chunks = chunkDocument(cleaned);
 
+    // embed 失败会阻断管线(没有向量就没法问答):瞬时 AI 错误重试,其余判失败。
+    await repo.markStage({ documentId, jobIdempotencyKey, stage: "embed", progress: 75 });
+    const embedded = await embedChunks({
+      gateway: workerAIGateway(),
+      chunks,
+      metadata: {
+        workspaceId: claim.workspaceId,
+        documentId,
+        traceId: jobIdempotencyKey,
+      },
+    });
+
     // 摘要失败不阻断管线:文档仍可问答,状态落为 partially_ready(pipeline.md §13)。
-    await repo.markStage({ documentId, jobIdempotencyKey, stage: "summarize", progress: 85 });
+    await repo.markStage({ documentId, jobIdempotencyKey, stage: "summarize", progress: 88 });
     let summary: DocumentSummary | null = null;
     let summaryError: { code: string; message: string } | null = null;
     try {
@@ -84,6 +103,7 @@ export async function processDocumentJob(job: Job<DocumentJobData>): Promise<{
       pageCount: cleaned.pageCount,
       textLength: cleaned.textLength,
       chunks,
+      embedded,
       summary,
       summaryError,
     });

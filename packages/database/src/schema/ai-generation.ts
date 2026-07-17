@@ -26,7 +26,8 @@ export const aiGenerations = pgTable(
     workspaceId: uuid("workspace_id")
       .notNull()
       .references(() => workspaces.id, { onDelete: "cascade" }),
-    userId: uuid("user_id"),
+    // Better Auth 的 user.id 是 TEXT(data-model.md §8.1.1),引用用户的列一律 TEXT。
+    userId: text("user_id"),
     documentId: uuid("document_id"),
     capability: varchar("capability", { length: 50 }).notNull(),
     provider: varchar("provider", { length: 50 }).notNull(),

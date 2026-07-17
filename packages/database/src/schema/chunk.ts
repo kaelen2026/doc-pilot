@@ -53,5 +53,8 @@ export const documentChunks = pgTable(
     ),
     index("document_chunks_document_idx").on(t.documentId, t.processingVersion),
     index("document_chunks_workspace_idx").on(t.workspaceId),
+    // 向量检索用 HNSW + 余弦距离(data-model.md §8.4)。查询始终带 workspace/document 过滤,
+    // 单文档规模下即使不走索引也能跑,索引保证多文档 workspace 的检索延迟。
+    index("idx_chunks_embedding_hnsw").using("hnsw", t.embedding.op("vector_cosine_ops")),
   ],
 );

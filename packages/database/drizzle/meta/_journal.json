@@ -36,6 +36,20 @@
       "when": 1784283131583,
       "tag": "0004_ai_generations",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784285225231,
+      "tag": "0005_conversations",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784285865713,
+      "tag": "0006_ai-generations-user-id-text",
+      "breakpoints": true
     }
   ]
 }

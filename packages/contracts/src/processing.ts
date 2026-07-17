@@ -15,6 +15,12 @@ export const CHUNKER_VERSION = "semantic-v1";
 export const EMBEDDING_DIMENSIONS = 1536;
 
 /**
+ * Embedding 管线版本(写入 document_chunks.embedding_version)。
+ * 换 embedding 模型或预处理方式时递增,用于判断已有向量是否需要重建。
+ */
+export const EMBEDDING_VERSION = "v1";
+
+/**
  * 处理错误码。错误分类见 pipeline.md §12.3:
  * 可重试的是瞬时故障(超时 / 限流 / 依赖抖动),不可重试的是内容 / 配置问题。
  */
@@ -27,6 +33,8 @@ export const PROCESSING_ERROR_CODES = {
   CHUNK_LIMIT_EXCEEDED: "CHUNK_LIMIT_EXCEEDED",
   EMPTY_DOCUMENT: "EMPTY_DOCUMENT",
   INVALID_CONFIGURATION: "INVALID_CONFIGURATION",
+  // 可重试与否由 Worker 按底层 AI_* 错误分类(限流/超时可重试,配额/内容类不重试)。
+  EMBEDDING_FAILED: "EMBEDDING_FAILED",
   // Retryable —— 瞬时故障,交给 BullMQ 退避重试。
   STORAGE_UNAVAILABLE: "STORAGE_UNAVAILABLE",
   DATABASE_ERROR: "DATABASE_ERROR",

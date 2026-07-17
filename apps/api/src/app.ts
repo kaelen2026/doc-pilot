@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { requireAuth } from "./middleware/auth.middleware";
+import { createConversationRoutes } from "./modules/conversations/conversation.routes";
 import { DomainError } from "./modules/documents/document.errors";
 import { createDocumentRoutes } from "./modules/documents/document.routes";
 import { createHealthRoutes } from "./modules/health/health.routes";
@@ -34,8 +35,11 @@ export function createApp() {
   app.use("/me", guard);
   app.use("/documents", guard);
   app.use("/documents/*", guard);
+  app.use("/conversations", guard);
+  app.use("/conversations/*", guard);
   app.route("/me", createMeRoutes());
   app.route("/documents", createDocumentRoutes());
+  app.route("/conversations", createConversationRoutes());
 
   // 统一错误映射：领域错误 → 对应 HTTP 状态。
   app.onError((err, c) => {
