@@ -1,6 +1,6 @@
 import { db } from "@doc-pilot/database";
 import { documentFiles, documents, outboxEvents, processingJobs } from "@doc-pilot/database/schema";
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 
 export type DocumentRow = typeof documents.$inferSelect;
 
@@ -92,14 +92,6 @@ export async function getStatusById(id: string, workspaceId: string) {
     )
     .limit(1);
   return row;
-}
-
-export async function sumStorageBytes(workspaceId: string): Promise<number> {
-  const [row] = await db
-    .select({ total: sql<number>`coalesce(sum(${documents.sizeBytes}), 0)` })
-    .from(documents)
-    .where(and(eq(documents.workspaceId, workspaceId), isNull(documents.deletedAt)));
-  return Number(row?.total ?? 0);
 }
 
 export async function listByWorkspace(workspaceId: string) {

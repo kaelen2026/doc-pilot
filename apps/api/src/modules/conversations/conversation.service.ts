@@ -9,6 +9,7 @@ import {
 import { RETRIEVAL } from "@doc-pilot/contracts";
 import { apiAIGateway } from "../../ai/gateway";
 import { NotFoundError } from "../documents/document.errors";
+import { assertAskQuota } from "../quota/quota.service";
 import { AnswerRejectedError, ConflictError } from "./conversation.errors";
 import * as repo from "./conversation.repository";
 import type { CreateConversationInput, SubmitMessageInput } from "./conversation.schema";
@@ -132,7 +133,7 @@ export async function prepareSubmission(params: {
         const citations = await repo.listCitationsByMessageIds([assistant.id]);
         return { kind: "existing", assistantMessage: assistant, citations };
       }
-      // failed → 显式重试。
+      // failed → 显式重试。重试不新增提问,不再计配额(问题已在配额内计过)。
       await repo.resetAssistantForRetry(assistant.id);
       return {
         kind: "generate",
@@ -142,6 +143,9 @@ export async function prepareSubmission(params: {
         assistantMessage: { ...assistant, status: "pending", content: "", errorCode: null },
       };
     }
+
+    // 新提问:配额检查在昂贵操作(检索 + 生成)之前(§27.2)。仅拦新问题,不拦幂等重放。
+    await assertAskQuota({ workspaceId: params.workspaceId });
 
     const pair = await repo.insertQuestionPair({
       conversationId: conversation.id,
