@@ -1,10 +1,11 @@
 import { auth } from "@doc-pilot/auth";
 import { RATE_LIMITS } from "@doc-pilot/contracts";
+import { errToLog, logger } from "@doc-pilot/observability";
 import type { Context, MiddlewareHandler } from "hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { logger } from "hono/logger";
 import { requireAuth } from "./middleware/auth.middleware";
+import { observability } from "./middleware/observability.middleware";
 import { createConversationRoutes } from "./modules/conversations/conversation.routes";
 import { DomainError } from "./modules/documents/document.errors";
 import { createDocumentRoutes } from "./modules/documents/document.routes";
@@ -29,7 +30,8 @@ export function createApp(deps: { rateLimiter?: RateLimiter } = {}) {
   const app = new Hono<AppEnv>();
   const limiter = deps.rateLimiter ?? new NoopRateLimiter();
 
-  app.use("*", logger());
+  // 请求级可观测:结构化访问日志 + http 指标 + requestId。
+  app.use("*", observability());
 
   // 允许 web 源站带 cookie 跨源调用（web:3000 → api:3001）。
   const webOrigin = process.env.WEB_ORIGIN ?? "http://localhost:3000";
@@ -82,7 +84,7 @@ export function createApp(deps: { rateLimiter?: RateLimiter } = {}) {
     if (err instanceof DomainError) {
       return c.json({ error: err.code, message: err.message }, err.status as 400);
     }
-    console.error("[api] unhandled error:", err);
+    logger.error("http.unhandled_error", { path: c.req.path, ...errToLog(err) });
     return c.json({ error: "internal_error" }, 500);
   });
 

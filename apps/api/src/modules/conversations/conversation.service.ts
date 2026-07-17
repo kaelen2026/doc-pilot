@@ -7,6 +7,7 @@ import {
   validateAnswer,
 } from "@doc-pilot/ai";
 import { RETRIEVAL } from "@doc-pilot/contracts";
+import { errToLog, logger, ragMetrics, withSpan } from "@doc-pilot/observability";
 import { apiAIGateway } from "../../ai/gateway";
 import { NotFoundError } from "../documents/document.errors";
 import { assertAskQuota } from "../quota/quota.service";
@@ -203,6 +204,8 @@ export async function generateAnswer(params: {
       metadata,
     });
     const sources = selectSources(candidates);
+    // 检索指标(§29.2):命中来源数 + 最高相似度(candidates 已按分降序)。
+    ragMetrics.retrieval(sources.length, candidates[0]?.score ?? null);
     await callbacks.onRetrievalCompleted(sources.length);
 
     // 无证据 → 显式拒答(ADR-007),不调用生成模型。
@@ -212,6 +215,7 @@ export async function generateAnswer(params: {
         content: REFUSAL_NO_SOURCES,
         validatedCitations: [],
       });
+      ragMetrics.answer({ citationCount: 0, invalidCitationCount: 0, insufficientEvidence: true });
       await callbacks.onDelta(REFUSAL_NO_SOURCES);
       return {
         content: REFUSAL_NO_SOURCES,
@@ -230,43 +234,57 @@ export async function generateAnswer(params: {
       RETRIEVAL.historyTokenBudget,
     );
 
-    const stream = await gateway.streamText({
-      capability: "answer",
-      promptId: "document-answer",
-      promptVersion: "1.0.0",
-      messages: [
-        ...history,
-        {
-          role: "user",
-          content: buildAnswerUserMessage({
-            sources: citationSources,
-            question: userMessage.content,
-          }),
-        },
-      ],
-      metadata,
+    // ai.generate span 覆盖 streamText 调用 + 流式消费,直到拿到结构化答案。
+    const generated = await withSpan("ai.generate", async () => {
+      const stream = await gateway.streamText({
+        capability: "answer",
+        promptId: "document-answer",
+        promptVersion: "1.0.0",
+        messages: [
+          ...history,
+          {
+            role: "user",
+            content: buildAnswerUserMessage({
+              sources: citationSources,
+              question: userMessage.content,
+            }),
+          },
+        ],
+        metadata,
+      });
+      const parsed = parseAnswerStream(stream.textStream);
+      for await (const delta of parsed.textDeltas) {
+        await callbacks.onDelta(delta);
+      }
+      return { answer: await parsed.answer, usage: stream.usage };
     });
+    const { answer } = generated;
 
-    const parsed = parseAnswerStream(stream.textStream);
-    for await (const delta of parsed.textDeltas) {
-      await callbacks.onDelta(delta);
-    }
-    const answer = await parsed.answer;
-
-    const validation = validateAnswer(answer, {
-      sources: citationSources,
-      documentId: document.id,
-    });
+    const validation = await withSpan("citation.validate", () =>
+      validateAnswer(answer, { sources: citationSources, documentId: document.id }),
+    );
     if (!validation.ok) {
+      ragMetrics.answer({
+        citationCount: 0,
+        invalidCitationCount: validation.issues.length,
+        insufficientEvidence: false,
+      });
       throw new AnswerRejectedError(validation.issues);
     }
 
-    const citationRows = await repo.completeAssistant({
-      assistantMessageId: assistantMessage.id,
-      content: answer.answer,
-      validatedCitations: validation.citations,
+    const citationRows = await withSpan("database.persist_message", () =>
+      repo.completeAssistant({
+        assistantMessageId: assistantMessage.id,
+        content: answer.answer,
+        validatedCitations: validation.citations,
+      }),
+    );
+    ragMetrics.answer({
+      citationCount: citationRows.length,
+      invalidCitationCount: 0,
+      insufficientEvidence: answer.insufficientEvidence,
     });
-    const usage = await stream.usage.catch(() => null);
+    const usage = await generated.usage.catch(() => null);
     return {
       content: answer.answer,
       citations: citationRows,
@@ -276,7 +294,12 @@ export async function generateAnswer(params: {
   } catch (err) {
     await repo
       .failAssistant({ assistantMessageId: assistantMessage.id, errorCode: errorCodeOf(err) })
-      .catch((markErr) => console.error("[conversations] 标记 failed 失败:", markErr));
+      .catch((markErr) =>
+        logger.error("chat.mark_failed_error", {
+          messageId: assistantMessage.id,
+          ...errToLog(markErr),
+        }),
+      );
     throw err;
   }
 }

@@ -1,0 +1,24 @@
+{
+  "name": "@doc-pilot/observability",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/exporter-prometheus": "^0.220.0",
+    "@opentelemetry/sdk-metrics": "^2.9.0"
+  },
+  "devDependencies": {
+    "@doc-pilot/config": "workspace:*",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

@@ -10,6 +10,7 @@ import {
 } from "@doc-pilot/ai";
 import { EMBEDDING_DIMENSIONS } from "@doc-pilot/contracts";
 import { createAiGenerationRecorder, db } from "@doc-pilot/database";
+import { aiMetrics, logger } from "@doc-pilot/observability";
 
 let instance: AIGateway | undefined;
 
@@ -29,11 +30,22 @@ function build(): AIGateway {
   const hasAnthropic = Boolean(process.env.ANTHROPIC_API_KEY);
   const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
   if (!hasAnthropic) {
-    console.warn("[api] ANTHROPIC_API_KEY 未设置,answer 使用 mock adapter(占位拒答)");
+    logger.warn("ai.mock_fallback", {
+      app: "api",
+      capability: "answer",
+      missing: "ANTHROPIC_API_KEY",
+    });
   }
   if (!hasOpenAI) {
-    console.warn("[api] OPENAI_API_KEY 未设置,embedding 使用 mock adapter(哈希伪向量)");
+    logger.warn("ai.mock_fallback", {
+      app: "api",
+      capability: "embedding",
+      missing: "OPENAI_API_KEY",
+    });
   }
+
+  // ai_generations 落库 + AI 指标(§29.2)一并挂到 recordTrace。
+  const recorder = createAiGenerationRecorder(db);
 
   return createAIGateway({
     routes: {
@@ -72,6 +84,12 @@ function build(): AIGateway {
       }),
     },
     prompts: createPromptRegistry([documentAnswerPromptV1]),
-    hooks: createAiGenerationRecorder(db),
+    hooks: {
+      ...recorder,
+      recordTrace: (trace) => {
+        aiMetrics.recordTrace(trace);
+        return recorder.recordTrace?.(trace);
+      },
+    },
   });
 }

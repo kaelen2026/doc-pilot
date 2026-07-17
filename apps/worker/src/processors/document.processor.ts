@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type DocumentSummary, isAIError } from "@doc-pilot/ai";
 import { buildParseJobId } from "@doc-pilot/contracts";
+import { logger } from "@doc-pilot/observability";
 import { downloadObjectToFile } from "@doc-pilot/storage";
 import { type Job, UnrecoverableError } from "bullmq";
 import { workerAIGateway } from "../ai/gateway";
@@ -40,10 +41,11 @@ export async function processDocumentJob(job: Job<DocumentJobData>): Promise<{
 }> {
   const { documentId, processingVersion } = job.data;
   const jobIdempotencyKey = buildParseJobId(documentId, processingVersion);
+  const log = logger.child({ documentId, processingVersion, jobId: job.id });
 
   const claim = await repo.claimDocument({ documentId, processingVersion });
   if (!claim) {
-    console.log(`[worker] skip ${documentId} v${processingVersion} (guard failed)`);
+    log.info("document.skip", { reason: "guard_failed" });
     return { status: "skipped" };
   }
 
@@ -92,7 +94,7 @@ export async function processDocumentJob(job: Job<DocumentJobData>): Promise<{
         code: isAIError(err) ? err.code : "SUMMARY_FAILED",
         message: err instanceof Error ? err.message : String(err),
       };
-      console.error(`[worker] summarize failed ${documentId}: ${summaryError.code}`);
+      log.warn("document.summarize_failed", { code: summaryError.code });
     }
 
     const written = await repo.saveChunksAndFinalize({
@@ -109,11 +111,11 @@ export async function processDocumentJob(job: Job<DocumentJobData>): Promise<{
     });
 
     if (!written) {
-      console.log(`[worker] skip finalize ${documentId} (guard failed mid-run)`);
+      log.info("document.skip", { reason: "guard_failed_mid_run" });
       return { status: "skipped" };
     }
 
-    console.log(`[worker] done ${documentId} v${processingVersion}: ${chunks.length} chunks`);
+    log.info("document.done", { chunkCount: chunks.length });
     return { status: "done", chunkCount: chunks.length };
   } catch (err) {
     const errorCode = errorCodeOf(err);

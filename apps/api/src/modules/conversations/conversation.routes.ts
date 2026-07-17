@@ -1,4 +1,5 @@
 import { CHAT_SSE_EVENTS } from "@doc-pilot/contracts";
+import { errToLog, logger, sseGauge } from "@doc-pilot/observability";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import type { AppEnv } from "../../shared/types";
@@ -65,6 +66,7 @@ export function createConversationRoutes() {
         const write = (event: string, data: unknown) =>
           stream.writeSSE({ event, data: JSON.stringify(data) });
 
+        sseGauge.inc(); // active_sse_connections（§29.2）
         await write(CHAT_SSE_EVENTS.messageStarted, { messageId: assistantMessage.id });
         try {
           const outcome = await generateAnswer({
@@ -101,11 +103,16 @@ export function createConversationRoutes() {
             insufficientEvidence: outcome.insufficientEvidence,
           });
         } catch (err) {
-          console.error("[conversations] 生成失败:", err);
+          logger.error("chat.generate_failed", {
+            messageId: assistantMessage.id,
+            ...errToLog(err),
+          });
           await write(CHAT_SSE_EVENTS.messageFailed, {
             messageId: assistantMessage.id,
             errorCode: errorCodeOf(err),
           });
+        } finally {
+          sseGauge.dec();
         }
       });
     });

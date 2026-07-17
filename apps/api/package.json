@@ -17,6 +17,7 @@
     "@doc-pilot/auth": "workspace:*",
     "@doc-pilot/contracts": "workspace:*",
     "@doc-pilot/database": "workspace:*",
+    "@doc-pilot/observability": "workspace:*",
     "@doc-pilot/storage": "workspace:*",
     "@hono/node-server": "^1.14.0",
     "better-auth": "^1.6.23",
