@@ -37,6 +37,12 @@ export interface AIGatewayOptions {
  * 处理链：校验 Capability → 解析 Model Route → 检查 Quota → 解析 Prompt Version
  * → 调用 Provider Adapter → 记录 Usage → 记录 Trace → 标准化错误 → 返回。
  */
+/** 剥掉 ```json ... ``` 围栏；无围栏原样返回。 */
+function stripCodeFence(text: string): string {
+  const match = text.trim().match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/);
+  return match ? (match[1] ?? "") : text;
+}
+
 export function createAIGateway(options: AIGatewayOptions): AIGateway {
   const { routes, adapters, prompts, hooks = {} } = options;
 
@@ -147,13 +153,15 @@ export function createAIGateway(options: AIGatewayOptions): AIGateway {
           model: route.model,
           system: built.system,
           messages: built.messages,
+          maxTokens: route.maxTokens,
         });
         const latencyMs = Math.round(performance.now() - startedAt);
 
         // 结构化输出（ADR-007）：先 JSON 解析再 Zod 校验，失败一律 AI_INVALID_RESPONSE。
+        // 真实模型常把 JSON 包在 markdown 代码块里，解析前先剥掉围栏。
         let json: unknown;
         try {
-          json = JSON.parse(text);
+          json = JSON.parse(stripCodeFence(text));
         } catch (err) {
           throw new AIError("AI_INVALID_RESPONSE", "模型输出不是合法 JSON", { cause: err });
         }
@@ -187,6 +195,7 @@ export function createAIGateway(options: AIGatewayOptions): AIGateway {
           model: route.model,
           system: built.system,
           messages: [...built.messages, ...input.messages],
+          maxTokens: route.maxTokens,
         });
         // 流式路径的 Usage 在流结束后才可知，Usage/Trace 记录挂在 usage promise 上。
         const usage = rawUsagePromise.then(async (raw) => {

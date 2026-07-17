@@ -71,6 +71,19 @@ describe("generateObject", () => {
     expect(recordUsage).toHaveBeenCalledWith(result.usage, metadata);
   });
 
+  it("容忍 markdown 代码围栏包裹的 JSON 输出", async () => {
+    const adapter = createMockAdapter();
+    vi.spyOn(adapter, "generateText").mockResolvedValue({
+      text: '```json\n{"summary":"围栏摘要"}\n```',
+      usage: { inputTokens: 10, outputTokens: 5 },
+    });
+    const gateway = buildGateway({ adapter });
+
+    await expect(generateSummary(gateway)).resolves.toMatchObject({
+      data: { summary: "围栏摘要" },
+    });
+  });
+
   it("输出不符合 Schema 时抛 AI_INVALID_RESPONSE", async () => {
     const gateway = buildGateway({
       adapter: createMockAdapter({ objectResponse: { wrong: true } }),

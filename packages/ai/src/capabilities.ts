@@ -12,6 +12,8 @@ export interface ModelPricing {
 export interface ModelRoute {
   provider: string;
   model: string;
+  /** 单次调用输出上限（含思考 token），传给 Adapter；缺省由 Adapter 自定。 */
+  maxTokens?: number;
   /** 缺省视为零成本（mock / 本地模型）。 */
   pricing?: ModelPricing;
 }
