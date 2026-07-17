@@ -1,6 +1,8 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { SealMark } from "@/components/seal-mark";
 import { Button } from "@/components/ui/button";
 import { authClient } from "../lib/auth-client";
@@ -9,6 +11,15 @@ const rise = "animate-[rise_0.5s_cubic-bezier(0.2,0,0,1)_both]";
 
 export default function HomePage() {
   const { data, isPending } = authClient.useSession();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  async function signOut() {
+    await authClient.signOut();
+    // useSession 会响应式翻到登出态；这里只需清掉 React Query 里缓存的用户数据。
+    queryClient.clear();
+    router.refresh();
+  }
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-8 px-6">
@@ -35,11 +46,7 @@ export default function HomePage() {
             <p className="text-sm text-ink-soft">
               已登录：<span className="font-medium text-ink">{data.user.email}</span>
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => authClient.signOut().then(() => window.location.reload())}
-            >
+            <Button variant="outline" size="sm" onClick={signOut}>
               退出登录
             </Button>
           </div>

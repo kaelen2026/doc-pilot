@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Literata } from "next/font/google";
 import type { ReactNode } from "react";
+import { APP_URL } from "@/lib/env";
 import { Providers } from "./providers";
 import "./globals.css";
 
@@ -13,13 +14,15 @@ const literata = Literata({
 });
 
 export const metadata: Metadata = {
-  title: "DocPilot",
+  metadataBase: new URL(APP_URL),
+  // 子页面导出 title: "登录" 会被套成 "登录 · DocPilot"；根路由用 default。
+  title: { default: "DocPilot", template: "%s · DocPilot" },
   description: "AI 文档工作台",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="zh" className={literata.variable}>
+    <html lang="zh-CN" className={literata.variable}>
       <body className="min-h-screen bg-paper font-sans text-ink antialiased">
         <Providers>{children}</Providers>
       </body>
