@@ -1,1 +1,70 @@
 @import "tailwindcss";
+
+/*
+ * 设计基线：墨水纸感
+ * 纸白底、墨黑字、朱红印章色。后续页面从这套 token 取值，不要新造颜色。
+ */
+@theme {
+  /* 纸：背景台阶（相邻表面明度差 >= 4%，或抬升面配最小阴影） */
+  --color-paper: oklch(97.3% 0.005 85);
+  --color-paper-raised: oklch(99.5% 0.002 85);
+  --color-paper-sunken: oklch(94.5% 0.007 85);
+  --color-hairline: oklch(88% 0.009 85);
+
+  /* 墨：文字层级 */
+  --color-ink: oklch(25% 0.012 60);
+  --color-ink-soft: oklch(42% 0.012 60);
+  --color-ink-faint: oklch(57% 0.01 60);
+
+  /* 朱红：印章式强调，只用于强调，不做大面积填充 */
+  --color-seal: oklch(54% 0.185 32);
+  --color-seal-deep: oklch(47% 0.165 32);
+
+  /* Literata 只覆盖拉丁；display 里的中文落到宋体系衬线 */
+  --font-sans: -apple-system, "SF Pro Text", "PingFang SC", "Noto Sans SC", sans-serif;
+  --font-display: var(--font-literata), "Songti SC", "Noto Serif SC", serif;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+}
+
+@layer base {
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  button,
+  a,
+  input {
+    touch-action: manipulation;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      /* biome-ignore lint/complexity/noImportantStyles: 全局减弱动效必须压过组件级动画声明 */
+      animation-duration: 0.01ms !important;
+      /* biome-ignore lint/complexity/noImportantStyles: 同上 */
+      animation-iteration-count: 1 !important;
+      /* biome-ignore lint/complexity/noImportantStyles: 同上 */
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* 入场：语义块错峰上浮，配 animationDelay 使用 */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
