@@ -1,4 +1,5 @@
 import type { ProcessingStage } from "@doc-pilot/contracts";
+import { EMBEDDING_VERSION } from "@doc-pilot/contracts";
 import { db } from "@doc-pilot/database";
 import {
   documentChunks,
@@ -7,7 +8,7 @@ import {
   processingJobs,
 } from "@doc-pilot/database/schema";
 import { and, eq } from "drizzle-orm";
-import type { Chunk } from "../pipeline";
+import type { Chunk, EmbeddedChunks } from "../pipeline";
 
 export interface ClaimedDocument {
   documentId: string;
@@ -97,6 +98,8 @@ export async function saveChunksAndFinalize(params: {
   pageCount: number;
   textLength: number;
   chunks: Chunk[];
+  /** 与 chunks 同序同长的向量(embed stage 产物)。 */
+  embedded: EmbeddedChunks;
   summary: Record<string, unknown> | null;
   summaryError: { code: string; message: string } | null;
 }): Promise<boolean> {
@@ -126,9 +129,15 @@ export async function saveChunksAndFinalize(params: {
         ),
       );
 
+    if (params.chunks.length !== params.embedded.vectors.length) {
+      throw new Error(
+        `chunks(${params.chunks.length}) 与向量(${params.embedded.vectors.length}) 数量不一致,拒绝写入`,
+      );
+    }
+
     if (params.chunks.length > 0) {
       await tx.insert(documentChunks).values(
-        params.chunks.map((c) => ({
+        params.chunks.map((c, i) => ({
           workspaceId: params.workspaceId,
           documentId: params.documentId,
           processingVersion: params.processingVersion,
@@ -140,6 +149,9 @@ export async function saveChunksAndFinalize(params: {
           pageEnd: c.pageEnd,
           sectionPath: c.sectionPath,
           metadata: c.metadata,
+          embedding: params.embedded.vectors[i] ?? null,
+          embeddingModel: params.embedded.model || null,
+          embeddingVersion: EMBEDDING_VERSION,
         })),
       );
     }

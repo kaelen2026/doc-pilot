@@ -236,11 +236,19 @@ CREATE TABLE messages (
   content TEXT NOT NULL,
   status VARCHAR(20) NOT NULL,
   client_request_id VARCHAR(100),
+  parent_message_id UUID,
   generation_id UUID,
+  error_code VARCHAR(100),
   created_at TIMESTAMPTZ NOT NULL,
   UNIQUE(conversation_id, client_request_id)
 );
 ```
+
+- `client_request_id` 记录在 user 消息上;assistant 消息经 `parent_message_id`
+  指向它回答的 user 消息。幂等重试(§23.3)靠这条链找到配对回复
+  (同一事务成对写入的两条消息 `created_at` 相同,不能按时间配对)。
+- `error_code` 保存生成失败原因(`AI_*` 或 `CITATION_VALIDATION_FAILED`),
+  支撑 failed → 显式重试的交互。
 
 ### 8.8 citations
 
@@ -251,6 +259,7 @@ CREATE TABLE citations (
   document_id UUID NOT NULL,
   document_chunk_id UUID NOT NULL,
   quote TEXT NOT NULL,
+  claim TEXT,
   page_start INTEGER,
   page_end INTEGER,
   score NUMERIC(8, 6),

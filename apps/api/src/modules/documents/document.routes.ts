@@ -1,20 +1,8 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../shared/types";
-import { ForbiddenError } from "./document.errors";
+import { activeWorkspaceId } from "../../shared/workspace";
 import { parseCreateUpload } from "./document.schema";
 import { completeUpload, createUpload, getDocument, listDocuments } from "./document.service";
-
-/**
- * 解析当前活跃 workspace。MVP：用户只有一个 personal workspace，取第一个 membership。
- * 租户隔离（ADR-008）：service 始终按该 workspaceId 过滤。
- */
-function activeWorkspaceId(memberships: AppEnv["Variables"]["memberships"]): string {
-  const first = memberships[0];
-  if (!first) {
-    throw new ForbiddenError("no workspace for current user");
-  }
-  return first.workspaceId;
-}
 
 export function createDocumentRoutes() {
   return new Hono<AppEnv>()

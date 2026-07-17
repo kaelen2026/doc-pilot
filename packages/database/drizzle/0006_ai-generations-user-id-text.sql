@@ -1,0 +1,1 @@
+ALTER TABLE "ai_generations" ALTER COLUMN "user_id" SET DATA TYPE text;

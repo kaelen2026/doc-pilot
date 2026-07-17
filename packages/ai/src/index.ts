@@ -5,6 +5,11 @@ export {
 } from "./adapters/anthropic";
 export { createMockAdapter, type MockAdapterOptions } from "./adapters/mock";
 export {
+  createOpenAIEmbeddingAdapter,
+  type OpenAIEmbeddingAdapterOptions,
+} from "./adapters/openai-embedding";
+export { type ParsedAnswerStream, parseAnswerStream } from "./answer-stream";
+export {
   type CapabilityRoutes,
   type ModelPricing,
   type ModelRoute,
@@ -35,6 +40,11 @@ export {
   type PromptDefinition,
   type PromptRegistry,
 } from "./prompt-registry";
+export {
+  ANSWER_CITATIONS_MARKER,
+  buildAnswerUserMessage,
+  documentAnswerPromptV1,
+} from "./prompts/document-answer/v1";
 export {
   type DocumentSummary,
   DocumentSummarySchema,
