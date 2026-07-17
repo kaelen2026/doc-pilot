@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { SealMark } from "@/components/seal-mark";
+import { Button } from "@/components/ui/button";
 import { authClient } from "../lib/auth-client";
 
 const rise = "animate-[rise_0.5s_cubic-bezier(0.2,0,0,1)_both]";
@@ -11,12 +14,7 @@ export default function HomePage() {
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-8 px-6">
       <header className={`space-y-5 ${rise}`}>
         <div className="flex items-center gap-3.5">
-          <span
-            aria-hidden
-            className="flex size-10 items-center justify-center rounded-sm bg-seal pt-0.5 font-display text-xl leading-none text-paper-raised shadow-[0_1px_3px_rgba(0,0,0,0.18)]"
-          >
-            档
-          </span>
+          <SealMark className="size-10 text-xl" />
           <h1 className="font-display text-5xl font-medium tracking-[-0.022em]">DocPilot</h1>
         </div>
         <p className="text-sm text-ink-faint">Phase 2 · 认证与 Workspace</p>
@@ -37,21 +35,18 @@ export default function HomePage() {
             <p className="text-sm text-ink-soft">
               已登录：<span className="font-medium text-ink">{data.user.email}</span>
             </p>
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => authClient.signOut().then(() => window.location.reload())}
-              className="rounded-md border border-hairline bg-paper-raised px-3 py-1.5 text-sm text-ink-soft shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-[color,border-color,transform] duration-150 active:scale-[0.98] [@media(hover:hover)]:hover:border-ink-faint [@media(hover:hover)]:hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-seal"
             >
               退出登录
-            </button>
+            </Button>
           </div>
         ) : (
-          <a
-            href="/login"
-            className="inline-block w-fit rounded-md bg-ink px-5 py-2.5 text-sm font-medium text-paper-raised shadow-[0_1px_3px_rgba(0,0,0,0.16)] transition-[background-color,transform] duration-150 active:scale-[0.98] [@media(hover:hover)]:hover:bg-ink/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-seal"
-          >
-            邮箱验证码登录
-          </a>
+          <Button asChild>
+            <Link href="/login">邮箱验证码登录</Link>
+          </Button>
         )}
       </div>
     </main>

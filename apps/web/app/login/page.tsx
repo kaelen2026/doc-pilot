@@ -1,12 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
+import { SealMark } from "@/components/seal-mark";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { authClient } from "../../lib/auth-client";
 
 type Step = "email" | "otp";
-
-const inputClass =
-  "rounded-md border border-hairline bg-paper-raised px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint shadow-[0_1px_2px_rgba(0,0,0,0.04)] outline-none transition-[border-color,box-shadow] duration-150 focus:border-seal focus:ring-2 focus:ring-seal/15 disabled:bg-paper-sunken disabled:text-ink-faint disabled:shadow-none";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -47,44 +48,36 @@ export default function LoginPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-7 px-6">
       <header className="space-y-4">
-        <span
-          aria-hidden
-          className="flex size-9 items-center justify-center rounded-sm bg-seal pt-0.5 font-display text-lg leading-none text-paper-raised shadow-[0_1px_3px_rgba(0,0,0,0.18)]"
-        >
-          档
-        </span>
+        <SealMark className="size-9 text-lg" />
         <h1 className="font-display text-3xl font-medium">登录 DocPilot</h1>
       </header>
 
       <div className="flex flex-col gap-3">
-        <input
+        <Input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
           disabled={step === "otp"}
-          className={inputClass}
         />
 
         {step === "otp" && (
-          <input
+          <Input
             type="text"
             inputMode="numeric"
             value={otp}
             onChange={(e) => setOtp(e.target.value)}
             placeholder="邮箱验证码"
-            className={`tabular-nums ${inputClass}`}
+            className="tabular-nums"
           />
         )}
 
-        <button
-          type="button"
+        <Button
           onClick={step === "email" ? sendCode : verify}
           disabled={busy || (step === "email" ? !email : !otp)}
-          className="rounded-md bg-ink px-3.5 py-2.5 text-sm font-medium text-paper-raised shadow-[0_1px_3px_rgba(0,0,0,0.16)] transition-[background-color,transform] duration-150 active:scale-[0.98] disabled:bg-paper-sunken disabled:text-ink-faint disabled:shadow-none [@media(hover:hover)]:hover:enabled:bg-ink/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-seal"
         >
           {step === "email" ? "发送验证码" : "登录"}
-        </button>
+        </Button>
       </div>
 
       {message && (
@@ -93,12 +86,9 @@ export default function LoginPage() {
         </p>
       )}
 
-      <a
-        href="/"
-        className="w-fit text-sm text-ink-faint transition-colors duration-150 [@media(hover:hover)]:hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-seal"
-      >
-        返回首页
-      </a>
+      <Button asChild variant="link" size="sm" className="w-fit self-start px-0">
+        <Link href="/">返回首页</Link>
+      </Button>
     </main>
   );
 }
