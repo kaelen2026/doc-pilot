@@ -29,6 +29,13 @@
       "when": 1784280269720,
       "tag": "0003_document_chunks",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784283131583,
+      "tag": "0004_ai_generations",
+      "breakpoints": true
     }
   ]
 }
