@@ -35,6 +35,16 @@ export {
   type PromptDefinition,
   type PromptRegistry,
 } from "./prompt-registry";
+export {
+  type DocumentSummary,
+  DocumentSummarySchema,
+  type SectionSummary,
+  SectionSummarySchema,
+} from "./prompts/document-summary/schema";
+export {
+  documentSummaryPromptV1,
+  documentSummarySectionPromptV1,
+} from "./prompts/document-summary/v1";
 export type {
   AIGateway,
   AIMessage,
