@@ -1,0 +1,8 @@
+{"chunkIndex":0,"content":"本设计说明书描述认证与会话子系统。系统面向多租户 SaaS 场景,每个用户注册后自动获得一个个人 Workspace,后续的资源配额、计费与数据隔离都以 Workspace 为最小单位展开。","pageStart":1,"pageEnd":1}
+{"chunkIndex":1,"content":"登录方式采用邮箱验证码(OTP):用户提交邮箱后系统下发六位数字验证码,验证通过即登录;未注册邮箱在首次验证成功时自动完成注册。选择验证码而非密码,是为了砍掉密码找回、密码强度校验与撞库防护这一整条维护成本链。","pageStart":3,"pageEnd":3}
+{"chunkIndex":2,"content":"验证码具有五分钟有效期,同一邮箱每小时最多发送五次,防止验证码轰炸。验证码经哈希后存入 verification 表,明文只出现在投递通道中,数据库泄露不会导致验证码可重放。","pageStart":4,"pageEnd":4}
+{"chunkIndex":3,"content":"会话管理选择服务端 Session 而非无状态 JWT。核心动机是即时吊销:管理员移除成员、用户修改登录方式或发现异常登录时,对应会话必须立刻失效;而 JWT 一经签发,在过期之前无法撤回,黑名单方案又会重新引入服务端状态,得不偿失。","pageStart":12,"pageEnd":12}
+{"chunkIndex":4,"content":"服务端 Session 的第二个动机是集中控制:会话集中存储后,可以按用户列出全部活跃会话、支持一键登出其他设备,也便于在安全事件中批量作废某个时间段签发的会话。这些能力对无状态令牌来说都需要额外的基础设施。","pageStart":13,"pageEnd":13}
+{"chunkIndex":5,"content":"Session 令牌是 32 字节随机串,经 HMAC 签名后写入 HttpOnly Cookie,SameSite 设为 Lax;令牌本身不含任何用户信息,服务端凭令牌反查会话记录。会话默认七天有效,每次请求滑动续期。","pageStart":14,"pageEnd":14}
+{"chunkIndex":6,"content":"授权模型分两层:Membership 决定用户属于哪些 Workspace 及其角色(owner/member),Policy 层在每个请求入口用 Membership 校验目标资源的 workspace_id。任何数据库查询都必须在 SQL 中带上 workspace_id 过滤,绝不信任请求参数。","pageStart":17,"pageEnd":17}
+{"chunkIndex":7,"content":"跨租户访问的防线是纵深的:Policy 拒绝非成员访问;仓储层查询强制 workspace_id 条件;向量检索的 document_chunks 表冗余保存 workspace_id,使相似度检索也能在库内完成租户过滤。三层里任何一层失效,其余两层仍能兜底。","pageStart":18,"pageEnd":18}

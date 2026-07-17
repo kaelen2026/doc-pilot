@@ -1,0 +1,51 @@
+# RAG Evaluation(testing-and-eval.md §30.3/§31):CI 默认不调用真实模型,
+# 本 workflow 仅手动触发。发布新 Prompt 或换模型前跑 full 模式并留档指标。
+name: Evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "retrieval(零模型,只测检索)或 full(真实模型全量指标)"
+        type: choice
+        options: [retrieval, full]
+        default: retrieval
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: docpilot
+          POSTGRES_PASSWORD: docpilot
+          POSTGRES_DB: docpilot
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U docpilot"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://docpilot:docpilot@localhost:5432/docpilot
+      EVAL_MODE: ${{ inputs.mode }}
+      # full 模式必需;retrieval 模式忽略(embedding 走 mock)。
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      EVAL_REPORT_PATH: eval-report.json
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @doc-pilot/database db:migrate
+      - run: pnpm --filter @doc-pilot/eval eval
+      - uses: actions/upload-artifact@v7
+        with:
+          name: eval-report-${{ inputs.mode }}
+          path: eval-report.json

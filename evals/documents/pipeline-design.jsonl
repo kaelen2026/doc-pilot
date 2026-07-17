@@ -1,0 +1,8 @@
+{"chunkIndex":0,"content":"本文档描述文件上传与解析流水线。用户上传的 PDF 不经过应用服务器中转,而是由 API 签发预签名 URL,浏览器直传对象存储;直传避免了大文件占用应用进程内存,也让上传带宽不受 API 实例数量限制。","pageStart":2,"pageEnd":2}
+{"chunkIndex":1,"content":"上传完成的确认是幂等的:document_id、processing_version 与任务类型构成唯一约束,重复确认不会重复创建解析任务。文件限制为 PDF 格式、单文件 50MB、500 页,该限制在前端、创建上传 API 与 Worker 三处一致执行,绝不只信任前端。","pageStart":3,"pageEnd":3}
+{"chunkIndex":2,"content":"异步任务的投递采用 Transactional Outbox 模式:业务状态变更、ProcessingJob 与 outbox_events 在同一个数据库事务中写入,独立的 Publisher 进程轮询 outbox 并发布到 BullMQ。请求处理路径上绝不直接向 Redis 发消息,这样业务状态与待发布事件的原子性由数据库事务保证。","pageStart":6,"pageEnd":6}
+{"chunkIndex":3,"content":"Publisher 轮询使用 SELECT ... FOR UPDATE SKIP LOCKED 抢占待发布事件,多实例部署时互不阻塞;发布成功后标记 published。若发布后进程崩溃于标记之前,事件会被重复发布,由 BullMQ 侧的稳定 Job ID 去重兜底。","pageStart":7,"pageEnd":7}
+{"chunkIndex":4,"content":"解析流水线在 Worker 内按阶段推进:parse 抽取逐页文本,clean 归一化并切出语义块,chunk 生成带页码与章节路径的切片,embed 将切片向量化写入 pgvector,summarize 生成结构化摘要,finalize 收尾更新状态。每个阶段更新 documents 的 current_stage 与 progress,处理进度对用户可观察。","pageStart":9,"pageEnd":9}
+{"chunkIndex":5,"content":"切片阶段的幂等由先删后插与唯一约束共同保证:同一 processing_version 的重复任务会先删除已有切片再重建,UNIQUE(document_id, processing_version, chunk_index) 拦截并发写入,重复处理绝不产生重复切片。","pageStart":10,"pageEnd":10}
+{"chunkIndex":6,"content":"错误按可重试性分类:Provider 超时、限流、Redis 抖动、数据库连接错误可重试,交给 BullMQ 指数退避(5 次,基础延迟 2 秒);无效 PDF、加密 PDF、超页数限制等内容性错误不可重试,立即判定失败并保留错误码供前端展示。","pageStart":12,"pageEnd":12}
+{"chunkIndex":7,"content":"摘要失败不阻断问答:嵌入完成而摘要失败的文档进入 partially_ready 状态,允许提问,摘要区域显示生成失败。删除文档时状态先置为 deleting,Worker 写入前校验 processing_version 与状态,陈旧任务无法复活已删除或已重建的数据。","pageStart":13,"pageEnd":13}

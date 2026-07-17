@@ -1,0 +1,12 @@
+{"caseId":"auth-001","document":"auth-design","question":"为什么系统选择服务端 Session 而不是 JWT?","expectedPoints":["支持即时吊销/主动撤销","JWT 过期前无法撤回","集中控制活跃会话"],"shouldAnswer":true}
+{"caseId":"auth-002","document":"auth-design","question":"登录为什么用邮箱验证码而不是密码?","expectedPoints":["省去密码找回与强度校验","降低撞库防护成本","首次验证即注册"],"shouldAnswer":true}
+{"caseId":"auth-003","document":"auth-design","question":"验证码的有效期和发送频率限制是什么?","expectedPoints":["五分钟有效期","同一邮箱每小时最多五次"],"shouldAnswer":true}
+{"caseId":"auth-004","document":"auth-design","question":"系统如何防止跨租户数据访问?","expectedPoints":["Policy 校验成员身份","SQL 强制 workspace_id 过滤","chunks 冗余 workspace_id 支持向量检索过滤"],"shouldAnswer":true}
+{"caseId":"auth-005","document":"auth-design","question":"Session Cookie 的具体安全属性是什么?","expectedPoints":["HttpOnly","SameSite Lax","HMAC 签名随机令牌"],"shouldAnswer":true}
+{"caseId":"auth-101","document":"auth-design","question":"系统支持企业微信扫码登录吗?","expectedPoints":[],"shouldAnswer":false}
+{"caseId":"auth-102","document":"auth-design","question":"生产环境部署在哪个云厂商、用了几台服务器?","expectedPoints":[],"shouldAnswer":false}
+{"caseId":"pipe-001","document":"pipeline-design","question":"为什么文件上传不经过应用服务器中转?","expectedPoints":["预签名 URL 直传对象存储","避免大文件占用进程内存","上传带宽不受 API 实例限制"],"shouldAnswer":true}
+{"caseId":"pipe-002","document":"pipeline-design","question":"Transactional Outbox 在这个系统里解决什么问题?","expectedPoints":["业务状态与事件在同一事务原子提交","请求路径不直接发 Redis","Publisher 独立轮询发布"],"shouldAnswer":true}
+{"caseId":"pipe-003","document":"pipeline-design","question":"重复处理同一文档会产生重复切片吗?","expectedPoints":["先删后插重建","唯一约束拦截并发","不会重复"],"shouldAnswer":true}
+{"caseId":"pipe-004","document":"pipeline-design","question":"哪些错误会重试,哪些不会?","expectedPoints":["超时/限流/连接错误可重试","指数退避 5 次","无效或加密 PDF 不重试"],"shouldAnswer":true}
+{"caseId":"pipe-101","document":"pipeline-design","question":"这套系统支持解析 Word 和 Excel 吗?","expectedPoints":[],"shouldAnswer":false}
