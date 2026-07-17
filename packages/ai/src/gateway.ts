@@ -13,6 +13,8 @@ export interface AITrace {
   latencyMs: number;
   ok: boolean;
   errorCode?: string;
+  /** 成功调用携带完整用量，供 recordTrace 一次写出完整的 ai_generations 行；失败时为空。 */
+  usage?: AIUsage;
   metadata: AIMetadata;
 }
 
@@ -115,6 +117,7 @@ export function createAIGateway(options: AIGatewayOptions): AIGateway {
           model: route.model,
           latencyMs: usage.latencyMs,
           ok: true,
+          usage,
         }),
       );
       return value;
@@ -213,6 +216,7 @@ export function createAIGateway(options: AIGatewayOptions): AIGateway {
               model: route.model,
               latencyMs: built2.latencyMs,
               ok: true,
+              usage: built2,
             }),
           );
           return built2;
