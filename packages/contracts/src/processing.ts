@@ -52,3 +52,23 @@ export const PROCESSING_RETRY = {
   attempts: 5,
   backoff: { type: "exponential", delay: 2000 },
 } as const;
+
+/**
+ * 自动对账(Reconciliation,见 runbooks/failure-recovery.md §35):周期性扫描卡住
+ * 的文档并修复。所有时长以毫秒计。阈值取值宽松,避免与正常快路径 / BullMQ 自身的
+ * stalled-job 恢复抢活。
+ */
+export const RECONCILE = {
+  /** 对账周期。 */
+  intervalMs: 60_000,
+  /** 单轮扫描的文档上限。 */
+  batchSize: 200,
+  /** queued 停留超过此值仍无存活 BullMQ Job 视为"丢失",重新入队(给 Outbox 发布留缓冲)。 */
+  queuedGraceMs: 30_000,
+  /** processing 超过此值无阶段进展且无存活 Job,视为 Worker 崩溃,重新入队。 */
+  processingStuckMs: 10 * 60_000,
+  /** pending_upload 空闲超过此值仍未完成直传,视为用户放弃,标记 failed。 */
+  pendingUploadTtlMs: 60 * 60_000,
+  /** 处理类文档创建后存活超过此值仍未就绪 → 放弃并标记 failed(防毒丸文档无限重试)。 */
+  maxProcessingAgeMs: 60 * 60_000,
+} as const;

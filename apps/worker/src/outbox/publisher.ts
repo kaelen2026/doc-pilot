@@ -2,7 +2,7 @@ import { db } from "@doc-pilot/database";
 import { outboxEvents } from "@doc-pilot/database/schema";
 import { errToLog, logger } from "@doc-pilot/observability";
 import {
-  buildParseJobId,
+  buildParseBullJobId,
   getDocumentProcessingQueue,
   JOB_NAMES,
   PROCESSING_RETRY,
@@ -45,12 +45,7 @@ export function startOutboxPublisher(opts: {
       for (const event of events) {
         if (event.eventType === "document.processing.requested") {
           const payload = event.payload as unknown as ProcessingRequestedPayload;
-          // BullMQ 的 jobId 不允许包含冒号，故将稳定幂等键的 ":" 换成 "_"。
-          // DB 侧 processing_jobs.idempotency_key 仍保留冒号形式（符合设计文档）。
-          const jobId = buildParseJobId(payload.documentId, payload.processingVersion).replaceAll(
-            ":",
-            "_",
-          );
+          const jobId = buildParseBullJobId(payload.documentId, payload.processingVersion);
           await queue.add(JOB_NAMES.processDocument, payload, {
             jobId,
             attempts: PROCESSING_RETRY.attempts,
