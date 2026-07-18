@@ -11,9 +11,12 @@ interface CreateUploadResponse {
 }
 
 /**
- * web 尚无上传 UI(documents 页明确写着「上传功能将在后续阶段接入」),因此 E2E
  * 直接走上传 API 三步:创建文档 + 预签名 URL → 直传字节到 MinIO → 完成上传(入队解析)。
  * 全程复用浏览器上下文的 Session Cookie(page.request 与页面共享 cookie jar)。
+ *
+ * 注:web 已有上传 UI(documents 页的「上传 PDF」按钮),但此 helper 刻意走 API 而非
+ * 点按钮——问答闭环用例只需把文档送进解析,API 路径更快更稳、不受 UI 变动影响。
+ * 上传 UI 自身的浏览器闭环由前端用例覆盖。
  */
 export async function uploadDocumentViaApi(page: Page): Promise<{ documentId: string }> {
   const pdf = readFileSync(PDF_PATH);
