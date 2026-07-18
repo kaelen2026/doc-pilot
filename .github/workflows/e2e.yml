@@ -38,16 +38,8 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-      minio:
-        # bitnami 镜像默认即启动 server 并按 MINIO_DEFAULT_BUCKETS 建桶
-        # (GitHub Actions service 无法自定义 container command,故不用 minio/minio)。
-        image: bitnami/minio:latest
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-          MINIO_DEFAULT_BUCKETS: docpilot-private
-        ports:
-          - 9000:9000
+      # MinIO 不作为 service:官方 minio/minio 需要 `server /data` 命令,而 GitHub
+      # Actions 的 service container 无法自定义 command,故在下方步骤里用 docker run 起。
       mailpit:
         image: axllent/mailpit:latest
         ports:
@@ -85,6 +77,23 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @doc-pilot/database db:migrate
+      - name: Start MinIO + create bucket
+        env:
+          AWS_ACCESS_KEY_ID: minioadmin
+          AWS_SECRET_ACCESS_KEY: minioadmin
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio:latest server /data
+          echo "等待 minio 就绪…"
+          for _ in $(seq 1 30); do
+            if curl -sf http://localhost:9000/minio/health/live >/dev/null 2>&1; then
+              echo "minio up"; break
+            fi
+            sleep 2
+          done
+          aws --endpoint-url http://localhost:9000 s3 mb s3://docpilot-private || true
       - name: Install Playwright browser
         run: pnpm --filter @doc-pilot/e2e exec playwright install --with-deps chromium
       - name: Run E2E
