@@ -37,11 +37,5 @@
     "*.{js,jsx,ts,tsx,mjs,cjs,json,jsonc}": [
       "biome check --write --no-errors-on-unmatched"
     ]
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "sharp"
-    ]
   }
 }
