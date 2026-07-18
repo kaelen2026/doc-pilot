@@ -31,7 +31,7 @@ No build/test/dev scripts exist yet — they arrive with Phase 1. When adding th
 
 ## Toolchain conventions
 
-- **pnpm 10 + Node >= 24** (enforced by `engines`). This is a pnpm workspace monorepo root.
+- **pnpm 10 + Node >= 24** (pnpm pinned via `packageManager`, node via `engines`). This is a pnpm workspace monorepo root.
 - **Biome** is the single formatter + linter (config `biome.json`, schema pinned to 2.5.x). Style: double quotes, semicolons, 2-space indent, 100 col, trailing commas, import organizing on. Biome does **not** process Markdown, so doc edits are never auto-formatted.
 - **Git hooks (husky)**: `pre-commit` runs `lint-staged` (Biome `--write` on staged `*.{js,jsx,ts,tsx,mjs,cjs,json,jsonc}` only); `commit-msg` runs commitlint.
 - **Conventional commits are enforced** (`@commitlint/config-conventional`). Use `feat:`, `fix:`, `docs:`, `chore:`, etc. Existing history uses a Chinese body after the conventional-English prefix (e.g. `docs: DocPilot 设计基线`).
