@@ -1,11 +1,15 @@
 import type { AdapterUsage, ProviderAdapter } from "../adapter";
 import type { AIError } from "../errors";
+import type { AIMessage } from "../types";
 
 export interface MockAdapterOptions {
   /** generateText 的返回对象（会被 JSON 序列化）；传函数可按输入定制。 */
   objectResponse?: unknown | ((input: { system: string }) => unknown);
-  /** streamText 逐段吐出的文本。 */
-  streamChunks?: string[];
+  /**
+   * streamText 逐段吐出的文本。传函数可按输入定制——例如问答 mock 从注入
+   * Prompt 的来源片段里派生出一条有效引用（本地/CI 零真实模型跑通引用链路）。
+   */
+  streamChunks?: string[] | ((input: { system: string; messages: AIMessage[] }) => string[]);
   /** 向量维度，默认 8（真实维度由集成 PR 按所选 embedding 模型决定）。 */
   embeddingDim?: number;
   /** 让所有调用抛出指定错误，用于测试错误标准化链路。 */
@@ -49,7 +53,10 @@ export function createMockAdapter(options: MockAdapterOptions = {}): ProviderAda
 
     async streamText(input) {
       maybeFail();
-      const chunks = options.streamChunks ?? ["mock ", "stream ", "output"];
+      const chunks =
+        typeof options.streamChunks === "function"
+          ? options.streamChunks(input)
+          : (options.streamChunks ?? ["mock ", "stream ", "output"]);
       const inputText = input.system + input.messages.map((m) => m.content).join("");
       const usage: AdapterUsage = {
         inputTokens: estimateTokens(inputText),

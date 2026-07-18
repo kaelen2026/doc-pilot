@@ -13,6 +13,7 @@
     "dev:local": "docker compose up -d && turbo run dev",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "test:e2e": "pnpm --filter @doc-pilot/e2e test:e2e",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",

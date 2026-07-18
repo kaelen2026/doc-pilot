@@ -1,0 +1,126 @@
+# E2E(testing-and-eval.md §30.4):RAG 问答完整闭环。零真实模型——未配置 AI Key
+# 时 embed/摘要/问答均回落 mock,mock 问答按检索片段产出有效引用,故 CI 无需 secrets。
+name: E2E
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: docpilot
+          POSTGRES_PASSWORD: docpilot
+          POSTGRES_DB: docpilot
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U docpilot"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      # MinIO 不作为 service:官方 minio/minio 需要 `server /data` 命令,而 GitHub
+      # Actions 的 service container 无法自定义 command,故在下方步骤里用 docker run 起。
+      mailpit:
+        image: axllent/mailpit:latest
+        ports:
+          - 8025:8025
+          - 1025:1025
+    env:
+      API_PORT: "3001"
+      WEB_ORIGIN: http://localhost:3000
+      BETTER_AUTH_SECRET: dev-secret-change-me
+      BETTER_AUTH_URL: http://localhost:3001
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      DATABASE_URL: postgres://docpilot:docpilot@localhost:5432/docpilot
+      REDIS_URL: redis://localhost:6379
+      WORKER_CONCURRENCY: "2"
+      S3_ENDPOINT: http://localhost:9000
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY_ID: minioadmin
+      S3_SECRET_ACCESS_KEY: minioadmin
+      S3_BUCKET: docpilot-private
+      S3_FORCE_PATH_STYLE: "true"
+      UPLOAD_URL_EXPIRES_SECONDS: "900"
+      OUTBOX_POLL_INTERVAL_MS: "2000"
+      SMTP_HOST: localhost
+      SMTP_PORT: "1025"
+      MAIL_FROM: DocPilot <no-reply@docpilot.local>
+      # mock 伪向量的相似度无语义且可能为负,设 -1 关闭过滤(真实 embedding 时按评测调高)。
+      RAG_MIN_SCORE: "-1"
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @doc-pilot/database db:migrate
+      - name: Start MinIO + create bucket
+        env:
+          AWS_ACCESS_KEY_ID: minioadmin
+          AWS_SECRET_ACCESS_KEY: minioadmin
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio:latest server /data
+          echo "等待 minio 就绪…"
+          for _ in $(seq 1 30); do
+            if curl -sf http://localhost:9000/minio/health/live >/dev/null 2>&1; then
+              echo "minio up"; break
+            fi
+            sleep 2
+          done
+          aws --endpoint-url http://localhost:9000 s3 mb s3://docpilot-private || true
+      - name: Install Playwright browser
+        run: pnpm --filter @doc-pilot/e2e exec playwright install --with-deps chromium
+      - name: Run E2E
+        run: |
+          set -e
+          pnpm --filter @doc-pilot/api dev > /tmp/api.log 2>&1 &
+          pnpm --filter @doc-pilot/worker dev > /tmp/worker.log 2>&1 &
+          pnpm --filter @doc-pilot/web dev > /tmp/web.log 2>&1 &
+          echo "等待 api + web 就绪…"
+          for _ in $(seq 1 90); do
+            if curl -sf http://localhost:3001/health >/dev/null 2>&1 \
+              && curl -sf http://localhost:3000 >/dev/null 2>&1; then
+              echo "服务已就绪"; break
+            fi
+            sleep 2
+          done
+          pnpm --filter @doc-pilot/e2e test:e2e
+      - name: Dump server logs on failure
+        if: failure()
+        run: |
+          echo "===== api ====="; cat /tmp/api.log 2>/dev/null || true
+          echo "===== worker ====="; cat /tmp/worker.log 2>/dev/null || true
+          echo "===== web ====="; cat /tmp/web.log 2>/dev/null || true
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: e2e/playwright-report
+          retention-days: 7

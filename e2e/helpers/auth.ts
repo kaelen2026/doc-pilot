@@ -1,0 +1,24 @@
+import { expect, type Page } from "@playwright/test";
+import { fetchLatestOtp } from "./mailpit";
+
+/**
+ * 走真实的邮箱验证码登录(passwordless):首次登录该邮箱会自动注册并建个人
+ * Workspace(packages/auth)。验证码从 Mailpit 读取。登录成功后 better-auth
+ * 会在 localhost 上种下 Session Cookie,浏览器上下文(含 page.request)后续都带上它。
+ */
+export async function loginViaOtp(page: Page, email: string): Promise<void> {
+  await page.goto("/login");
+  await page.getByPlaceholder("you@example.com").fill(email);
+  await page.getByRole("button", { name: "发送验证码" }).click();
+
+  // 验证码输入框出现即表示已切到 otp 步骤(邮件已发出)。
+  const otpInput = page.getByPlaceholder("邮箱验证码");
+  await expect(otpInput).toBeVisible();
+
+  const otp = await fetchLatestOtp(email);
+  await otpInput.fill(otp);
+  await page.getByRole("button", { name: "登录" }).click();
+
+  // 登录成功软导航回首页,已登录态出现「退出登录」。
+  await expect(page.getByRole("button", { name: "退出登录" })).toBeVisible({ timeout: 15_000 });
+}
