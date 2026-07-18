@@ -8,33 +8,48 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 read the relevant `.claude/rules/workflow.md`
 
-## Current state: docs-first, no application code yet
+## Current state: Phase 1–7 implemented
 
-This repo currently contains **only the design specification** for DocPilot (an AI-native PDF document workbench) plus the workspace tooling. There is no `apps/` or `packages/` code yet — `pnpm-workspace.yaml` declares `apps/*` and `packages/*`, but those globs match nothing so far. Implementation proceeds by Phase per [`.ai/plans/roadmap.md`](.ai/plans/roadmap.md); Phase 1 (monorepo scaffolding) has not started.
+DocPilot (an AI-native PDF document workbench) is now a working monorepo, not just a spec. Phases 1–7 of [`.ai/plans/roadmap.md`](.ai/plans/roadmap.md) have landed: monorepo + Docker Compose + CI, auth/Workspace, file upload, parse pipeline, summary + AI Gateway, RAG Q&A, and go-live capabilities (rate limiting, quotas, observability, E2E, containerization + production compose).
 
-**The design docs are the authoritative spec.** When implementing anything, read the relevant `docs/` file first — the schemas, interfaces, SQL, and API shapes there are the contract, not suggestions. Docs are written in Chinese; keep that language when editing them.
+Layout:
+
+- **`apps/`** — three deployables: `@doc-pilot/api` (Hono), `@doc-pilot/web` (Next.js), `@doc-pilot/worker` (BullMQ).
+- **`packages/`** — shared libs: `ai` (AI Gateway), `auth`, `config`, `contracts`, `database` (Drizzle + pgvector), `eval`, `observability`, `queue`, `storage`.
+- **`e2e/`** — `@doc-pilot/e2e`, Playwright end-to-end tests (RAG Q&A full loop).
+- **`evals/`** — RAG evaluation datasets, driven by `@doc-pilot/eval`.
+
+**The design docs remain the authoritative spec.** When implementing or changing behavior, read the relevant `docs/` file first — the schemas, interfaces, SQL, and API shapes there are the contract, not suggestions. Docs are written in Chinese; keep that language when editing them.
 
 - Start at [`README.md`](README.md) for the doc index.
 - [`docs/architecture/`](docs/architecture/) — the system, split by concern (overview, data-model, pipeline, rag, cross-cutting, testing-and-eval).
 - [`docs/adr/`](docs/adr/) — 10 accepted architecture decisions with rationale.
-- [`.ai/plans/roadmap.md`](.ai/plans/roadmap.md) — Phase 1–7 deliverables and acceptance criteria; build in this order.
+- [`docs/runbooks/`](docs/runbooks/) — operational guides (`deployment.md`, `failure-recovery.md`).
+- [`.ai/plans/roadmap.md`](.ai/plans/roadmap.md) — Phase 1–7 deliverables and acceptance criteria.
 
 ## Commands
 
+Root scripts (Turborepo fans these out across the workspace):
+
 - `pnpm install` — install; runs `husky` via the `prepare` script to set up git hooks.
-- `pnpm lint` — Biome check (lint + format check) across the repo.
-- `pnpm lint:fix` — Biome check with `--write` (applies safe fixes).
-- `pnpm format` — Biome format `--write` only.
+- `pnpm dev` — run all `dev` tasks via Turbo. `pnpm dev:local` brings up Docker Compose first, then `dev`.
+- `pnpm build` / `pnpm typecheck` / `pnpm test` — `turbo run build|typecheck|test` across packages.
+- `pnpm test:e2e` — Playwright E2E (`@doc-pilot/e2e`).
+- `pnpm lint` — Biome check (lint + format check). `pnpm lint:fix` applies safe fixes; `pnpm format` formats only.
+- `pnpm compose:up` / `pnpm compose:down` — start/stop local infra (Postgres, Redis, MinIO) via `docker-compose.yml`.
+- `pnpm db:generate` / `pnpm db:migrate` — Drizzle migration generate/apply (delegates to `@doc-pilot/database`).
 - `pnpm commitlint` — validate a commit message.
 
-No build/test/dev scripts exist yet — they arrive with Phase 1. When adding them, wire per-package scripts through Turborepo (`turbo.json`) as the roadmap intends.
+Production deploy uses `docker-compose.prod.yml` (three containerized services); see `docs/runbooks/deployment.md`.
 
 ## Toolchain conventions
 
-- **pnpm 10 + Node >= 24** (pnpm pinned via `packageManager`, node via `engines`). This is a pnpm workspace monorepo root.
+- **pnpm 10 + Node >= 24** (pnpm pinned via `packageManager`, node via `engines`). This is a pnpm workspace monorepo root; workspaces are `apps/*`, `packages/*`, and `e2e`.
+- **Turborepo** (`turbo.json`) orchestrates `build`, `dev`, `typecheck`, `test`. `build`/`typecheck`/`test` depend on `^build`; `dev` is persistent and uncached.
 - **Biome** is the single formatter + linter (config `biome.json`, schema pinned to 2.5.x). Style: double quotes, semicolons, 2-space indent, 100 col, trailing commas, import organizing on. Biome does **not** process Markdown, so doc edits are never auto-formatted.
-- **Git hooks (husky)**: `pre-commit` runs `lint-staged` (Biome `--write` on staged `*.{js,jsx,ts,tsx,mjs,cjs,json,jsonc}` only); `commit-msg` runs commitlint.
-- **Conventional commits are enforced** (`@commitlint/config-conventional`). Use `feat:`, `fix:`, `docs:`, `chore:`, etc. Existing history uses a Chinese body after the conventional-English prefix (e.g. `docs: DocPilot 设计基线`).
+- **Git hooks (husky)**: `pre-commit` runs `lint-staged` (Biome `--write --no-errors-on-unmatched` on staged `*.{js,jsx,ts,tsx,mjs,cjs,json,jsonc}` only); `commit-msg` runs commitlint.
+- **Conventional commits are enforced** (`@commitlint/config-conventional`). Use `feat:`, `fix:`, `docs:`, `chore:`, etc. History uses a Chinese body after the conventional-English prefix (e.g. `feat: 落地自动对账(Reconciliation)恢复卡住的文档`).
+- **`AGENTS.md` is a symlink to this file** — edit `CLAUDE.md` only; both stay in sync.
 
 ## Architectural invariants (span multiple docs — apply when implementing)
 
@@ -49,6 +64,6 @@ These are the cross-cutting rules the design keeps returning to; violating them 
 - **Three-tier limit enforcement.** File limits (PDF, 50MB, 500 pages, quotas) are checked at frontend, at the create-upload API, and again in the Worker. Never trust the frontend alone (`product/overview.md#22`).
 - **String enums, not Postgres ENUM.** Status/stage columns are `VARCHAR` + check constraints for cheaper migration (`data-model.md#81`).
 
-## Planned runtime shape (once code exists)
+## Runtime shape
 
-Three deployables: **Next.js web** (Vercel-capable), **Hono API** (modular monolith, Node runtime — not Edge), and a standalone **BullMQ Worker** (long-running process, never a short-lived serverless function). Backed by **PostgreSQL 16 + pgvector**, **Redis**, and **S3-compatible object storage** (MinIO locally). Streaming answers use **SSE, not WebSocket** (ADR-009). See `docs/architecture/overview.md` for the full diagram and module layout.
+Three deployables: **Next.js web** (`apps/web`, Vercel-capable), **Hono API** (`apps/api`, modular monolith, Node runtime — not Edge), and a standalone **BullMQ Worker** (`apps/worker`, long-running process, never a short-lived serverless function). Backed by **PostgreSQL 16 + pgvector**, **Redis**, and **S3-compatible object storage** (MinIO locally). Streaming answers use **SSE, not WebSocket** (ADR-009). All three run as containers in production (`docker-compose.prod.yml`). See `docs/architecture/overview.md` for the full diagram and module layout.
