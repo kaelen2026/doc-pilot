@@ -1,0 +1,129 @@
+# 生产编排(自托管默认)。用法:
+#   cp .env.production.example .env.production && 编辑
+#   docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+#
+# postgres/redis/minio 为自托管默认。生产建议换托管服务(Managed PostgreSQL、
+# Managed Redis、Cloudflare R2 / S3),届时删掉对应 service,并把 .env.production 里的
+# DATABASE_URL / REDIS_URL / S3_* 指向托管端点即可(见 docs/runbooks/deployment.md)。
+name: doc-pilot-prod
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-docpilot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-docpilot}
+      POSTGRES_DB: ${POSTGRES_DB:-docpilot}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-docpilot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-minioadmin}
+    volumes:
+      - minio-data:/data
+    restart: unless-stopped
+
+  # 一次性:等 MinIO 就绪并建私有 bucket。
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 ${S3_ACCESS_KEY_ID:-minioadmin} ${S3_SECRET_ACCESS_KEY:-minioadmin}; do sleep 2; done;
+      mc mb --ignore-existing local/${S3_BUCKET:-docpilot-private};
+      mc anonymous set none local/${S3_BUCKET:-docpilot-private};
+      exit 0;
+      "
+    restart: "no"
+
+  # 一次性:数据库迁移(drizzle-kit)。api/worker 依赖它成功完成后再启动。
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: migrate
+    env_file:
+      - .env.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: runtime
+    env_file:
+      - .env.production
+    ports:
+      - "${API_PORT:-3001}:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+      target: runtime
+    env_file:
+      - .env.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # NEXT_PUBLIC_* 在 build 期内联。用 --env-file .env.production 时,compose 从中取这两个值。
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:

@@ -1,0 +1,13 @@
+# 构建上下文是仓库根;把体积大 / 无关 / 会污染安装的目录排除。
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+.git
+**/*.log
+e2e/test-results
+e2e/playwright-report
+**/coverage
+.env
+.env.*
+!.env.production.example
