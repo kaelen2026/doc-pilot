@@ -2,6 +2,8 @@
 
 异步系统必然出现卡住、超时、孤儿数据等问题。本手册描述自动对账（Reconciliation）与超时任务的恢复机制。
 
+> **实现状态**：`maintenance` 队列上的周期性 `reconcile` 任务已落地（Worker 启动时以 repeatable job 调度，实现见 `apps/worker/src/reconcile/`）。当前覆盖 `queued` 丢任务重入队、`processing` 卡死恢复/超龄标失败、`pending_upload` 废弃清理。`deleting` 卡住重触发 delete job、孤儿对象物理清理依赖删除流程（§24），待删除流程落地后接入。
+
 ## 35.1 Reconciliation Job
 
 每隔几分钟运行一次，检查并修复以下异常状态：

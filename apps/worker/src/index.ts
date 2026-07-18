@@ -1,13 +1,22 @@
+import { RECONCILE } from "@doc-pilot/contracts";
 import {
+  errToLog,
   jobMetrics,
   logger,
   registerQueueDepthGauge,
   startMetrics,
 } from "@doc-pilot/observability";
-import { createRedisConnection, getDocumentProcessingQueue, QUEUE_NAMES } from "@doc-pilot/queue";
+import {
+  createRedisConnection,
+  getDocumentProcessingQueue,
+  getMaintenanceQueue,
+  JOB_NAMES,
+  QUEUE_NAMES,
+} from "@doc-pilot/queue";
 import { Worker } from "bullmq";
 import { startOutboxPublisher } from "./outbox/publisher";
 import { processDocumentJob } from "./processors/document.processor";
+import { createReconcileProcessor } from "./reconcile/reconcile.processor";
 
 // Metrics:配置 METRICS_PORT 时暴露 Prometheus /metrics;未配置则 no-op。
 startMetrics({ serviceName: "doc-pilot-worker" });
@@ -16,6 +25,9 @@ startMetrics({ serviceName: "doc-pilot-worker" });
 const workerConnection = createRedisConnection();
 const publisherConnection = createRedisConnection();
 const metricsConnection = createRedisConnection();
+// maintenance:阻塞式 Worker 单独连接;Queue 客户端(调度 + 重入队)共用一条非阻塞连接。
+const maintenanceWorkerConnection = createRedisConnection();
+const maintenanceQueueConnection = createRedisConnection();
 
 const worker = new Worker(QUEUE_NAMES.documentProcessing, processDocumentJob, {
   connection: workerConnection,
@@ -50,16 +62,50 @@ const stopPublisher = startOutboxPublisher({
   intervalMs: Number(process.env.OUTBOX_POLL_INTERVAL_MS ?? 2000),
 });
 
-logger.info("worker.started", { queue: QUEUE_NAMES.documentProcessing });
+// 自动对账(runbooks/failure-recovery.md §35):maintenance 队列上的周期性任务。
+// reconcile 会检查/重新入队 document-processing 的 Job,故传入一个该队列的客户端。
+const reconcileProcessingQueue = getDocumentProcessingQueue(maintenanceQueueConnection);
+const maintenanceQueue = getMaintenanceQueue(maintenanceQueueConnection);
+const maintenanceWorker = new Worker(
+  QUEUE_NAMES.maintenance,
+  createReconcileProcessor(reconcileProcessingQueue),
+  { connection: maintenanceWorkerConnection, concurrency: 1 },
+);
+maintenanceWorker.on("completed", (job) => {
+  jobMetrics.completed((job.finishedOn ?? 0) - (job.processedOn ?? 0));
+});
+maintenanceWorker.on("failed", (job, err) => {
+  jobMetrics.failed();
+  logger.error("worker.maintenance.failed", { jobId: job?.id, message: err.message });
+});
+
+// 调度周期性 reconcile(repeatable;BullMQ 按 name+repeat 去重,多实例/重启不会重复调度)。
+void maintenanceQueue
+  .add(
+    JOB_NAMES.reconcile,
+    {},
+    { repeat: { every: RECONCILE.intervalMs }, removeOnComplete: true, removeOnFail: 100 },
+  )
+  .then(() => logger.info("reconcile.scheduled", { intervalMs: RECONCILE.intervalMs }))
+  .catch((err) => logger.error("reconcile.schedule_failed", errToLog(err)));
+
+logger.info("worker.started", {
+  queues: [QUEUE_NAMES.documentProcessing, QUEUE_NAMES.maintenance],
+});
 
 async function shutdown(signal: string): Promise<void> {
   logger.info("worker.shutdown", { signal });
   await stopPublisher();
   await worker.close();
+  await maintenanceWorker.close();
+  await maintenanceQueue.close();
+  await reconcileProcessingQueue.close();
   await metricsQueue.close();
   await workerConnection.quit();
   await publisherConnection.quit();
   await metricsConnection.quit();
+  await maintenanceWorkerConnection.quit();
+  await maintenanceQueueConnection.quit();
   process.exit(0);
 }
 
