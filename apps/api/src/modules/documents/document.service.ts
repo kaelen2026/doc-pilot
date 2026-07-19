@@ -2,6 +2,7 @@ import { buildParseJobId } from "@doc-pilot/contracts";
 import {
   bucket,
   buildOriginalObjectKey,
+  createPresignedGetUrl,
   createPresignedPutUrl,
   headObject,
 } from "@doc-pilot/storage";
@@ -129,6 +130,31 @@ export async function completeUpload(params: {
     document: { id: result.document.id, status: result.document.status },
     alreadyQueued: result.alreadyQueued,
   };
+}
+
+/**
+ * 在线阅读:签发原始 PDF 的 GET Presigned URL。租户隔离在查询里按 workspaceId 过滤;
+ * 原文件在上传完成后才存在,故 pending_upload 无文件可读。软删除中/已删同样拒绝。
+ */
+export async function getFileUrl(params: { workspaceId: string; documentId: string }) {
+  const document = await repo.findByIdInWorkspace(params.documentId, params.workspaceId);
+  if (!document) {
+    throw new NotFoundError("document not found");
+  }
+  if (document.status === "pending_upload") {
+    throw new UploadNotFoundError();
+  }
+
+  const objectKey = buildOriginalObjectKey({
+    workspaceId: params.workspaceId,
+    documentId: document.id,
+    version: document.processingVersion,
+  });
+  const { url, expiresAt } = await createPresignedGetUrl({
+    key: objectKey,
+    filename: document.originalFilename,
+  });
+  return { url, expiresAt: expiresAt.toISOString() };
 }
 
 export async function listDocuments(workspaceId: string) {

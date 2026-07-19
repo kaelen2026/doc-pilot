@@ -32,6 +32,30 @@ export async function createPresignedPutUrl(input: {
 }
 
 /**
+ * 生成浏览器在线阅读用的 GET Presigned URL。
+ * 强制 inline + application/pdf，让浏览器内嵌渲染而非下载。
+ * 对象由 API 侧完成租户鉴权后才签发（见 ADR-003 的对称做法）。
+ */
+export async function createPresignedGetUrl(input: {
+  key: string;
+  expiresInSeconds?: number;
+  filename?: string;
+}): Promise<{ url: string; expiresAt: Date }> {
+  const disposition = input.filename
+    ? `inline; filename*=UTF-8''${encodeURIComponent(input.filename)}`
+    : "inline";
+  const command = new GetObjectCommand({
+    Bucket: bucket,
+    Key: input.key,
+    ResponseContentType: "application/pdf",
+    ResponseContentDisposition: disposition,
+  });
+  const expiresIn = input.expiresInSeconds ?? DEFAULT_EXPIRES_SECONDS;
+  const url = await getSignedUrl(s3, command, { expiresIn });
+  return { url, expiresAt: new Date(Date.now() + expiresIn * 1000) };
+}
+
+/**
  * HEAD 对象，用于确认直传是否完成并读取真实大小 / 类型。对象不存在返回 null。
  */
 export async function headObject(
