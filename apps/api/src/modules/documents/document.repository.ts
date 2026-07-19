@@ -104,6 +104,9 @@ export async function listByWorkspace(workspaceId: string) {
       progress: documents.progress,
       sizeBytes: documents.sizeBytes,
       pageCount: documents.pageCount,
+      // 失败原因码：前端据此展示人话提示(如扫描件不支持)。errorMessage 偏技术,
+      // 列表不带,详情接口(getStatusById)已含。
+      errorCode: documents.errorCode,
       createdAt: documents.createdAt,
     })
     .from(documents)

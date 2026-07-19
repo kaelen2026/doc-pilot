@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { failureReason } from "@/features/documents/failure-reason";
 import { validateFile } from "@/features/documents/upload";
 import { useDocuments } from "@/features/documents/use-documents";
 import { useUploadDocument } from "@/features/documents/use-upload-document";
@@ -132,9 +133,9 @@ export function DocumentsView() {
                           {d.pageCount} 页
                         </span>
                       ) : d.status === "failed" ? (
-                        <Badge variant="destructive" className="text-xs">
-                          处理失败
-                        </Badge>
+                        <span className="text-xs leading-[1.6] text-seal">
+                          {failureReason(d.errorCode)}
+                        </span>
                       ) : null}
                     </li>
                   ))}
