@@ -11,6 +11,7 @@ export interface DocItem {
   progress: number;
   pageCount: number | null;
   sizeBytes: number;
+  errorCode: string | null;
   createdAt: string;
 }
 
