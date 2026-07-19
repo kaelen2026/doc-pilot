@@ -20,6 +20,13 @@ type OutlineNode = {
   items: OutlineNode[];
 };
 
+/** 归一化矩形(相对页面 0–1),缩放时按当前页尺寸还原,故与 zoom 无关。 */
+type NormRect = { x: number; y: number; w: number; h: number };
+/** 用户高亮:落在某页的一组矩形 + 选中文本。存 localStorage。 */
+type Highlight = { id: string; page: number; rects: NormRect[]; text: string };
+
+const hlKey = (documentId: string) => `docpilot:hl:${documentId}`;
+
 /**
  * 在线阅读原始 PDF —— 自绘阅读器(PDF.js),UI 贴合墨水纸风格。
  * 分页懒渲染(近视口才渲、远离即卸载,225 页也稳),支持缩放(适宽/整页/手动)、
@@ -55,13 +62,13 @@ export function PdfView({ documentId }: { documentId: string }) {
       ) : fileQuery.isError ? (
         <p className="p-6 text-sm text-seal">{String(fileQuery.error)}</p>
       ) : fileQuery.data ? (
-        <PdfReader url={fileQuery.data} />
+        <PdfReader url={fileQuery.data} documentId={documentId} />
       ) : null}
     </main>
   );
 }
 
-function PdfReader({ url }: { url: string }) {
+function PdfReader({ url, documentId }: { url: string; documentId: string }) {
   const rootRef = useRef<HTMLDivElement>(null); // 全屏目标(含工具条)
   const scrollRef = useRef<HTMLDivElement>(null);
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
@@ -74,7 +81,32 @@ function PdfReader({ url }: { url: string }) {
   const [fullscreen, setFullscreen] = useState(false);
   const [outline, setOutline] = useState<OutlineNode[] | null>(null);
   const [showToc, setShowToc] = useState(false);
+  const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [selTool, setSelTool] = useState<{ x: number; y: number } | null>(null);
+  const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 高亮:进入时从 localStorage 载入(按文档隔离),增删即持久化。
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(hlKey(documentId));
+      setHighlights(raw ? (JSON.parse(raw) as Highlight[]) : []);
+    } catch {
+      setHighlights([]);
+    }
+  }, [documentId]);
+
+  const persistHighlights = useCallback(
+    (next: Highlight[]) => {
+      setHighlights(next);
+      try {
+        localStorage.setItem(hlKey(documentId), JSON.stringify(next));
+      } catch {
+        // 隐私模式/超额:忽略,至少本会话内可用。
+      }
+    },
+    [documentId],
+  );
 
   // 加载文档 + worker(模块 worker,经 bundler 解析资源 URL)。
   useEffect(() => {
@@ -159,6 +191,7 @@ function PdfReader({ url }: { url: string }) {
 
   const onScroll = useCallback(() => {
     requestAnimationFrame(recomputeCurrent);
+    setSelTool(null); // 选区工具栏是固定定位,滚动后位置失真,收起。
   }, [recomputeCurrent]);
 
   const jumpTo = useCallback((page: number) => {
@@ -185,6 +218,90 @@ function PdfReader({ url }: { url: string }) {
       jumpTo(index + 1);
     },
     [pdf, jumpTo],
+  );
+
+  // 选中文字后弹出浮动工具栏(复制/高亮)。空选中则收起。
+  const onSelectionEnd = useCallback(() => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || sel.toString().trim() === "") {
+      setSelTool(null);
+      return;
+    }
+    const rect = sel.getRangeAt(0).getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) {
+      setSelTool(null);
+      return;
+    }
+    setSelTool({ x: rect.left + rect.width / 2, y: rect.top });
+    setCopied(false);
+  }, []);
+
+  const copySelection = useCallback(async () => {
+    const text = window.getSelection()?.toString() ?? "";
+    if (!text) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+    } catch {
+      // 无剪贴板权限:静默失败。
+    }
+  }, []);
+
+  // 高亮:把选区的 client rects 按所在页归一化后落库。跨页选择自然分派到各页。
+  const addHighlight = useCallback(() => {
+    const el = scrollRef.current;
+    const sel = window.getSelection();
+    if (!el || !sel || sel.isCollapsed) {
+      return;
+    }
+    const text = sel.toString();
+    const range = sel.getRangeAt(0);
+    const slots = el.querySelectorAll<HTMLElement>("[data-page]");
+    const byPage = new Map<number, NormRect[]>();
+    for (const r of Array.from(range.getClientRects())) {
+      if (r.width < 1 || r.height < 1) {
+        continue;
+      }
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      for (const slot of slots) {
+        const b = slot.getBoundingClientRect();
+        if (cx >= b.left && cx <= b.right && cy >= b.top && cy <= b.bottom) {
+          const page = Number(slot.dataset.page);
+          const arr = byPage.get(page) ?? [];
+          arr.push({
+            x: (r.left - b.left) / b.width,
+            y: (r.top - b.top) / b.height,
+            w: r.width / b.width,
+            h: r.height / b.height,
+          });
+          byPage.set(page, arr);
+          break;
+        }
+      }
+    }
+    if (byPage.size === 0) {
+      return;
+    }
+    const additions: Highlight[] = [];
+    for (const [page, rects] of byPage) {
+      additions.push({
+        id: `${Date.now()}-${page}-${Math.round((rects[0]?.x ?? 0) * 1e4)}`,
+        page,
+        rects,
+        text,
+      });
+    }
+    persistHighlights([...highlights, ...additions]);
+    sel.removeAllRanges();
+    setSelTool(null);
+  }, [highlights, persistHighlights]);
+
+  const removeHighlight = useCallback(
+    (id: string) => persistHighlights(highlights.filter((h) => h.id !== id)),
+    [highlights, persistHighlights],
   );
 
   function submitPage(e: React.FormEvent) {
@@ -332,9 +449,11 @@ function PdfReader({ url }: { url: string }) {
             <OutlineTree nodes={outline} onPick={gotoDest} />
           </aside>
         ) : null}
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: 滚动容器捕获文本选区(mouseup),非交互控件 */}
         <div
           ref={scrollRef}
           onScroll={onScroll}
+          onMouseUp={onSelectionEnd}
           className="min-h-0 flex-1 overflow-auto bg-paper-sunken py-4"
           style={{ scrollBehavior: "smooth" }}
         >
@@ -348,12 +467,42 @@ function PdfReader({ url }: { url: string }) {
                     width={pageWidth}
                     fallbackAspect={baseAspect}
                     root={scrollRef.current}
+                    highlights={highlights}
+                    onRemoveHighlight={removeHighlight}
                   />
                 ))
               : null}
           </div>
         </div>
       </div>
+
+      {/* 选中浮动工具栏(复制 / 高亮)。固定定位在选区上方。 */}
+      {selTool ? (
+        <div
+          className="-translate-x-1/2 -translate-y-full fixed z-20 flex items-center gap-1 rounded-md border border-hairline bg-paper-raised px-1 py-1 shadow-[0_2px_8px_rgba(0,0,0,0.18)]"
+          style={{ left: selTool.x, top: selTool.y - 8 }}
+        >
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2"
+            onClick={copySelection}
+          >
+            {copied ? "已复制" : "复制"}
+          </Button>
+          <span className="h-4 w-px bg-hairline" />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2"
+            onClick={addHighlight}
+          >
+            高亮
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -400,16 +549,24 @@ function PdfPage({
   width,
   fallbackAspect,
   root,
+  highlights,
+  onRemoveHighlight,
 }: {
   pdf: PDFDocumentProxy;
   pageNumber: number;
   width: number;
   fallbackAspect: number;
   root: HTMLElement | null;
+  highlights: Highlight[];
+  onRemoveHighlight: (id: string) => void;
 }) {
   const slotRef = useRef<HTMLDivElement>(null);
+  const canvasHolderRef = useRef<HTMLDivElement>(null);
+  const textLayerRef = useRef<HTMLDivElement>(null);
   const [near, setNear] = useState(false);
   const [aspect, setAspect] = useState(fallbackAspect);
+
+  const pageHighlights = highlights.filter((h) => h.page === pageNumber);
 
   // 近视口探测:提前 1.5 屏预渲染。
   useEffect(() => {
@@ -425,17 +582,19 @@ function PdfPage({
     return () => io.disconnect();
   }, [root]);
 
-  // 渲染/卸载。width 变化(缩放)时,若在视口内重渲。
+  // 渲染 canvas + 文本层(可选中),卸载时清空。width 变化(缩放)时重渲。
   useEffect(() => {
     let renderTask: { cancel: () => void; promise: Promise<void> } | null = null;
     let cancelled = false;
 
     if (!near) {
-      slotRef.current?.replaceChildren();
+      canvasHolderRef.current?.replaceChildren();
+      textLayerRef.current?.replaceChildren();
       return;
     }
 
     (async () => {
+      const pdfjs = await import("pdfjs-dist");
       const page: PDFPageProxy = await pdf.getPage(pageNumber);
       if (cancelled) {
         return;
@@ -443,25 +602,48 @@ function PdfPage({
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const unscaled = page.getViewport({ scale: 1 });
       const asp = unscaled.height / unscaled.width;
+      const cssHeight = Math.round(width * asp);
       setAspect(asp);
-      const viewport = page.getViewport({ scale: (width / unscaled.width) * dpr });
+      const cssScale = width / unscaled.width;
 
+      // Canvas:按 dpr 超采样求清晰,CSS 尺寸维持页面显示大小。
+      const viewport = page.getViewport({ scale: cssScale * dpr });
       const canvas = document.createElement("canvas");
       canvas.width = viewport.width;
       canvas.height = viewport.height;
       canvas.style.width = `${width}px`;
-      canvas.style.height = `${Math.round(width * asp)}px`;
+      canvas.style.height = `${cssHeight}px`;
       canvas.className = "block";
       const ctx = canvas.getContext("2d");
       if (!ctx) {
         return;
       }
-      slotRef.current?.replaceChildren(canvas);
+      canvasHolderRef.current?.replaceChildren(canvas);
       renderTask = page.render({ canvas, canvasContext: ctx, viewport });
       try {
         await renderTask.promise;
       } catch {
         // 缩放/滚动打断的渲染会抛 RenderingCancelledException,忽略。
+      }
+
+      // 文本层:透明可选中文字,坐标用 CSS scale(非 dpr),容器设 --total-scale-factor。
+      const tld = textLayerRef.current;
+      if (cancelled || !tld) {
+        return;
+      }
+      tld.replaceChildren();
+      tld.style.setProperty("--total-scale-factor", String(cssScale));
+      tld.style.width = `${width}px`;
+      tld.style.height = `${cssHeight}px`;
+      try {
+        const textLayer = new pdfjs.TextLayer({
+          textContentSource: page.streamTextContent(),
+          container: tld,
+          viewport: page.getViewport({ scale: cssScale }),
+        });
+        await textLayer.render();
+      } catch {
+        // 无文本层(扫描件)或被打断:忽略,页面仍可看。
       }
     })();
 
@@ -475,8 +657,30 @@ function PdfPage({
     <div
       ref={slotRef}
       data-page={pageNumber}
-      className="bg-paper-raised shadow-[0_1px_3px_rgba(0,0,0,0.12)]"
+      className="relative bg-paper-raised shadow-[0_1px_3px_rgba(0,0,0,0.12)]"
       style={{ width, height: near ? undefined : Math.round(width * aspect) }}
-    />
+    >
+      <div ref={canvasHolderRef} />
+      <div ref={textLayerRef} className="textLayer" />
+      {pageHighlights.flatMap((h) =>
+        h.rects.map((r) => (
+          <button
+            type="button"
+            key={`${h.id}-${r.x}-${r.y}`}
+            onClick={() => onRemoveHighlight(h.id)}
+            title="点击移除高亮"
+            aria-label="移除高亮"
+            className="absolute z-[2] cursor-pointer rounded-[1px]"
+            style={{
+              left: `${r.x * 100}%`,
+              top: `${r.y * 100}%`,
+              width: `${r.w * 100}%`,
+              height: `${r.h * 100}%`,
+              backgroundColor: "color-mix(in oklch, var(--color-seal) 30%, transparent)",
+            }}
+          />
+        )),
+      )}
+    </div>
   );
 }
