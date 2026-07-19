@@ -95,6 +95,14 @@ export function ChatView({ documentId }: { documentId: string }) {
             <span className="text-xs text-ink-faint tabular-nums">{doc.pageCount} 页</span>
           ) : null}
           {doc && doc.status === "partially_ready" ? <Badge>部分就绪</Badge> : null}
+          {doc ? (
+            <Link
+              href={`/documents/${documentId}/view`}
+              className="text-xs text-seal underline-offset-4 transition-colors duration-150 [@media(hover:hover)]:hover:text-seal-deep [@media(hover:hover)]:hover:underline"
+            >
+              阅读原文
+            </Link>
+          ) : null}
         </div>
       </header>
 

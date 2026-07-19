@@ -2,7 +2,13 @@ import { Hono } from "hono";
 import type { AppEnv } from "../../shared/types";
 import { activeWorkspaceId } from "../../shared/workspace";
 import { parseCreateUpload } from "./document.schema";
-import { completeUpload, createUpload, getDocument, listDocuments } from "./document.service";
+import {
+  completeUpload,
+  createUpload,
+  getDocument,
+  getFileUrl,
+  listDocuments,
+} from "./document.service";
 
 export function createDocumentRoutes() {
   return new Hono<AppEnv>()
@@ -32,6 +38,11 @@ export function createDocumentRoutes() {
     .get("/:id", async (c) => {
       const workspaceId = activeWorkspaceId(c.get("memberships"));
       const result = await getDocument({ workspaceId, documentId: c.req.param("id") });
+      return c.json(result);
+    })
+    .get("/:id/file-url", async (c) => {
+      const workspaceId = activeWorkspaceId(c.get("memberships"));
+      const result = await getFileUrl({ workspaceId, documentId: c.req.param("id") });
       return c.json(result);
     });
 }

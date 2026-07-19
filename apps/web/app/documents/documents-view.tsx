@@ -14,6 +14,19 @@ import { authClient } from "../../lib/auth-client";
 
 const rise = "animate-[rise_0.5s_cubic-bezier(0.2,0,0,1)_both]";
 
+const docLinkClass =
+  "text-xs text-seal underline-offset-4 transition-colors duration-150 [@media(hover:hover)]:hover:text-seal-deep [@media(hover:hover)]:hover:underline";
+
+// 原文件在上传完成后即存在,故这些状态都可在线阅读(含失败的扫描件——便于用户核对上传了什么)。
+const READABLE = new Set([
+  "uploaded",
+  "queued",
+  "processing",
+  "ready",
+  "partially_ready",
+  "failed",
+]);
+
 const STATUS_LABEL: Record<string, string> = {
   pending_upload: "待上传",
   uploaded: "已上传",
@@ -109,11 +122,13 @@ export function DocumentsView() {
                       <div className="flex items-center justify-between gap-4">
                         <span className="truncate text-sm text-ink">{d.title}</span>
                         <span className="flex shrink-0 items-center gap-2.5">
+                          {READABLE.has(d.status) ? (
+                            <Link href={`/documents/${d.id}/view`} className={docLinkClass}>
+                              阅读
+                            </Link>
+                          ) : null}
                           {d.status === "ready" || d.status === "partially_ready" ? (
-                            <Link
-                              href={`/documents/${d.id}/chat`}
-                              className="text-xs text-seal underline-offset-4 transition-colors duration-150 [@media(hover:hover)]:hover:text-seal-deep [@media(hover:hover)]:hover:underline"
-                            >
+                            <Link href={`/documents/${d.id}/chat`} className={docLinkClass}>
                               问答
                             </Link>
                           ) : null}
