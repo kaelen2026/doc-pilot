@@ -13,6 +13,13 @@ const MIN_SCALE = 0.5;
 const MAX_SCALE = 3;
 const GAP = 16; // 页间距,与滚动定位换算一致
 
+/** PDF 内嵌书签目录节点(pdf.getOutline() 的子集)。 */
+type OutlineNode = {
+  title: string;
+  dest: string | unknown[] | null;
+  items: OutlineNode[];
+};
+
 /**
  * 在线阅读原始 PDF —— 自绘阅读器(PDF.js),UI 贴合墨水纸风格。
  * 分页懒渲染(近视口才渲、远离即卸载,225 页也稳),支持缩放(适宽/整页/手动)、
@@ -65,6 +72,8 @@ function PdfReader({ url }: { url: string }) {
   const [current, setCurrent] = useState(1);
   const [pageInput, setPageInput] = useState("1");
   const [fullscreen, setFullscreen] = useState(false);
+  const [outline, setOutline] = useState<OutlineNode[] | null>(null);
+  const [showToc, setShowToc] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // 加载文档 + worker(模块 worker,经 bundler 解析资源 URL)。
@@ -88,6 +97,11 @@ function PdfReader({ url }: { url: string }) {
         setBaseAspect(vp.height / vp.width);
         setPdf(doc);
         setNumPages(doc.numPages);
+        // 内嵌书签目录:有则展示「目录」入口,无则隐藏。
+        const ol = (await doc.getOutline().catch(() => null)) as OutlineNode[] | null;
+        if (!cancelled) {
+          setOutline(ol && ol.length > 0 ? ol : null);
+        }
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : String(e));
@@ -156,6 +170,23 @@ function PdfReader({ url }: { url: string }) {
     slot?.scrollIntoView({ block: "start", behavior: "smooth" });
   }, []);
 
+  // 目录项 → 页码:dest 可能是命名目标(字符串)或显式数组,首元素是页面引用。
+  const gotoDest = useCallback(
+    async (dest: OutlineNode["dest"]) => {
+      if (!pdf || !dest) {
+        return;
+      }
+      const explicit = typeof dest === "string" ? await pdf.getDestination(dest) : dest;
+      const ref = Array.isArray(explicit) ? explicit[0] : null;
+      if (!ref) {
+        return;
+      }
+      const index = await pdf.getPageIndex(ref as Parameters<typeof pdf.getPageIndex>[0]);
+      jumpTo(index + 1);
+    },
+    [pdf, jumpTo],
+  );
+
   function submitPage(e: React.FormEvent) {
     e.preventDefault();
     const n = Math.min(Math.max(1, Number(pageInput) || 1), numPages);
@@ -192,6 +223,20 @@ function PdfReader({ url }: { url: string }) {
     >
       {/* 工具条 */}
       <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-hairline border-y py-2">
+        {outline ? (
+          <>
+            <Button
+              type="button"
+              variant={showToc ? "secondary" : "ghost"}
+              size="sm"
+              className={toolBtn}
+              onClick={() => setShowToc((v) => !v)}
+            >
+              目录
+            </Button>
+            <span className="h-4 w-px bg-hairline" />
+          </>
+        ) : null}
         <form onSubmit={submitPage} className="flex items-center gap-1.5 text-xs text-ink-faint">
           <Button
             type="button"
@@ -280,29 +325,68 @@ function PdfReader({ url }: { url: string }) {
         </Button>
       </div>
 
-      {/* 页面滚动区 */}
-      <div
-        ref={scrollRef}
-        onScroll={onScroll}
-        className="min-h-0 flex-1 overflow-auto bg-paper-sunken py-4"
-        style={{ scrollBehavior: "smooth" }}
-      >
-        <div className="flex flex-col items-center" style={{ gap: GAP }}>
-          {pdf && fitWidth > 0
-            ? Array.from({ length: numPages }, (_, i) => i + 1).map((n) => (
-                <PdfPage
-                  key={n}
-                  pdf={pdf}
-                  pageNumber={n}
-                  width={pageWidth}
-                  fallbackAspect={baseAspect}
-                  root={scrollRef.current}
-                />
-              ))
-            : null}
+      {/* 目录侧栏 + 页面滚动区 */}
+      <div className="flex min-h-0 flex-1">
+        {showToc && outline ? (
+          <aside className="w-56 shrink-0 overflow-auto border-hairline border-r bg-paper py-2 text-sm">
+            <OutlineTree nodes={outline} onPick={gotoDest} />
+          </aside>
+        ) : null}
+        <div
+          ref={scrollRef}
+          onScroll={onScroll}
+          className="min-h-0 flex-1 overflow-auto bg-paper-sunken py-4"
+          style={{ scrollBehavior: "smooth" }}
+        >
+          <div className="flex flex-col items-center" style={{ gap: GAP }}>
+            {pdf && fitWidth > 0
+              ? Array.from({ length: numPages }, (_, i) => i + 1).map((n) => (
+                  <PdfPage
+                    key={n}
+                    pdf={pdf}
+                    pageNumber={n}
+                    width={pageWidth}
+                    fallbackAspect={baseAspect}
+                    root={scrollRef.current}
+                  />
+                ))
+              : null}
+          </div>
         </div>
       </div>
     </div>
+  );
+}
+
+/** 目录树:递归渲染书签,点击跳到对应 dest。 */
+function OutlineTree({
+  nodes,
+  onPick,
+  depth = 0,
+}: {
+  nodes: OutlineNode[];
+  onPick: (dest: OutlineNode["dest"]) => void;
+  depth?: number;
+}) {
+  return (
+    <ul>
+      {nodes.map((n) => (
+        <li key={`${depth}:${n.title}`}>
+          <button
+            type="button"
+            onClick={() => onPick(n.dest)}
+            style={{ paddingLeft: depth * 12 + 12 }}
+            className="block w-full truncate py-1 pr-3 text-left text-xs text-ink-soft transition-colors [@media(hover:hover)]:hover:bg-paper-sunken [@media(hover:hover)]:hover:text-ink"
+            title={n.title}
+          >
+            {n.title}
+          </button>
+          {n.items?.length ? (
+            <OutlineTree nodes={n.items} onPick={onPick} depth={depth + 1} />
+          ) : null}
+        </li>
+      ))}
+    </ul>
   );
 }
 
