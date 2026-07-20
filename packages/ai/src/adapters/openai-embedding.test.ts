@@ -62,6 +62,34 @@ describe("createOpenAIEmbeddingAdapter", () => {
     );
   });
 
+  it("自托管端点(如 Ollama)无 API Key 也可调用,且不带 authorization 头", async () => {
+    let captured: { headers: Headers } | undefined;
+    const adapter = createOpenAIEmbeddingAdapter({
+      baseURL: "http://localhost:11434/v1",
+      fetchFn: (async (_url: Parameters<typeof fetch>[0], init?: RequestInit) => {
+        captured = { headers: new Headers(init?.headers) };
+        return new Response(JSON.stringify({ data: [{ index: 0, embedding: [0.1] }] }), {
+          status: 200,
+        });
+      }) as typeof fetch,
+    });
+
+    const result = await adapter.embed({ model: "bge-m3", texts: ["a"] });
+    expect(result.embeddings).toEqual([[0.1]]);
+    expect(captured?.headers.has("authorization")).toBe(false);
+  });
+
+  it("官方 OpenAI 端点缺 API Key 抛错", async () => {
+    const adapter = createOpenAIEmbeddingAdapter({
+      apiKey: "",
+      baseURL: "https://api.openai.com/v1",
+      fetchFn: fetchStub(200, { data: [{ index: 0, embedding: [0.1] }] }),
+    });
+    await expect(adapter.embed({ model: "text-embedding-3-small", texts: ["a"] })).rejects.toThrow(
+      /OPENAI_API_KEY/,
+    );
+  });
+
   it("文本生成能力抛接线错误", async () => {
     const adapter = createOpenAIEmbeddingAdapter({ apiKey: "sk-test" });
     await expect(adapter.generateText({ model: "m", system: "", messages: [] })).rejects.toThrow(

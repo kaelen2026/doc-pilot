@@ -13,7 +13,7 @@ export const evalEnv = {
   /** 评测报告输出路径;未设置则不落盘。 */
   reportPath: process.env.EVAL_REPORT_PATH,
   ai: {
-    embeddingModel: process.env.AI_EMBEDDING_MODEL ?? "text-embedding-3-small",
+    embeddingModel: process.env.AI_EMBEDDING_MODEL ?? "bge-m3",
     // Judge 与被评模型解耦,缺省同型号;换 judge 模型不影响被评链路。
     answerModel: process.env.AI_ANSWER_MODEL ?? "claude-opus-4-8",
     judgeModel: process.env.AI_JUDGE_MODEL ?? "claude-opus-4-8",

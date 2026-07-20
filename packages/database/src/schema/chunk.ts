@@ -17,7 +17,7 @@ import { workspaces } from "./workspace";
  * 文档切片（见 docs/architecture/data-model.md §8.4、pipeline.md §15）。
  *
  * - `workspace_id` 冗余保存,是为了向量检索时直接在查询里做租户过滤(ADR-008)。
- * - `embedding` 在 Phase 4 保持为空,Phase 6 才写入;维度固定 1536(见 rag.md)。
+ * - `embedding` 在 Phase 4 保持为空,Phase 6 才写入;维度固定 1024(bge-m3,见 rag.md)。
  * - `unique(document_id, processing_version, chunk_index)` 保证同一版本重复处理
  *   不会产生重复 Chunk;Worker 侧再配合"先删后插"实现幂等重建。
  */
@@ -40,7 +40,7 @@ export const documentChunks = pgTable(
     pageEnd: integer("page_end"),
     sectionPath: jsonb("section_path").$type<string[]>(),
     metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
-    embedding: vector("embedding", { dimensions: 1536 }),
+    embedding: vector("embedding", { dimensions: 1024 }),
     embeddingModel: varchar("embedding_model", { length: 100 }),
     embeddingVersion: varchar("embedding_version", { length: 50 }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
