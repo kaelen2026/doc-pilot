@@ -1,18 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-function usePrefersReducedMotion(): boolean {
-  const [reduce, setReduce] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const sync = () => setReduce(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
-  return reduce;
-}
+import { useReducedMotion } from "./use-reduced-motion";
 
 /**
  * 打字机揭示:target 只增(delta 追加),逐帧把已显示长度推向 target。
@@ -21,7 +10,7 @@ function usePrefersReducedMotion(): boolean {
  */
 export function useTypewriter(target: string): string {
   const [shown, setShown] = useState(0);
-  const reduce = usePrefersReducedMotion();
+  const reduce = useReducedMotion();
 
   useEffect(() => {
     if (reduce) {

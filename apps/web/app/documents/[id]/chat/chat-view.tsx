@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fetchDocument } from "@/features/chat/api";
+import { findQuestionFor } from "@/features/chat/find-question";
 import type { CitationItem, MessageItem } from "@/features/chat/types";
 import { useConversation, useMessages, useSendMessage } from "@/features/chat/use-chat";
 import { useStickToBottom } from "@/features/chat/use-stick-to-bottom";
@@ -90,11 +91,7 @@ export function ChatView({ documentId }: { documentId: string }) {
   // delta 重渲(重跑正则)。retry 由配对提问(消息流里前面最近的 user)重发。
   const retry = useCallback(
     (assistant: MessageItem) => {
-      const index = messages.findIndex((m) => m.id === assistant.id);
-      const question = messages
-        .slice(0, index)
-        .reverse()
-        .find((m) => m.role === "user");
+      const question = findQuestionFor(messages, assistant.id);
       if (question) {
         void send({
           content: question.content,
