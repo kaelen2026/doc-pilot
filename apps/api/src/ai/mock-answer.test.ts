@@ -51,6 +51,8 @@ describe("mockAnswerChunks", () => {
 
     const { body, answer } = await drain(chunks);
     expect(body.length).toBeGreaterThan(0);
+    // 正文内嵌 [1] 标记,对应 citations 第 1 条(与真实 Prompt 输出契约一致)。
+    expect(body).toContain("[1]");
     expect(answer.insufficientEvidence).toBe(false);
     expect(answer.citations).toHaveLength(1);
     expect(answer.citations[0]?.sourceId).toBe("S1");
