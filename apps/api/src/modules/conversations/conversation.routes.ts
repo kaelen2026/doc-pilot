@@ -1,4 +1,4 @@
-import { CHAT_SSE_EVENTS } from "@doc-pilot/contracts";
+import { CHAT_SSE_EVENTS, MESSAGE_PAGE } from "@doc-pilot/contracts";
 import { errToLog, logger, sseGauge } from "@doc-pilot/observability";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
@@ -37,8 +37,12 @@ export function createConversationRoutes() {
     })
     .get("/:id/messages", async (c) => {
       const workspaceId = activeWorkspaceId(c.get("memberships"));
-      const messages = await getMessages({ workspaceId, conversationId: c.req.param("id") });
-      return c.json({ messages: messages.map(serializeMessage) });
+      const { messages, hasMore } = await getMessages({
+        workspaceId,
+        conversationId: c.req.param("id"),
+        limit: parseLimit(c.req.query("limit")),
+      });
+      return c.json({ messages: messages.map(serializeMessage), hasMore });
     })
     .post("/:id/messages", async (c) => {
       const workspaceId = activeWorkspaceId(c.get("memberships"));
@@ -116,6 +120,15 @@ export function createConversationRoutes() {
         }
       });
     });
+}
+
+/** 解析并夹取消息窗口 limit;非法/缺省回落默认窗口,超上限截断(MESSAGE_PAGE)。 */
+function parseLimit(raw: string | undefined): number {
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1) {
+    return MESSAGE_PAGE.size;
+  }
+  return Math.min(n, MESSAGE_PAGE.max);
 }
 
 function serializeMessage(message: MessageRow & { citations: CitationRow[] }) {

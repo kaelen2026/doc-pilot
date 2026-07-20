@@ -55,12 +55,16 @@ export interface MessageWithCitations extends repo.MessageRow {
 export async function getMessages(params: {
   workspaceId: string;
   conversationId: string;
-}): Promise<MessageWithCitations[]> {
+  limit: number;
+}): Promise<{ messages: MessageWithCitations[]; hasMore: boolean }> {
   const conversation = await repo.getConversation(params);
   if (!conversation) {
     throw new NotFoundError("conversation not found");
   }
-  const rows = await repo.listMessages(conversation.id);
+  const { messages: rows, hasMore } = await repo.listMessagesPage({
+    conversationId: conversation.id,
+    limit: params.limit,
+  });
   const citationRows = await repo.listCitationsByMessageIds(rows.map((m) => m.id));
   const byMessage = new Map<string, repo.CitationRow[]>();
   for (const citation of citationRows) {
@@ -68,7 +72,7 @@ export async function getMessages(params: {
     list.push(citation);
     byMessage.set(citation.messageId, list);
   }
-  return rows.map((m) => ({ ...m, citations: byMessage.get(m.id) ?? [] }));
+  return { messages: rows.map((m) => ({ ...m, citations: byMessage.get(m.id) ?? [] })), hasMore };
 }
 
 export type PreparedSubmission =
