@@ -1,6 +1,7 @@
 import { metrics as otelMetrics } from "@opentelemetry/api";
 import { PrometheusExporter } from "@opentelemetry/exporter-prometheus";
 import { MeterProvider } from "@opentelemetry/sdk-metrics";
+import { observabilityEnv } from "./env";
 import { logger } from "./logger";
 
 export interface TelemetryHandle {
@@ -13,7 +14,7 @@ export interface TelemetryHandle {
  * 所有 metrics 门面退化为 no-op)。必须在进程启动早期调用,晚于它创建的仪表才有效。
  */
 export function startMetrics(opts: { serviceName: string; port?: number }): TelemetryHandle | null {
-  const port = opts.port ?? Number(process.env.METRICS_PORT ?? 0);
+  const port = opts.port ?? observabilityEnv.metricsPort();
   if (!port) {
     logger.info("metrics.disabled", { serviceName: opts.serviceName });
     return null;

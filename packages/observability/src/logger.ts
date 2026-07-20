@@ -4,6 +4,8 @@
  * 默认不记录完整文档与完整 Prompt:超长字符串会被截断(§29.3)。
  */
 
+import { observabilityEnv } from "./env";
+
 export type LogLevel = "debug" | "info" | "warn" | "error";
 export type LogFields = Record<string, unknown>;
 
@@ -11,7 +13,7 @@ const LEVEL_ORDER: Record<LogLevel, number> = { debug: 10, info: 20, warn: 30, e
 const MAX_STRING_LEN = 512;
 
 function activeLevel(): LogLevel {
-  const raw = (process.env.LOG_LEVEL ?? "info").toLowerCase();
+  const raw = observabilityEnv.logLevel();
   return raw in LEVEL_ORDER ? (raw as LogLevel) : "info";
 }
 

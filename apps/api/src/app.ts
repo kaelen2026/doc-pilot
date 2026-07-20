@@ -4,6 +4,7 @@ import { errToLog, logger } from "@doc-pilot/observability";
 import type { Context, MiddlewareHandler } from "hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { apiEnv } from "./env";
 import { requireAuth } from "./middleware/auth.middleware";
 import { observability } from "./middleware/observability.middleware";
 import { createConversationRoutes } from "./modules/conversations/conversation.routes";
@@ -34,8 +35,7 @@ export function createApp(deps: { rateLimiter?: RateLimiter } = {}) {
   app.use("*", observability());
 
   // 允许 web 源站带 cookie 跨源调用（web:3000 → api:3001）。
-  const webOrigin = process.env.WEB_ORIGIN ?? "http://localhost:3000";
-  app.use("*", cors({ origin: [webOrigin], credentials: true }));
+  app.use("*", cors({ origin: [apiEnv.webOrigin], credentials: true }));
 
   // 登录验证码限流(5 次/小时/邮箱),必须在 auth.handler 之前。
   app.use("/api/auth/*", otpRateLimit(limiter));

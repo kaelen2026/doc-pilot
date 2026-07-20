@@ -6,6 +6,7 @@ import {
   type SectionSummary,
   SectionSummarySchema,
 } from "@doc-pilot/ai";
+import { workerEnv } from "../env";
 import type { Chunk } from "./types";
 
 export interface SummarizeInput {
@@ -32,8 +33,7 @@ interface SectionGroup {
  * Map 阶段串行执行:摘要是后台任务,吞吐让位于可预测的限流表现。
  */
 export async function summarizeDocument(input: SummarizeInput): Promise<DocumentSummary> {
-  const threshold =
-    input.smallDocTokenThreshold ?? Number(process.env.AI_SUMMARY_SMALL_DOC_TOKENS ?? 12000);
+  const threshold = input.smallDocTokenThreshold ?? workerEnv.summary.smallDocTokens;
   const totalTokens = input.chunks.reduce((sum, c) => sum + c.tokenCount, 0);
 
   if (totalTokens <= threshold) {
@@ -41,7 +41,7 @@ export async function summarizeDocument(input: SummarizeInput): Promise<Document
     return generateFinal(input, { mode: "fulltext", content });
   }
 
-  const budget = input.sectionTokenBudget ?? Number(process.env.AI_SUMMARY_SECTION_TOKENS ?? 6000);
+  const budget = input.sectionTokenBudget ?? workerEnv.summary.sectionTokens;
   const groups = groupBySections(input.chunks, budget);
 
   const sectionSummaries: SectionSummary[] = [];

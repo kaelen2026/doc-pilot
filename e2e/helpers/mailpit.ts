@@ -1,4 +1,6 @@
-const MAILPIT_URL = process.env.E2E_MAILPIT_URL ?? "http://localhost:8025";
+import { e2eEnv } from "./env";
+
+const MAILPIT_URL = e2eEnv.mailpitUrl;
 
 interface MailpitListMessage {
   ID: string;
