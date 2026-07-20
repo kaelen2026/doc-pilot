@@ -35,6 +35,18 @@ lock_expires_at
 - 稳定的幂等 Job ID（同一版本任务重复发布不产生重复数据）
 - `processing_version` 校验（防止旧任务在删除/重处理后回写脏数据）
 
+## 35.3 Embedding 回填（维度 / 模型迁移后）
+
+更换 embedding 维度或模型（如 `EMBEDDING_VERSION` v1→v2、1536→1024、`text-embedding-3-small`→`bge-m3`）时，schema migration 会把旧向量置空。已有 `ready` / `partially_ready` 文档不会自动重建向量（代码里没有「版本不匹配自动重建」逻辑），检索会因 `embedding IS NULL` 查不到它们，需手动回填一次：
+
+```bash
+# 前提：常驻 Worker 在跑（消费 Outbox）
+pnpm --filter @doc-pilot/worker backfill:embeddings --dry-run   # 先看命中多少
+pnpm --filter @doc-pilot/worker backfill:embeddings            # 实跑;--limit N 可分批
+```
+
+脚本只找「当前版本 chunk 的 `embedding_version` 与 `EMBEDDING_VERSION` 不符或为空」的文档，逐个在单事务里 `status→queued` + 写 `processing_jobs` + 写 `outbox_events`（遵守 Outbox 不变量，不直接入 BullMQ），复用**同一 `processing_version`** —— pipeline 的先删后插保证幂等重建、不产生重复。真正的重处理由 Worker 消费事件驱动。重复运行安全:已入队(非终态)的文档不会再次命中。
+
 ## 相关决策
 
 - [ADR-004 BullMQ 异步处理](../adr/ADR-004-bullmq-async.md)

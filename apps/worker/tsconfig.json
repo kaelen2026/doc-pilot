@@ -1,4 +1,4 @@
 {
   "extends": "@doc-pilot/config/tsconfig.node.json",
-  "include": ["src", "tsup.config.ts"]
+  "include": ["src", "scripts", "tsup.config.ts"]
 }
