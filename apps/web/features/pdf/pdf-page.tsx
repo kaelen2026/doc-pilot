@@ -2,7 +2,7 @@
 
 import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
 import { useEffect, useRef, useState } from "react";
-import type { Highlight } from "./pdf-highlights";
+import type { Highlight } from "./use-pdf-highlights";
 
 /**
  * 单页:近视口时渲染到 canvas,远离时卸载 canvas 以控内存(225 页也稳)。

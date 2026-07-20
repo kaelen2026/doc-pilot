@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
-import { SourceReader } from "../view/pdf-view";
+import { SourceReader } from "@/features/pdf/source-reader";
 
 /**
  * 原文抽屉:右侧滑入的浮层,复用 PDF 阅读器并定位到 page。桌面覆盖右半屏、

@@ -3,9 +3,9 @@
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { type Highlight, type NormRect, usePdfHighlights } from "./pdf-highlights";
 import { type OutlineNode, OutlineTree } from "./pdf-outline";
 import { PdfPage } from "./pdf-page";
+import { type Highlight, type NormRect, usePdfHighlights } from "./use-pdf-highlights";
 
 const rise = "animate-[rise_0.5s_cubic-bezier(0.2,0,0,1)_both]";
 

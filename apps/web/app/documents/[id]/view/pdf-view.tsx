@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { useFileUrl } from "@/features/documents/use-file-url";
+import { PdfReader } from "@/features/pdf/pdf-reader";
 import { authClient } from "@/lib/auth-client";
-import { PdfReader } from "./pdf-reader";
 
 const rise = "animate-[rise_0.5s_cubic-bezier(0.2,0,0,1)_both]";
 
 /**
  * 在线阅读原始 PDF 的整页视图:鉴权 + 取文件 URL + 头部(返回/下载),
- * 阅读器本体见 pdf-reader.tsx。
+ * 阅读器本体在 @/features/pdf。
  */
 export function PdfView({ documentId }: { documentId: string }) {
   const { data: session, isPending: sessionPending } = authClient.useSession();
@@ -46,27 +46,4 @@ export function PdfView({ documentId }: { documentId: string }) {
       ) : null}
     </main>
   );
-}
-
-/**
- * 抽屉内复用的原文阅读器:自身完成鉴权与取文件 URL,打开即定位到 page。
- * 返回填满 flex 父容器的阅读器(父需为限定高度的 flex 列)。
- */
-export function SourceReader({ documentId, page }: { documentId: string; page: number }) {
-  const { data: session, isPending: sessionPending } = authClient.useSession();
-  const fileQuery = useFileUrl(documentId, !!session);
-
-  if (sessionPending || (session && fileQuery.isPending)) {
-    return <p className="p-6 text-sm text-ink-faint">加载中…</p>;
-  }
-  if (!session) {
-    return <p className="p-6 text-sm text-ink-soft">请先登录后查看原文。</p>;
-  }
-  if (fileQuery.isError) {
-    return <p className="p-6 text-sm text-seal">无法加载 PDF:{String(fileQuery.error)}</p>;
-  }
-  if (!fileQuery.data) {
-    return null;
-  }
-  return <PdfReader url={fileQuery.data} documentId={documentId} initialPage={page} />;
 }
