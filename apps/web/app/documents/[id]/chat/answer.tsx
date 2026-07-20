@@ -1,8 +1,9 @@
 "use client";
 
-import { memo, type ReactNode, useCallback, useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { parseCitationSegments } from "@/features/chat/parse-citations";
 import type { CitationItem, MessageItem } from "@/features/chat/types";
 import { CitationPopover } from "./citation-popover";
 
@@ -86,46 +87,33 @@ function AnswerBody({
   openId: string | null;
   onToggle: (citation: CitationItem, anchor: HTMLElement) => void;
 }) {
-  const parts: ReactNode[] = [];
-  let cursor = 0;
-  let key = 0;
-  const re = /\[(\d+)\]/g;
-  let match: RegExpExecArray | null;
-  // biome-ignore lint/suspicious/noAssignInExpressions: 正则迭代惯用法
-  while ((match = re.exec(content)) !== null) {
-    const n = Number(match[1]);
-    // citations 已按 position 升序,数组下标 n-1 即第 n 条引用。
-    const citation = citations[n - 1];
-    if (match.index > cursor) {
-      parts.push(<span key={key++}>{content.slice(cursor, match.index)}</span>);
+  // 正文按 [n] 切段(纯逻辑见 parseCitationSegments),这里只把段映射成 ReactNode。
+  const parts = parseCitationSegments(content, citations).map((seg, i) => {
+    if (seg.kind === "text") {
+      // biome-ignore lint/suspicious/noArrayIndexKey: 段序稳定,index 即稳定 key
+      return <span key={i}>{seg.text}</span>;
     }
-    if (citation) {
-      const active = openId === citation.id;
-      parts.push(
-        <button
-          key={key++}
-          type="button"
-          onClick={(e) => onToggle(citation, e.currentTarget)}
-          aria-haspopup="dialog"
-          aria-expanded={active}
-          aria-label={`引用 ${n}${citation.pageStart != null ? `,第 ${citation.pageStart} 页` : ""}`}
-          className={`mx-px inline-flex items-center rounded-[3px] px-1 align-super text-[10px] font-medium leading-none tabular-nums transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring ${
-            active
-              ? "bg-seal text-paper"
-              : "bg-seal/10 text-seal [@media(hover:hover)]:hover:bg-seal/20"
-          }`}
-        >
-          {n}
-        </button>,
-      );
-    } else {
-      parts.push(<span key={key++}>{match[0]}</span>);
-    }
-    cursor = match.index + match[0].length;
-  }
-  if (cursor < content.length) {
-    parts.push(<span key={key++}>{content.slice(cursor)}</span>);
-  }
+    const { n, citation } = seg;
+    const active = openId === citation.id;
+    return (
+      <button
+        // biome-ignore lint/suspicious/noArrayIndexKey: 段序稳定,index 即稳定 key
+        key={i}
+        type="button"
+        onClick={(e) => onToggle(citation, e.currentTarget)}
+        aria-haspopup="dialog"
+        aria-expanded={active}
+        aria-label={`引用 ${n}${citation.pageStart != null ? `,第 ${citation.pageStart} 页` : ""}`}
+        className={`mx-px inline-flex items-center rounded-[3px] px-1 align-super text-[10px] font-medium leading-none tabular-nums transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring ${
+          active
+            ? "bg-seal text-paper"
+            : "bg-seal/10 text-seal [@media(hover:hover)]:hover:bg-seal/20"
+        }`}
+      >
+        {n}
+      </button>
+    );
+  });
 
   return <p className="whitespace-pre-wrap text-[15px] leading-[1.8] text-ink">{parts}</p>;
 }

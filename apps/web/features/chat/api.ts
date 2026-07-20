@@ -125,7 +125,8 @@ export async function* streamAnswer(input: {
   }
 }
 
-function parseFrame(frame: string): ChatStreamEvent | null {
+/** 解析单个 SSE 帧(event: / data: 行)。缺 event 或 data、或 JSON 非法时返回 null。导出供单测。 */
+export function parseFrame(frame: string): ChatStreamEvent | null {
   let event = "";
   const dataLines: string[] = [];
   for (const line of frame.split("\n")) {

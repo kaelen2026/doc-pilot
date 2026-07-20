@@ -2,6 +2,7 @@ import type { ProviderAdapter } from "./adapter";
 import { type CapabilityRoutes, type ModelRoute, resolveRoute } from "./capabilities";
 import { AIError, normalizeAIError } from "./errors";
 import type { PromptRegistry } from "./prompt-registry";
+import { stripCodeFence } from "./strip-code-fence";
 import type { AIGateway, AIMetadata, AIUsage } from "./types";
 
 export interface AITrace {
@@ -39,12 +40,6 @@ export interface AIGatewayOptions {
  * 处理链：校验 Capability → 解析 Model Route → 检查 Quota → 解析 Prompt Version
  * → 调用 Provider Adapter → 记录 Usage → 记录 Trace → 标准化错误 → 返回。
  */
-/** 剥掉 ```json ... ``` 围栏；无围栏原样返回。 */
-function stripCodeFence(text: string): string {
-  const match = text.trim().match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/);
-  return match ? (match[1] ?? "") : text;
-}
-
 export function createAIGateway(options: AIGatewayOptions): AIGateway {
   const { routes, adapters, prompts, hooks = {} } = options;
 

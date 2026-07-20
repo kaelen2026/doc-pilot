@@ -3,9 +3,10 @@
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { fitPageScale, pageAtLine, rectsToNormalizedByPage } from "./geometry";
 import { type OutlineNode, OutlineTree } from "./pdf-outline";
 import { PdfPage } from "./pdf-page";
-import { type Highlight, type NormRect, usePdfHighlights } from "./use-pdf-highlights";
+import { type Highlight, usePdfHighlights } from "./use-pdf-highlights";
 
 const rise = "animate-[rise_0.5s_cubic-bezier(0.2,0,0,1)_both]";
 
@@ -112,15 +113,11 @@ export function PdfReader({
       return;
     }
     const line = el.getBoundingClientRect().top + 8;
-    const slots = el.querySelectorAll<HTMLElement>("[data-page]");
-    let cur = 1;
-    for (const s of slots) {
-      if (s.getBoundingClientRect().top <= line) {
-        cur = Number(s.dataset.page);
-      } else {
-        break;
-      }
-    }
+    const slots = Array.from(el.querySelectorAll<HTMLElement>("[data-page]")).map((s) => ({
+      page: Number(s.dataset.page),
+      top: s.getBoundingClientRect().top,
+    }));
+    const cur = pageAtLine(line, slots);
     setCurrent(cur);
     setPageInput(String(cur));
   }, []);
@@ -204,30 +201,11 @@ export function PdfReader({
     }
     const text = sel.toString();
     const range = sel.getRangeAt(0);
-    const slots = el.querySelectorAll<HTMLElement>("[data-page]");
-    const byPage = new Map<number, NormRect[]>();
-    for (const r of Array.from(range.getClientRects())) {
-      if (r.width < 1 || r.height < 1) {
-        continue;
-      }
-      const cx = r.left + r.width / 2;
-      const cy = r.top + r.height / 2;
-      for (const slot of slots) {
-        const b = slot.getBoundingClientRect();
-        if (cx >= b.left && cx <= b.right && cy >= b.top && cy <= b.bottom) {
-          const page = Number(slot.dataset.page);
-          const arr = byPage.get(page) ?? [];
-          arr.push({
-            x: (r.left - b.left) / b.width,
-            y: (r.top - b.top) / b.height,
-            w: r.width / b.width,
-            h: r.height / b.height,
-          });
-          byPage.set(page, arr);
-          break;
-        }
-      }
-    }
+    const slots = Array.from(el.querySelectorAll<HTMLElement>("[data-page]")).map((slot) => ({
+      page: Number(slot.dataset.page),
+      box: slot.getBoundingClientRect(),
+    }));
+    const byPage = rectsToNormalizedByPage(Array.from(range.getClientRects()), slots);
     if (byPage.size === 0) {
       return;
     }
@@ -254,9 +232,7 @@ export function PdfReader({
 
   function fitPage() {
     // 整页:让当前页完整可见(取宽/高约束的较小者),即「自适应当前页」。
-    const byWidth = 1;
-    const byHeight = (box.h - 32) / (fitWidth * baseAspect);
-    setScale(Math.max(MIN_SCALE, Math.min(byWidth, byHeight)));
+    setScale(fitPageScale(box.h, fitWidth, baseAspect, MIN_SCALE));
   }
 
   async function toggleFullscreen() {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useReducedMotion } from "./use-reduced-motion";
 
 /**
  * 跟随到底:窗口滚动到底部附近视为「贴底」,内容增高(流式、新消息)时自动滚到底;
@@ -10,6 +11,7 @@ export function useStickToBottom() {
   const sectionRef = useRef<HTMLElement>(null);
   const atBottomRef = useRef(true);
   const [atBottom, setAtBottom] = useState(true);
+  const reduce = useReducedMotion();
 
   useEffect(() => {
     const THRESHOLD = 120;
@@ -44,12 +46,11 @@ export function useStickToBottom() {
   }, []);
 
   const scrollToBottom = useCallback(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     window.scrollTo({
       top: document.documentElement.scrollHeight,
       behavior: reduce ? "auto" : "smooth",
     });
-  }, []);
+  }, [reduce]);
 
   return { sectionRef, atBottom, scrollToBottom };
 }

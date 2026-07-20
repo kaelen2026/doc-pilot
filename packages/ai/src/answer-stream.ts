@@ -1,6 +1,7 @@
 import { type Answer, AnswerSchema } from "./citations";
 import { AIError } from "./errors";
 import { ANSWER_CITATIONS_MARKER } from "./prompts/document-answer/v1";
+import { stripCodeFence } from "./strip-code-fence";
 
 export interface ParsedAnswerStream {
   /**
@@ -108,10 +109,4 @@ function parseTail(tail: string): {
     throw new AIError("AI_INVALID_RESPONSE", "引用尾部不符合 Schema", { cause: parsed.error });
   }
   return parsed.data;
-}
-
-/** 与 gateway 同款:剥掉模型偶尔加上的 ```json 围栏。 */
-function stripCodeFence(text: string): string {
-  const match = text.trim().match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/);
-  return match ? (match[1] ?? "") : text.trim();
 }
