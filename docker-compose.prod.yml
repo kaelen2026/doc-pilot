@@ -117,8 +117,12 @@ services:
     environment:
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-http://ollama:11434/v1}
       AI_EMBEDDING_MODEL: ${AI_EMBEDDING_MODEL:-bge-m3}
+      # 每进程 Postgres 连接池上限(见 packages/database/src/env.ts)。缺省 20;上量前应在前面加 PgBouncer。
+      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-20}
     ports:
       - "${API_PORT:-3001}:3001"
+    # 横向扩展:api 绑定固定宿主端口,无法直接 deploy.replicas(端口冲突)。多副本需去掉上面的
+    # ports 固定映射并在前面放负载均衡器(Nginx/Traefik/云 LB),超出「纯配置」范畴,见 deployment.md。
     depends_on:
       postgres:
         condition: service_healthy
@@ -143,6 +147,11 @@ services:
     environment:
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-http://ollama:11434/v1}
       AI_EMBEDDING_MODEL: ${AI_EMBEDDING_MODEL:-bge-m3}
+      # 管线以等待 LLM 为主(I/O bound),单进程并发可远高于代码默认 2。缺省 8;受上游网关
+      # TPM/RPM 约束,别调过高。见 apps/worker/src/env.ts。
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-8}
+      # 每进程 Postgres 连接池上限(见 packages/database/src/env.ts)。
+      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-20}
     depends_on:
       postgres:
         condition: service_healthy
@@ -155,6 +164,10 @@ services:
       ollama-init:
         condition: service_completed_successfully
     restart: unless-stopped
+    # 横向扩展:worker 无端口绑定,可直接多副本。缺省 1 保持现状;上量时调 WORKER_REPLICAS。
+    # 总吞吐 ≈ replicas × WORKER_CONCURRENCY,注意别超上游网关额度与 Ollama embedding 吞吐。
+    deploy:
+      replicas: ${WORKER_REPLICAS:-1}
 
   web:
     build:

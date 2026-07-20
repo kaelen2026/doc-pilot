@@ -15,9 +15,16 @@ if (existsSync(rootEnv)) {
 // (构建 / 单测 / Better Auth 装配无需真实 env);回退到本地默认串的逻辑与告警见 client.ts。
 const DEFAULT_LOCAL_URL = "postgres://docpilot:docpilot@localhost:5432/docpilot";
 
+// 连接池上限(每进程)。postgres.js 默认 10;api 与 worker 各是独立进程,各自持有一池。
+// 高并发(如万级 DAU)下 10 会被 SSE 长连接 + 检索查询打满,故抽成可调项。真正上量时应在
+// 前面加 PgBouncer 并据 Postgres max_connections 反推此值,别无脑调大直接压垮 PG。
+const DEFAULT_POOL_MAX = 10;
+
 export const databaseEnv = {
   /** Postgres 连接串;未设置时为 undefined,由消费方决定回退策略。 */
   url: process.env.DATABASE_URL,
   /** 本地默认连接串(见 client.ts 说明)。 */
   defaultLocalUrl: DEFAULT_LOCAL_URL,
+  /** 连接池上限(每进程);见上方说明。缺省 10,与 postgres.js 默认一致。 */
+  poolMax: Number(process.env.DATABASE_POOL_MAX ?? DEFAULT_POOL_MAX),
 } as const;
