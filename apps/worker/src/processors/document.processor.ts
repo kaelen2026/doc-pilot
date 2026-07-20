@@ -54,7 +54,13 @@ export async function processDocumentJob(job: Job<DocumentJobData>): Promise<{
   const filePath = join(workDir, "original.pdf");
 
   try {
-    await repo.markStage({ documentId, jobIdempotencyKey, stage: "parse", progress: 20 });
+    await repo.markStage({
+      documentId,
+      processingVersion,
+      jobIdempotencyKey,
+      stage: "parse",
+      progress: 20,
+    });
     await downloadObjectToFile(claim.objectKey, filePath);
 
     // 权威内容指纹:从实际下载的字节计算(不信前端,见 ADR-003)。
@@ -104,14 +110,32 @@ export async function processDocumentJob(job: Job<DocumentJobData>): Promise<{
 
     const parsed = await parseDocument({ filePath, mimeType: claim.mimeType });
 
-    await repo.markStage({ documentId, jobIdempotencyKey, stage: "clean", progress: 45 });
+    await repo.markStage({
+      documentId,
+      processingVersion,
+      jobIdempotencyKey,
+      stage: "clean",
+      progress: 45,
+    });
     const cleaned = cleanDocument(parsed);
 
-    await repo.markStage({ documentId, jobIdempotencyKey, stage: "chunk", progress: 60 });
+    await repo.markStage({
+      documentId,
+      processingVersion,
+      jobIdempotencyKey,
+      stage: "chunk",
+      progress: 60,
+    });
     const chunks = chunkDocument(cleaned);
 
     // embed 失败会阻断管线(没有向量就没法问答):瞬时 AI 错误重试,其余判失败。
-    await repo.markStage({ documentId, jobIdempotencyKey, stage: "embed", progress: 75 });
+    await repo.markStage({
+      documentId,
+      processingVersion,
+      jobIdempotencyKey,
+      stage: "embed",
+      progress: 75,
+    });
     const embedded = await embedChunks({
       gateway: workerAIGateway(),
       chunks,
@@ -123,7 +147,13 @@ export async function processDocumentJob(job: Job<DocumentJobData>): Promise<{
     });
 
     // 摘要失败不阻断管线:文档仍可问答,状态落为 partially_ready(pipeline.md §13)。
-    await repo.markStage({ documentId, jobIdempotencyKey, stage: "summarize", progress: 88 });
+    await repo.markStage({
+      documentId,
+      processingVersion,
+      jobIdempotencyKey,
+      stage: "summarize",
+      progress: 88,
+    });
     let summary: DocumentSummary | null = null;
     let summaryError: { code: string; message: string } | null = null;
     try {
@@ -173,13 +203,25 @@ export async function processDocumentJob(job: Job<DocumentJobData>): Promise<{
       // 交给 BullMQ 退避重试;仅在最后一次尝试落库为 failed。
       const attempts = job.opts.attempts ?? 1;
       if (job.attemptsMade + 1 >= attempts) {
-        await repo.markFailed({ documentId, jobIdempotencyKey, errorCode, errorMessage: message });
+        await repo.markFailed({
+          documentId,
+          processingVersion,
+          jobIdempotencyKey,
+          errorCode,
+          errorMessage: message,
+        });
       }
       throw err;
     }
 
     // 不可重试:落库 failed 并阻止重试。
-    await repo.markFailed({ documentId, jobIdempotencyKey, errorCode, errorMessage: message });
+    await repo.markFailed({
+      documentId,
+      processingVersion,
+      jobIdempotencyKey,
+      errorCode,
+      errorMessage: message,
+    });
     throw new UnrecoverableError(`${errorCode}: ${message}`);
   } finally {
     await rm(workDir, { recursive: true, force: true }).catch(() => {});

@@ -64,6 +64,13 @@
       "when": 1784546363567,
       "tag": "0008_luxuriant_starhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784548879287,
+      "tag": "0009_cool_wallow",
+      "breakpoints": true
     }
   ]
 }

@@ -41,7 +41,8 @@ export const documents = pgTable(
     chunkCount: integer("chunk_count"),
     summary: jsonb("summary").$type<Record<string, unknown>>(),
     processingVersion: integer("processing_version").notNull().default(1),
-    // 创建幂等（见 §23.1）：同一 owner + Idempotency-Key 返回同一文档。
+    // 创建幂等（见 §23.1）：同一 workspace + owner + Idempotency-Key 返回同一文档。
+    // 幂等键的作用域是租户内的——见下方唯一约束与 findByOwnerIdempotency（CLAUDE.md 租户隔离不变量）。
     idempotencyKey: varchar("idempotency_key", { length: 255 }),
     // 内容级去重（见 §23.4、pipeline.md §15.3）：原始文件的 SHA256(hex)。
     // 由 Worker 从真实字节计算后回填(权威),用于同 workspace 内容去重的快速查找。
@@ -57,7 +58,13 @@ export const documents = pgTable(
     index("documents_workspace_created_idx")
       .on(t.workspaceId, t.createdAt.desc())
       .where(sql`${t.deletedAt} is null`),
-    unique("documents_owner_idempotency_unique").on(t.ownerId, t.idempotencyKey),
+    // 幂等唯一性按 workspace 作用域:同一 owner 在不同 workspace 复用同一 Idempotency-Key
+    // 不得互相命中/冲突(租户隔离,见 CLAUDE.md 不变量与 findByOwnerIdempotency)。
+    unique("documents_workspace_owner_idempotency_unique").on(
+      t.workspaceId,
+      t.ownerId,
+      t.idempotencyKey,
+    ),
     // 内容去重查找（§23.4）：按 (workspace, checksum) 命中已就绪文档。
     // 部分索引:只索引未删且已回填指纹的行,故未就绪/无指纹文档不参与去重。
     index("documents_workspace_checksum_idx")

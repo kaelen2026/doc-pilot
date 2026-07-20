@@ -4,6 +4,7 @@ import { type ChunkCandidate, selectSources, toCitationSources } from "./retriev
 function candidate(overrides: Partial<ChunkCandidate>): ChunkCandidate {
   return {
     chunkId: `chunk-${overrides.chunkIndex ?? 0}`,
+    documentId: "doc-1",
     chunkIndex: 0,
     content: "内容",
     contentHash: `hash-${overrides.chunkIndex ?? 0}`,
@@ -73,7 +74,6 @@ describe("toCitationSources", () => {
       selectSources([candidate({ chunkIndex: 1, pageStart: null, pageEnd: null })], {
         minScore: 0,
       }),
-      "doc-1",
     );
     expect(source).toEqual({
       sourceId: "S1",
@@ -83,5 +83,20 @@ describe("toCitationSources", () => {
       pageStart: undefined,
       pageEnd: undefined,
     });
+  });
+
+  it("携带每个 chunk 的真实 documentId(不被会话文档覆盖)——跨文档引用校验的前提", () => {
+    // 回归护栏:若检索层串入他文档的 chunk,其 documentId 必须原样透出,
+    // 交给 validateAnswer 的 WRONG_DOCUMENT 拦截,而非被统一盖成当前会话文档。
+    const sources = toCitationSources(
+      selectSources(
+        [
+          candidate({ chunkIndex: 1, documentId: "doc-1" }),
+          candidate({ chunkIndex: 2, documentId: "doc-foreign" }),
+        ],
+        { minScore: 0 },
+      ),
+    );
+    expect(sources.map((s) => s.documentId)).toEqual(["doc-1", "doc-foreign"]);
   });
 });

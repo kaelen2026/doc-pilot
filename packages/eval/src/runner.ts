@@ -103,6 +103,8 @@ export async function ingestDataset(
 
 interface Candidate {
   chunkId: string;
+  /** chunk 真实归属文档,与线上同口径:引用跨文档校验的比对基准。 */
+  documentId: string;
   chunkIndex: number;
   content: string;
   tokenCount: number;
@@ -130,6 +132,7 @@ async function retrieve(
   return db
     .select({
       chunkId: documentChunks.id,
+      documentId: documentChunks.documentId,
       chunkIndex: documentChunks.chunkIndex,
       content: documentChunks.content,
       tokenCount: documentChunks.tokenCount,
@@ -195,7 +198,7 @@ export async function runCase(
     .sort((a, b) => a.chunkIndex - b.chunkIndex)
     .map((c, i) => ({
       sourceId: `S${i + 1}`,
-      documentId,
+      documentId: c.documentId,
       chunkId: c.chunkId,
       text: c.content,
       pageStart: c.pageStart ?? undefined,

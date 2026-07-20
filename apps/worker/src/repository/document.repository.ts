@@ -9,7 +9,7 @@ import {
 } from "@doc-pilot/database/schema";
 import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
 import type { Chunk, EmbeddedChunks } from "../pipeline";
-import { passesProcessingGuard } from "./processing-guard";
+import { passesProcessingGuard, READY_STATUSES } from "./processing-guard";
 
 export interface ClaimedDocument {
   documentId: string;
@@ -151,27 +151,45 @@ export async function loadFinalizedContent(
   return { chunks, embedded: { vectors, model } };
 }
 
-/** 推进阶段:更新 documents 的状态/阶段/进度,并把 processing_jobs 标为 running。 */
+/**
+ * 推进阶段:更新 documents 的状态/阶段/进度,并把 processing_jobs 标为 running。
+ * 与收尾一样在事务内 FOR UPDATE 复检版本守卫(passesProcessingGuard):陈旧任务或期间
+ * 被删除(deleting/deleted)时命中不到守卫 → 整体跳过,不把 deleting 状态复位成 processing
+ * (架构体检 E,pipeline.md §24)。
+ */
 export async function markStage(params: {
   documentId: string;
+  processingVersion: number;
   jobIdempotencyKey: string;
   stage: ProcessingStage;
   progress: number;
 }): Promise<void> {
-  await db
-    .update(documents)
-    .set({
-      status: "processing",
-      currentStage: params.stage,
-      progress: params.progress,
-      updatedAt: new Date(),
-    })
-    .where(eq(documents.id, params.documentId));
+  await db.transaction(async (tx) => {
+    const [doc] = await tx
+      .select()
+      .from(documents)
+      .where(eq(documents.id, params.documentId))
+      .for("update");
 
-  await db
-    .update(processingJobs)
-    .set({ status: "running", stage: params.stage, startedAt: new Date() })
-    .where(eq(processingJobs.idempotencyKey, params.jobIdempotencyKey));
+    if (!passesProcessingGuard(doc, params.processingVersion)) {
+      return;
+    }
+
+    await tx
+      .update(documents)
+      .set({
+        status: "processing",
+        currentStage: params.stage,
+        progress: params.progress,
+        updatedAt: new Date(),
+      })
+      .where(eq(documents.id, params.documentId));
+
+    await tx
+      .update(processingJobs)
+      .set({ status: "running", stage: params.stage, startedAt: new Date() })
+      .where(eq(processingJobs.idempotencyKey, params.jobIdempotencyKey));
+  });
 }
 
 /**
@@ -291,30 +309,48 @@ export async function saveChunksAndFinalize(params: {
   });
 }
 
-/** 标记处理失败(状态可观察 + 保留错误码,见 §13)。 */
+/**
+ * 标记处理失败(状态可观察 + 保留错误码,见 §13)。
+ * 事务内 FOR UPDATE 复检版本守卫,并额外 block READY_STATUSES:at-least-once 重复投递下,
+ * 一次投递已成功(ready/partially_ready)后,另一次投递末次尝试失败不得把成功覆盖成 failed
+ * (架构体检 E)。守卫不通过则整体跳过——不改文档、也不把 processing_jobs 标失败。
+ */
 export async function markFailed(params: {
   documentId: string;
+  processingVersion: number;
   jobIdempotencyKey: string;
   errorCode: string;
   errorMessage: string;
 }): Promise<void> {
-  await db
-    .update(documents)
-    .set({
-      status: "failed",
-      errorCode: params.errorCode,
-      errorMessage: params.errorMessage.slice(0, 2000),
-      updatedAt: new Date(),
-    })
-    .where(eq(documents.id, params.documentId));
+  await db.transaction(async (tx) => {
+    const [doc] = await tx
+      .select()
+      .from(documents)
+      .where(eq(documents.id, params.documentId))
+      .for("update");
 
-  await db
-    .update(processingJobs)
-    .set({
-      status: "failed",
-      errorCode: params.errorCode,
-      errorMessage: params.errorMessage.slice(0, 2000),
-      completedAt: new Date(),
-    })
-    .where(eq(processingJobs.idempotencyKey, params.jobIdempotencyKey));
+    if (!passesProcessingGuard(doc, params.processingVersion, { blockStatuses: READY_STATUSES })) {
+      return;
+    }
+
+    await tx
+      .update(documents)
+      .set({
+        status: "failed",
+        errorCode: params.errorCode,
+        errorMessage: params.errorMessage.slice(0, 2000),
+        updatedAt: new Date(),
+      })
+      .where(eq(documents.id, params.documentId));
+
+    await tx
+      .update(processingJobs)
+      .set({
+        status: "failed",
+        errorCode: params.errorCode,
+        errorMessage: params.errorMessage.slice(0, 2000),
+        completedAt: new Date(),
+      })
+      .where(eq(processingJobs.idempotencyKey, params.jobIdempotencyKey));
+  });
 }
