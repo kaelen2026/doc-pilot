@@ -276,10 +276,12 @@ export function PdfReader({
   const toolBtn = "h-7 px-2 text-ink-soft";
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: 根容器仅拦截右键默认菜单,非交互控件
     <div
       ref={rootRef}
       className={`flex min-h-0 flex-1 flex-col bg-paper ${rise}`}
       style={{ animationDelay: "80ms" }}
+      onContextMenu={(e) => e.preventDefault()}
     >
       {/* 工具条:纯 UI chrome,禁止文本选中(按钮文字不该被选中) */}
       <div className="flex flex-wrap select-none items-center justify-center gap-x-4 gap-y-2 border-hairline border-y py-2">
