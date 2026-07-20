@@ -44,7 +44,9 @@ export function mockAnswerChunks(input: { messages: AIMessage[] }): string[] {
   };
   return [
     "根据文档来源,",
-    "这是 Mock Provider 基于检索片段生成的占位回答(未配置真实模型)。",
+    // 正文内嵌 [1] 标记,对应下方 citations 的第 1 条(与真实 Prompt 的输出契约一致,
+    // 见 prompts/document-answer/v1:结论后紧跟 [n])。前端据此渲染可点击的引用锚点。
+    "这是 Mock Provider 基于检索片段生成的占位回答(未配置真实模型)[1]。",
     `\n${ANSWER_CITATIONS_MARKER}\n`,
     JSON.stringify(tail),
   ];
