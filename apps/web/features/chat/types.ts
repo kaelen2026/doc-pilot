@@ -1,5 +1,13 @@
 /** 与 apps/api conversations 模块 serializeMessage / SSE 事件对应的前端 DTO。 */
 
+/** 文档详情(问答页头部与状态门禁用)。对应 GET /documents/:id。 */
+export interface DocDetail {
+  id: string;
+  title: string;
+  status: string;
+  pageCount: number | null;
+}
+
 export interface CitationItem {
   id: string;
   chunkId: string;
