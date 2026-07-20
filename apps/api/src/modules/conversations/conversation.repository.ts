@@ -97,15 +97,25 @@ export async function getConversation(params: {
 }
 
 /**
- * 会话内消息(升序)。同一事务里成对写入的 user/assistant 消息 created_at 相同,
- * 用 role 降序('user' > 'assistant')保证提问先于回答。
+ * 会话内最近 limit 条消息(升序返回)。取「最近窗口」而非整段历史:
+ * 先按 created_at 降序取 limit+1 条(多取 1 条判定 hasMore),再整体反转成升序。
+ * 反转后同一事务写入的 user/assistant 对(created_at 相同)恢复「提问先于回答」。
+ * 窗口始终是完整历史的后缀,故新消息进入或 limit 递增都不产生空洞/重复。
  */
-export async function listMessages(conversationId: string): Promise<MessageRow[]> {
-  return db
+export async function listMessagesPage(params: {
+  conversationId: string;
+  limit: number;
+}): Promise<{ messages: MessageRow[]; hasMore: boolean }> {
+  const rows = await db
     .select()
     .from(messages)
-    .where(eq(messages.conversationId, conversationId))
-    .orderBy(asc(messages.createdAt), desc(messages.role));
+    .where(eq(messages.conversationId, params.conversationId))
+    // 降序取窗口:同刻内 role 升序('assistant' < 'user'),反转后即 user 先于 assistant。
+    .orderBy(desc(messages.createdAt), asc(messages.role))
+    .limit(params.limit + 1);
+  const hasMore = rows.length > params.limit;
+  const page = (hasMore ? rows.slice(0, params.limit) : rows).reverse();
+  return { messages: page, hasMore };
 }
 
 export async function listCitationsByMessageIds(messageIds: string[]): Promise<CitationRow[]> {

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   type FormEvent,
+  memo,
   type ReactNode,
   useCallback,
   useEffect,
@@ -29,6 +30,9 @@ import { SourceReader } from "../view/pdf-view";
 const rise = "animate-[rise_0.5s_cubic-bezier(0.2,0,0,1)_both]";
 
 const ASKABLE = new Set(["ready", "partially_ready"]);
+
+/** 消息窗口大小,也是「加载更早」的步长。与 @doc-pilot/contracts 的 MESSAGE_PAGE.size 对齐。 */
+const MESSAGE_PAGE_SIZE = 30;
 
 /** 点开的引用及其触发元素(popover 锚点)。内嵌锚点与底部脚注共用。 */
 interface OpenCitation {
@@ -64,8 +68,12 @@ export function ChatView({ documentId }: { documentId: string }) {
 
   const conversationQuery = useConversation(documentId, askable);
   const conversationId = conversationQuery.data?.id;
-  const messagesQuery = useMessages(conversationId);
-  const messages = messagesQuery.data ?? [];
+
+  // 只加载最近 limit 条,向上「加载更早」时递增(窗口即完整历史的后缀)。
+  const [limit, setLimit] = useState(MESSAGE_PAGE_SIZE);
+  const messagesQuery = useMessages(conversationId, limit);
+  const messages = messagesQuery.data?.messages ?? [];
+  const hasMore = messagesQuery.data?.hasMore ?? false;
   const { send, streaming, sendError } = useSendMessage(conversationId);
 
   const [draft, setDraft] = useState("");
@@ -80,6 +88,25 @@ export function ChatView({ documentId }: { documentId: string }) {
     }
   }, []);
 
+  // 「加载更早」:向前扩窗。加载会在顶部插入内容,记录扩窗前的文档高度,
+  // 待新窗口渲染后按增量回补 scrollY,保持用户当前阅读位置不跳动。
+  const anchorRef = useRef<number | null>(null);
+  const loadEarlier = useCallback(() => {
+    anchorRef.current = document.documentElement.scrollHeight;
+    setLimit((l) => l + MESSAGE_PAGE_SIZE);
+  }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: messages 是「新窗口已渲染」的触发信号,非在体内读取
+  useLayoutEffect(() => {
+    if (anchorRef.current == null) {
+      return;
+    }
+    const delta = document.documentElement.scrollHeight - anchorRef.current;
+    if (delta > 0) {
+      window.scrollBy(0, delta);
+    }
+    anchorRef.current = null;
+  }, [messages]);
+
   function submit(e: FormEvent) {
     e.preventDefault();
     const content = draft.trim();
@@ -90,20 +117,24 @@ export function ChatView({ documentId }: { documentId: string }) {
     void send({ content });
   }
 
-  function retry(assistant: MessageItem) {
-    // 配对的提问是消息流里它前面最近的一条 user 消息。
-    const index = messages.findIndex((m) => m.id === assistant.id);
-    const question = messages
-      .slice(0, index)
-      .reverse()
-      .find((m) => m.role === "user");
-    if (question) {
-      void send({
-        content: question.content,
-        clientRequestId: question.clientRequestId ?? undefined,
-      });
-    }
-  }
+  // 稳定引用:仅依赖 messages / send,流式期间不变,使 memo 化的消息项不因逐帧
+  // delta 重渲(重跑正则)。retry 由配对提问(消息流里前面最近的 user)重发。
+  const retry = useCallback(
+    (assistant: MessageItem) => {
+      const index = messages.findIndex((m) => m.id === assistant.id);
+      const question = messages
+        .slice(0, index)
+        .reverse()
+        .find((m) => m.role === "user");
+      if (question) {
+        void send({
+          content: question.content,
+          clientRequestId: question.clientRequestId ?? undefined,
+        });
+      }
+    },
+    [messages, send],
+  );
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col px-6 py-10">
@@ -156,6 +187,19 @@ export function ChatView({ documentId }: { documentId: string }) {
               </p>
             ) : null}
 
+            {hasMore ? (
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={loadEarlier}
+                  disabled={messagesQuery.isFetching}
+                  className="rounded-full border border-hairline bg-paper px-3.5 py-1.5 text-xs text-ink-soft transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60 [@media(hover:hover)]:hover:text-ink"
+                >
+                  {messagesQuery.isFetching ? "加载中…" : "↑ 加载更早的消息"}
+                </button>
+              </div>
+            ) : null}
+
             {messages.map((m) =>
               m.role === "user" ? (
                 <UserNote key={m.id} content={m.content} />
@@ -163,7 +207,7 @@ export function ChatView({ documentId }: { documentId: string }) {
                 <AssistantPassage
                   key={m.id}
                   message={m}
-                  onRetry={() => retry(m)}
+                  onRetry={retry}
                   onViewSource={viewSource}
                 />
               ),
@@ -341,8 +385,8 @@ function useTypewriter(target: string): string {
   return reduce ? target : target.slice(0, shown);
 }
 
-/** 用户提问:右侧纸凹便签。 */
-function UserNote({ content }: { content: string }) {
+/** 用户提问:右侧纸凹便签。memo:流式逐帧重渲时,历史项 props 不变即跳过。 */
+const UserNote = memo(function UserNote({ content }: { content: string }) {
   return (
     <div className="flex justify-end">
       <p className="max-w-[85%] whitespace-pre-wrap rounded-md bg-paper-sunken px-3.5 py-2.5 text-sm leading-[1.7] text-ink-soft">
@@ -350,7 +394,7 @@ function UserNote({ content }: { content: string }) {
       </p>
     </div>
   );
-}
+});
 
 /** 生成中的回答:检索提示 + 打字机正文 + 墨色光标。 */
 function StreamingAnswer({ streaming }: { streaming: StreamingState }) {
@@ -380,14 +424,18 @@ function StreamingAnswer({ streaming }: { streaming: StreamingState }) {
   );
 }
 
-/** 助手回答:墨字直接书写在纸面,结论处朱红上标锚点,点击弹出引用原文。 */
-function AssistantPassage({
+/**
+ * 助手回答:墨字直接书写在纸面,结论处朱红上标锚点,点击弹出引用原文。
+ * memo:消息列表变长后,流式逐帧 delta 触发 ChatView 重渲时,props 未变的历史
+ * 回答不再重跑正文正则解析(message 引用稳定,onRetry/onViewSource 流式期间稳定)。
+ */
+const AssistantPassage = memo(function AssistantPassage({
   message,
   onRetry,
   onViewSource,
 }: {
   message: MessageItem;
-  onRetry: () => void;
+  onRetry: (message: MessageItem) => void;
   onViewSource: (citation: CitationItem) => void;
 }) {
   // 内嵌锚点与底部脚注共享同一「打开项」:点其一即在其锚点处弹出引用 popover。
@@ -403,7 +451,7 @@ function AssistantPassage({
         <p className="text-sm text-seal">
           回答生成失败{message.errorCode ? `(${message.errorCode})` : ""}。
         </p>
-        <Button variant="outline" size="sm" onClick={onRetry}>
+        <Button variant="outline" size="sm" onClick={() => onRetry(message)}>
           重试
         </Button>
       </div>
@@ -432,7 +480,7 @@ function AssistantPassage({
       ) : null}
     </div>
   );
-}
+});
 
 /**
  * 答案正文:把模型内嵌的 [n] 标记(n 为引用序号,从 1 开始)渲染成朱红上标锚点,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef, useState } from "react";
 import { ensureConversation, fetchMessages, streamAnswer } from "./api";
 
@@ -22,11 +22,17 @@ export function useConversation(documentId: string, enabled: boolean) {
   });
 }
 
-export function useMessages(conversationId: string | undefined) {
+/**
+ * 消息窗口:只取最近 limit 条(升序)。limit 递增即「加载更早」;
+ * placeholderData 保留上一窗口,翻页时不闪空。发送后按前缀 ["messages", id]
+ * 失活即刷新当前窗口(含新消息对)。
+ */
+export function useMessages(conversationId: string | undefined, limit: number) {
   return useQuery({
-    queryKey: ["messages", conversationId],
-    queryFn: () => fetchMessages(conversationId as string),
+    queryKey: ["messages", conversationId, limit],
+    queryFn: () => fetchMessages(conversationId as string, limit),
     enabled: !!conversationId,
+    placeholderData: keepPreviousData,
   });
 }
 

@@ -36,14 +36,20 @@ export async function ensureConversation(documentId: string): Promise<Conversati
   return conversation;
 }
 
-export async function fetchMessages(conversationId: string): Promise<MessageItem[]> {
+export interface MessagesPage {
+  /** 最近 limit 条消息(升序);是完整历史的后缀。 */
+  messages: MessageItem[];
+  /** 是否还有更早的消息可加载。 */
+  hasMore: boolean;
+}
+
+export async function fetchMessages(conversationId: string, limit: number): Promise<MessagesPage> {
   const r = await requireOk(
-    await fetch(`${API_URL}/conversations/${conversationId}/messages`, {
+    await fetch(`${API_URL}/conversations/${conversationId}/messages?limit=${limit}`, {
       credentials: "include",
     }),
   );
-  const { messages } = (await r.json()) as { messages: MessageItem[] };
-  return messages;
+  return (await r.json()) as MessagesPage;
 }
 
 /**
