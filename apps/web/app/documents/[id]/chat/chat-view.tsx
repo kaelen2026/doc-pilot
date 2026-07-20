@@ -2,18 +2,38 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type FormEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { CitationItem, MessageItem } from "@/features/chat/types";
-import { useConversation, useMessages, useSendMessage } from "@/features/chat/use-chat";
+import {
+  type StreamingState,
+  useConversation,
+  useMessages,
+  useSendMessage,
+} from "@/features/chat/use-chat";
 import { authClient } from "@/lib/auth-client";
 import { API_URL } from "@/lib/env";
 
 const rise = "animate-[rise_0.5s_cubic-bezier(0.2,0,0,1)_both]";
 
 const ASKABLE = new Set(["ready", "partially_ready"]);
+
+/** 点开的引用及其触发元素(popover 锚点)。内嵌锚点与底部脚注共用。 */
+interface OpenCitation {
+  citation: CitationItem;
+  anchor: HTMLElement;
+}
 
 interface DocDetail {
   id: string;
@@ -48,13 +68,8 @@ export function ChatView({ documentId }: { documentId: string }) {
   const { send, streaming, sendError } = useSendMessage(conversationId);
 
   const [draft, setDraft] = useState("");
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  // 流式增量与新消息到达时跟到底部;依赖长度与流文本,避免每次渲染都滚。
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 滚动锚定依赖的是内容变化信号
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "end" });
-  }, [messages.length, streaming?.text]);
+  const { sectionRef, atBottom, scrollToBottom } = useStickToBottom();
+  const hasThread = messages.length > 0 || !!streaming;
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -107,6 +122,7 @@ export function ChatView({ documentId }: { documentId: string }) {
       </header>
 
       <section
+        ref={sectionRef}
         className={`flex flex-1 flex-col gap-7 py-8 ${rise}`}
         style={{ animationDelay: "80ms" }}
         aria-live="polite"
@@ -142,34 +158,39 @@ export function ChatView({ documentId }: { documentId: string }) {
             {streaming ? (
               <>
                 <UserNote content={streaming.question} />
-                <div className="space-y-2">
-                  {streaming.phase === "retrieving" ? (
-                    <p className="text-sm text-ink-faint">检索文档中…</p>
-                  ) : (
-                    <>
-                      {streaming.sourceCount !== null ? (
-                        <p className="text-xs text-ink-faint tabular-nums">
-                          命中 {streaming.sourceCount} 处相关内容
-                        </p>
-                      ) : null}
-                      <p className="whitespace-pre-wrap text-[15px] leading-[1.8] text-ink">
-                        {streaming.text}
-                        <span
-                          aria-hidden
-                          className="ml-0.5 inline-block h-[1em] w-[3px] translate-y-[2px] animate-pulse rounded-full bg-ink-soft"
-                        />
-                      </p>
-                    </>
-                  )}
-                </div>
+                {/* clientRequestId 作 key:每问一轮重挂,打字机进度归零。 */}
+                <StreamingAnswer key={streaming.clientRequestId} streaming={streaming} />
               </>
             ) : null}
 
             {sendError ? <p className="text-sm text-seal">{sendError}</p> : null}
           </>
         )}
-        <div ref={bottomRef} />
       </section>
+
+      {hasThread && !atBottom ? (
+        <button
+          type="button"
+          onClick={scrollToBottom}
+          aria-label="回到底部"
+          className="fixed bottom-24 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-hairline bg-paper/95 px-3.5 py-2 text-xs text-ink-soft shadow-[0_4px_20px_-4px_rgba(0,0,0,0.18)] backdrop-blur-sm transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [@media(hover:hover)]:hover:text-ink"
+        >
+          <svg
+            aria-hidden="true"
+            role="presentation"
+            viewBox="0 0 16 16"
+            className="h-3.5 w-3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M4 6l4 4 4-4" />
+          </svg>
+          回到底部
+        </button>
+      ) : null}
 
       {session && askable ? (
         <form
@@ -193,6 +214,115 @@ export function ChatView({ documentId }: { documentId: string }) {
   );
 }
 
+/**
+ * 跟随到底:窗口滚动到底部附近视为「贴底」,内容增高(流式、新消息)时自动滚到底;
+ * 用户主动上滑离开底部即停止跟随,并暴露 atBottom 供「回到底部」按钮判定。
+ */
+function useStickToBottom() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const atBottomRef = useRef(true);
+  const [atBottom, setAtBottom] = useState(true);
+
+  useEffect(() => {
+    const THRESHOLD = 120;
+    function compute() {
+      const doc = document.documentElement;
+      const near = window.innerHeight + window.scrollY >= doc.scrollHeight - THRESHOLD;
+      atBottomRef.current = near;
+      setAtBottom(near);
+    }
+    compute();
+    window.addEventListener("scroll", compute, { passive: true });
+    window.addEventListener("resize", compute);
+    return () => {
+      window.removeEventListener("scroll", compute);
+      window.removeEventListener("resize", compute);
+    };
+  }, []);
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) {
+      return;
+    }
+    // 内容区高度变化(打字机逐字、新消息)时,只有仍贴底才跟随,尊重用户上滑。
+    const ro = new ResizeObserver(() => {
+      if (atBottomRef.current) {
+        window.scrollTo({ top: document.documentElement.scrollHeight });
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      behavior: reduce ? "auto" : "smooth",
+    });
+  }, []);
+
+  return { sectionRef, atBottom, scrollToBottom };
+}
+
+function usePrefersReducedMotion(): boolean {
+  const [reduce, setReduce] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReduce(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  return reduce;
+}
+
+/**
+ * 打字机揭示:target 只增(delta 追加),逐帧把已显示长度推向 target。
+ * 落后越多每帧吐越多,避免模型一次吐一大段时「跳段」或拖尾;追上即停帧。
+ * prefers-reduced-motion 下直接全量,不做动画。
+ */
+function useTypewriter(target: string): string {
+  const [shown, setShown] = useState(0);
+  const reduce = usePrefersReducedMotion();
+
+  useEffect(() => {
+    if (reduce) {
+      setShown(target.length);
+      return;
+    }
+    let frame = 0;
+    let cancelled = false;
+    function step() {
+      if (cancelled) {
+        return;
+      }
+      let done = false;
+      setShown((cur) => {
+        if (cur >= target.length) {
+          done = true;
+          return cur;
+        }
+        const remaining = target.length - cur;
+        const next = Math.min(target.length, cur + Math.max(1, Math.floor(remaining / 6)));
+        done = next >= target.length;
+        return next;
+      });
+      if (!done) {
+        frame = requestAnimationFrame(step);
+      }
+    }
+    frame = requestAnimationFrame(step);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+    };
+  }, [target, reduce]);
+
+  return reduce ? target : target.slice(0, shown);
+}
+
 /** 用户提问:右侧纸凹便签。 */
 function UserNote({ content }: { content: string }) {
   return (
@@ -204,10 +334,42 @@ function UserNote({ content }: { content: string }) {
   );
 }
 
-/** 助手回答:墨字直接书写在纸面,结论处朱红上标锚点,底部朱红脚注一一对应。 */
+/** 生成中的回答:检索提示 + 打字机正文 + 墨色光标。 */
+function StreamingAnswer({ streaming }: { streaming: StreamingState }) {
+  const typed = useTypewriter(streaming.text);
+
+  return (
+    <div className="space-y-2">
+      {streaming.phase === "retrieving" ? (
+        <p className="text-sm text-ink-faint">检索文档中…</p>
+      ) : (
+        <>
+          {streaming.sourceCount !== null ? (
+            <p className="text-xs text-ink-faint tabular-nums">
+              命中 {streaming.sourceCount} 处相关内容
+            </p>
+          ) : null}
+          <p className="whitespace-pre-wrap text-[15px] leading-[1.8] text-ink">
+            {typed}
+            <span
+              aria-hidden
+              className="ml-0.5 inline-block h-[1em] w-[3px] translate-y-[2px] animate-pulse rounded-full bg-ink-soft"
+            />
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** 助手回答:墨字直接书写在纸面,结论处朱红上标锚点,点击弹出引用原文。 */
 function AssistantPassage({ message, onRetry }: { message: MessageItem; onRetry: () => void }) {
-  // 内嵌锚点与底部脚注共享同一「展开项」:点其一即高亮并展开对应引用。
-  const [openId, setOpenId] = useState<string | null>(null);
+  // 内嵌锚点与底部脚注共享同一「打开项」:点其一即在其锚点处弹出引用 popover。
+  const [open, setOpen] = useState<OpenCitation | null>(null);
+
+  const toggle = useCallback((citation: CitationItem, anchor: HTMLElement) => {
+    setOpen((cur) => (cur?.citation.id === citation.id ? null : { citation, anchor }));
+  }, []);
 
   if (message.status === "failed") {
     return (
@@ -230,17 +392,15 @@ function AssistantPassage({ message, onRetry }: { message: MessageItem; onRetry:
       <AnswerBody
         content={message.content}
         citations={message.citations}
-        messageId={message.id}
-        openId={openId}
-        onToggle={setOpenId}
+        openId={open?.citation.id ?? null}
+        onToggle={toggle}
       />
       {refused ? <Badge variant="seal">未在文档中找到依据</Badge> : null}
-      {message.citations.length > 0 ? (
-        <CitationFootnotes
-          citations={message.citations}
-          messageId={message.id}
-          openId={openId}
-          onToggle={setOpenId}
+      {open ? (
+        <CitationPopover
+          citation={open.citation}
+          anchor={open.anchor}
+          onClose={() => setOpen(null)}
         />
       ) : null}
     </div>
@@ -249,21 +409,19 @@ function AssistantPassage({ message, onRetry }: { message: MessageItem; onRetry:
 
 /**
  * 答案正文:把模型内嵌的 [n] 标记(n 为引用序号,从 1 开始)渲染成朱红上标锚点,
- * 点击即高亮并滚动到底部对应脚注,与脚注编号一一对应(rag.md §19)。
+ * 点击即弹出对应引用原文,与脚注编号一一对应(rag.md §19)。
  * 越界或无对应引用的 [n] 原样保留为文本——模型偶发跑偏时正文仍可读,不整条失败。
  */
 function AnswerBody({
   content,
   citations,
-  messageId,
   openId,
   onToggle,
 }: {
   content: string;
   citations: CitationItem[];
-  messageId: string;
   openId: string | null;
-  onToggle: (id: string | null) => void;
+  onToggle: (citation: CitationItem, anchor: HTMLElement) => void;
 }) {
   const parts: ReactNode[] = [];
   let cursor = 0;
@@ -284,15 +442,9 @@ function AnswerBody({
         <button
           key={key++}
           type="button"
-          onClick={() => {
-            const next = active ? null : citation.id;
-            onToggle(next);
-            if (next) {
-              document
-                .getElementById(`cite-${messageId}-${n}`)
-                ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-            }
-          }}
+          onClick={(e) => onToggle(citation, e.currentTarget)}
+          aria-haspopup="dialog"
+          aria-expanded={active}
           aria-label={`引用 ${n}${citation.pageStart != null ? `,第 ${citation.pageStart} 页` : ""}`}
           className={`mx-px inline-flex items-center rounded-[3px] px-1 align-super text-[10px] font-medium leading-none tabular-nums transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring ${
             active
@@ -315,46 +467,86 @@ function AnswerBody({
   return <p className="whitespace-pre-wrap text-[15px] leading-[1.8] text-ink">{parts}</p>;
 }
 
-function CitationFootnotes({
-  citations,
-  messageId,
-  openId,
-  onToggle,
+/**
+ * 引用 popover:portal 到 body,固定定位在锚点附近(下方优先,不够则翻到上方),
+ * 随滚动/缩放重新定位;点击外部或 Esc 关闭。展示可核对的原文与支撑结论。
+ */
+function CitationPopover({
+  citation,
+  anchor,
+  onClose,
 }: {
-  citations: CitationItem[];
-  messageId: string;
-  openId: string | null;
-  onToggle: (id: string | null) => void;
+  citation: CitationItem;
+  anchor: HTMLElement;
+  onClose: () => void;
 }) {
-  const active = citations.find((c) => c.id === openId);
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
-  return (
-    <div className="space-y-2 border-t border-hairline pt-2.5">
-      <div className="flex flex-wrap gap-1.5">
-        {citations.map((c, i) => (
-          <button
-            key={c.id}
-            id={`cite-${messageId}-${i + 1}`}
-            type="button"
-            onClick={() => onToggle(openId === c.id ? null : c.id)}
-            aria-expanded={openId === c.id}
-            className={`rounded-sm px-2 py-1 text-xs tabular-nums transition-[color,background-color] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
-              openId === c.id
-                ? "bg-seal/10 text-seal-deep"
-                : "text-seal [@media(hover:hover)]:hover:bg-seal/10"
-            }`}
-          >
-            引 {i + 1}
-            {c.pageStart != null ? ` · 第 ${c.pageStart} 页` : ""}
-          </button>
-        ))}
-      </div>
-      {active ? (
-        <blockquote className="space-y-1.5 rounded-md border-l-2 border-seal bg-paper-sunken px-3.5 py-2.5">
-          <p className="text-sm leading-[1.7] text-ink-soft">“{active.quote}”</p>
-          {active.claim ? <p className="text-xs text-ink-faint">支撑:{active.claim}</p> : null}
-        </blockquote>
+  useLayoutEffect(() => {
+    function place() {
+      const el = ref.current;
+      if (!el) {
+        return;
+      }
+      const a = anchor.getBoundingClientRect();
+      const ph = el.offsetHeight;
+      const pw = el.offsetWidth;
+      const margin = 8;
+      const below = window.innerHeight - a.bottom;
+      const top =
+        below < ph + margin && a.top > ph + margin ? a.top - ph - margin : a.bottom + margin;
+      const left = Math.max(
+        margin,
+        Math.min(a.left + a.width / 2 - pw / 2, window.innerWidth - pw - margin),
+      );
+      setPos({ top, left });
+    }
+    place();
+    window.addEventListener("scroll", place, { passive: true });
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place);
+      window.removeEventListener("resize", place);
+    };
+  }, [anchor]);
+
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      const t = e.target as Node;
+      if (!ref.current?.contains(t) && !anchor.contains(t)) {
+        onClose();
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [anchor, onClose]);
+
+  return createPortal(
+    <div
+      ref={ref}
+      role="dialog"
+      aria-label={`引用原文${citation.pageStart != null ? `,第 ${citation.pageStart} 页` : ""}`}
+      style={{ top: pos?.top ?? 0, left: pos?.left ?? 0, visibility: pos ? "visible" : "hidden" }}
+      className="fixed z-50 w-[min(20rem,calc(100vw-1rem))] space-y-1.5 rounded-md border border-hairline bg-paper px-3.5 py-2.5 shadow-[0_8px_28px_-6px_rgba(0,0,0,0.22)]"
+    >
+      {citation.pageStart != null ? (
+        <p className="text-xs text-seal tabular-nums">第 {citation.pageStart} 页</p>
       ) : null}
-    </div>
+      <blockquote className="border-l-2 border-seal pl-2.5 text-sm leading-[1.7] text-ink-soft">
+        “{citation.quote}”
+      </blockquote>
+      {citation.claim ? <p className="text-xs text-ink-faint">支撑:{citation.claim}</p> : null}
+    </div>,
+    document.body,
   );
 }
