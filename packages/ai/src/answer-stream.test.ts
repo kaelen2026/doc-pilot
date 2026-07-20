@@ -35,6 +35,23 @@ describe("parseAnswerStream", () => {
     expect(parsed.insufficientEvidence).toBe(false);
   });
 
+  it("正文内嵌的 [n] 引用标记原样透传(解析器不识别、不吞标记)", async () => {
+    const tail = JSON.stringify({
+      insufficientEvidence: false,
+      citations: [
+        { sourceId: "S1", quote: "片段一", claim: "结论一" },
+        { sourceId: "S2", quote: "片段二", claim: "结论二" },
+      ],
+    });
+    const { textDeltas, answer } = parseAnswerStream(
+      chunksOf("结论一[1],", "结论二[2]。\n", `${ANSWER_CITATIONS_MARKER}\n`, tail),
+    );
+    expect((await collect(textDeltas)).join("")).toBe("结论一[1],结论二[2]。\n");
+    const parsed = await answer;
+    expect(parsed.answer).toBe("结论一[1],结论二[2]。");
+    expect(parsed.citations).toHaveLength(2);
+  });
+
   it("标记被切分到多个 delta 时不漏正文、不泄漏标记", async () => {
     const { textDeltas, answer } = parseAnswerStream(
       chunksOf("结论是 A==", "=CITATIONS=", `==${TAIL.slice(0, 10)}`, TAIL.slice(10)),
