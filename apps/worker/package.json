@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
     "build": "tsup",
     "start": "node dist/index.js",
-    "backfill:embeddings": "tsx scripts/backfill-embeddings.ts",
+    "backfill:embeddings": "tsx --env-file-if-exists=../../.env scripts/backfill-embeddings.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
