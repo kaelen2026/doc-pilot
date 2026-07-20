@@ -1,5 +1,15 @@
 import { API_URL } from "@/lib/env";
-import type { ChatStreamEvent, ConversationItem, MessageItem } from "./types";
+import type { ChatStreamEvent, ConversationItem, DocDetail, MessageItem } from "./types";
+
+/** 取文档详情(问答页头部 + 状态门禁)。 */
+export async function fetchDocument(id: string): Promise<DocDetail> {
+  const r = await fetch(`${API_URL}/documents/${id}`, { credentials: "include" });
+  if (!r.ok) {
+    throw new Error(r.status === 404 ? "文档不存在" : `HTTP ${r.status}`);
+  }
+  const { document } = (await r.json()) as { document: DocDetail };
+  return document;
+}
 
 async function requireOk(r: Response): Promise<Response> {
   if (!r.ok) {
