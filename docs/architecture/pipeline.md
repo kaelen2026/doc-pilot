@@ -306,11 +306,16 @@ minTokens = 100
 
 ### 15.3 内容 Hash
 
+系统里有两类 Hash，用途不同，勿混：
+
+1. **原始文件 checksum**：`SHA256(原始文件字节)`。由 Worker 从对象存储下载的真实字节计算（不信前端，见 ADR-003），写入 `document_files.checksum_sha256`，并冗余到 `documents.checksum_sha256`（为按 workspace 建去重索引）。用途：**内容级去重**（见 §23.4、rag.md）——同一 workspace 内相同内容的文件不重复 parse + embed。
+2. **Chunk 内容 Hash**：`SHA256(chunk 归一化文本)`，写入 `document_chunks.content_hash`。用途：**检索结果去重**（同一段落被多次召回时只保留一条）。
+
 ```
 SHA256(normalized content)
 ```
 
-用途：去重、增量更新、避免重复 Embedding、判断解析结果是否变化。
+> 说明：清洗阶段还会算一个 `SHA256(归一化全文)`（`CleanedDocument.contentHash`），原设计用于「判断解析结果是否变化 / 增量更新」，当前实现尚未消费该值，留待增量重处理时启用。
 
 ## 16. Embedding 方案
 

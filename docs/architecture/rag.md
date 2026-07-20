@@ -333,3 +333,13 @@ data: {"messageId":"msg_2"}
 - `pending`：返回当前流状态
 - `completed`：返回已有消息
 - `failed`：允许显式重试
+
+### 23.4 内容级去重
+
+在「创建幂等」（§23.1，同一请求重试返回同一文档）之外，再按**文件内容**去重，避免同一 workspace 反复 parse/embed 相同 PDF：
+
+- **快速通道（创建时）**：客户端上传前算 `SHA256(文件)`，随 `POST /documents` 一并发出。若同 workspace 内已有相同 checksum 且状态为 `ready`/`partially_ready` 的文档，直接返回该文档，不新建、不签发上传 URL、不计配额（响应 `duplicate: true`）。
+- **兜底（Worker 侧）**：客户端未带指纹或错报时，Worker 下载后从真实字节算**权威** checksum；命中同 workspace 的 canonical 文档则复制其 chunk/摘要收尾，跳过 parse + embed（省下最贵的 AI 成本）。
+- **作用域**：仅同一 `workspace_id`（租户隔离，绝不跨 workspace 比较）。
+- **权威性**：客户端指纹仅作提示，始终以 Worker 从实际字节算出的为准（见 ADR-003）。
+- **索引**：`documents(workspace_id, checksum_sha256)` 部分索引（仅未删且已回填指纹的行）。指纹在文档就绪时才写入，故未就绪/失败的文档不会被误命中。

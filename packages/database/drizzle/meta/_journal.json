@@ -57,6 +57,13 @@
       "when": 1784515599587,
       "tag": "0007_square_blindfold",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784546363567,
+      "tag": "0008_luxuriant_starhawk",
+      "breakpoints": true
     }
   ]
 }

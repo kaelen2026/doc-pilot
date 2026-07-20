@@ -20,9 +20,12 @@ export function validateFile(file: File): string | null {
   return null;
 }
 
+// 与后端 @doc-pilot/contracts 的 CreateUploadResponse 手工对齐:命中内容去重时
+// 不带 upload、duplicate 为 true(见 API createUpload)。
 interface CreateUploadResponse {
   document: { id: string; status: string };
-  upload: { method: string; url: string; headers: Record<string, string>; expiresAt: string };
+  upload?: { method: string; url: string; headers: Record<string, string>; expiresAt: string };
+  duplicate?: boolean;
 }
 
 async function errorMessage(r: Response): Promise<string> {
@@ -30,13 +33,28 @@ async function errorMessage(r: Response): Promise<string> {
   return body?.message ?? body?.error ?? `HTTP ${r.status}`;
 }
 
+/** 用浏览器原生 WebCrypto 算文件内容的 SHA256(hex),作为内容去重的客户端指纹。 */
+async function sha256Hex(file: File): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 /**
  * 客户端直传(ADR-003)三步:
- * 1. POST /documents 创建文档并取预签名 PUT URL;
+ * 1. POST /documents 创建文档并取预签名 PUT URL(带内容指纹,命中去重则短路);
  * 2. 直接 PUT 到对象存储(浏览器 → MinIO/S3);
  * 3. POST /documents/:id/complete-upload 确认并入队解析。
+ *
+ * 内容去重(§23.4):上传前算 SHA256 随创建请求发出;若同 workspace 已有相同内容的就绪文档,
+ * 后端直接返回该文档(不带 upload),前端跳过直传与确认,deduplicated 置 true。
  */
-export async function uploadDocument(file: File): Promise<{ documentId: string }> {
+export async function uploadDocument(
+  file: File,
+): Promise<{ documentId: string; deduplicated: boolean }> {
+  const checksumSha256 = await sha256Hex(file);
+
   const createRes = await fetch(`${API_URL}/documents`, {
     method: "POST",
     credentials: "include",
@@ -45,12 +63,18 @@ export async function uploadDocument(file: File): Promise<{ documentId: string }
       filename: file.name,
       contentType: file.type,
       sizeBytes: file.size,
+      checksumSha256,
     }),
   });
   if (!createRes.ok) {
     throw new Error(await errorMessage(createRes));
   }
-  const { document, upload } = (await createRes.json()) as CreateUploadResponse;
+  const { document, upload, duplicate } = (await createRes.json()) as CreateUploadResponse;
+
+  // 内容去重命中:已有就绪文档,无需上传。
+  if (duplicate || !upload) {
+    return { documentId: document.id, deduplicated: true };
+  }
 
   const putRes = await fetch(upload.url, {
     method: upload.method,
@@ -68,5 +92,5 @@ export async function uploadDocument(file: File): Promise<{ documentId: string }
   if (!completeRes.ok) {
     throw new Error(await errorMessage(completeRes));
   }
-  return { documentId: document.id };
+  return { documentId: document.id, deduplicated: false };
 }

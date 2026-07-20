@@ -1,0 +1,2 @@
+ALTER TABLE "documents" ADD COLUMN "checksum_sha256" varchar(64);--> statement-breakpoint
+CREATE INDEX "documents_workspace_checksum_idx" ON "documents" USING btree ("workspace_id","checksum_sha256") WHERE "documents"."deleted_at" is null and "documents"."checksum_sha256" is not null;
