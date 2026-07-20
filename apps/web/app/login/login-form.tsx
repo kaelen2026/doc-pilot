@@ -42,8 +42,8 @@ export function LoginForm() {
       setMessage(`登录失败：${error.message ?? "未知错误"}`);
       return;
     }
-    // 软导航回首页；better-auth 已在 signIn 后更新会话，首页 useSession 直接是登录态。
-    router.push("/");
+    // 登录成功后进入工作台;better-auth 已在 signIn 后更新会话,/documents 的 useSession 直接是登录态。
+    router.push("/documents");
   }
 
   const failed = message?.includes("失败");
