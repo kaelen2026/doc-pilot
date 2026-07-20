@@ -24,6 +24,7 @@ import {
 } from "@/features/chat/use-chat";
 import { authClient } from "@/lib/auth-client";
 import { API_URL } from "@/lib/env";
+import { SourceReader } from "../view/pdf-view";
 
 const rise = "animate-[rise_0.5s_cubic-bezier(0.2,0,0,1)_both]";
 
@@ -70,6 +71,14 @@ export function ChatView({ documentId }: { documentId: string }) {
   const [draft, setDraft] = useState("");
   const { sectionRef, atBottom, scrollToBottom } = useStickToBottom();
   const hasThread = messages.length > 0 || !!streaming;
+
+  // 引用「查看原文」:右侧抽屉打开 PDF 并定位到该页。
+  const [source, setSource] = useState<{ page: number } | null>(null);
+  const viewSource = useCallback((citation: CitationItem) => {
+    if (citation.pageStart != null) {
+      setSource({ page: citation.pageStart });
+    }
+  }, []);
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -151,7 +160,12 @@ export function ChatView({ documentId }: { documentId: string }) {
               m.role === "user" ? (
                 <UserNote key={m.id} content={m.content} />
               ) : (
-                <AssistantPassage key={m.id} message={m} onRetry={() => retry(m)} />
+                <AssistantPassage
+                  key={m.id}
+                  message={m}
+                  onRetry={() => retry(m)}
+                  onViewSource={viewSource}
+                />
               ),
             )}
 
@@ -209,6 +223,10 @@ export function ChatView({ documentId }: { documentId: string }) {
             提问
           </Button>
         </form>
+      ) : null}
+
+      {source ? (
+        <SourceDrawer documentId={documentId} page={source.page} onClose={() => setSource(null)} />
       ) : null}
     </main>
   );
@@ -363,7 +381,15 @@ function StreamingAnswer({ streaming }: { streaming: StreamingState }) {
 }
 
 /** 助手回答:墨字直接书写在纸面,结论处朱红上标锚点,点击弹出引用原文。 */
-function AssistantPassage({ message, onRetry }: { message: MessageItem; onRetry: () => void }) {
+function AssistantPassage({
+  message,
+  onRetry,
+  onViewSource,
+}: {
+  message: MessageItem;
+  onRetry: () => void;
+  onViewSource: (citation: CitationItem) => void;
+}) {
   // 内嵌锚点与底部脚注共享同一「打开项」:点其一即在其锚点处弹出引用 popover。
   const [open, setOpen] = useState<OpenCitation | null>(null);
 
@@ -401,6 +427,7 @@ function AssistantPassage({ message, onRetry }: { message: MessageItem; onRetry:
           citation={open.citation}
           anchor={open.anchor}
           onClose={() => setOpen(null)}
+          onViewSource={onViewSource}
         />
       ) : null}
     </div>
@@ -475,10 +502,12 @@ function CitationPopover({
   citation,
   anchor,
   onClose,
+  onViewSource,
 }: {
   citation: CitationItem;
   anchor: HTMLElement;
   onClose: () => void;
+  onViewSource: (citation: CitationItem) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -546,7 +575,84 @@ function CitationPopover({
         “{citation.quote}”
       </blockquote>
       {citation.claim ? <p className="text-xs text-ink-faint">支撑:{citation.claim}</p> : null}
+      {citation.pageStart != null ? (
+        <div className="pt-0.5">
+          <button
+            type="button"
+            onClick={() => {
+              onViewSource(citation);
+              onClose();
+            }}
+            className="inline-flex items-center gap-1 rounded-sm text-xs text-seal underline-offset-4 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [@media(hover:hover)]:hover:text-seal-deep [@media(hover:hover)]:hover:underline"
+          >
+            查看原文
+            <svg
+              aria-hidden="true"
+              role="presentation"
+              viewBox="0 0 16 16"
+              className="h-3 w-3"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M6 4l4 4-4 4" />
+            </svg>
+          </button>
+        </div>
+      ) : null}
     </div>,
+    document.body,
+  );
+}
+
+/**
+ * 原文抽屉:右侧滑入的浮层,复用 PDF 阅读器并定位到 page。桌面覆盖右半屏、
+ * 移动端全屏;聊天保持在左侧不重排。Esc 或点关闭收起。portal 到 body。
+ */
+function SourceDrawer({
+  documentId,
+  page,
+  onClose,
+}: {
+  documentId: string;
+  page: number;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return createPortal(
+    <aside
+      aria-label="原文"
+      className="fixed inset-y-0 right-0 z-40 flex h-screen w-full flex-col border-hairline border-l bg-paper shadow-[-8px_0_30px_-12px_rgba(0,0,0,0.28)] animate-[slideInRight_0.28s_cubic-bezier(0.2,0,0,1)_both] sm:w-[min(560px,80vw)] lg:w-[46vw]"
+    >
+      <header className="flex items-center justify-between gap-3 border-hairline border-b px-4 py-3">
+        <div className="flex items-baseline gap-2">
+          <span className="font-medium text-ink text-sm">原文</span>
+          <span className="text-ink-faint text-xs tabular-nums">第 {page} 页</span>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="关闭原文"
+          className="rounded-sm px-1.5 py-0.5 text-ink-faint text-sm transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring [@media(hover:hover)]:hover:text-ink"
+        >
+          ✕
+        </button>
+      </header>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <SourceReader documentId={documentId} page={page} />
+      </div>
+    </aside>,
     document.body,
   );
 }

@@ -68,7 +68,39 @@ export function PdfView({ documentId }: { documentId: string }) {
   );
 }
 
-function PdfReader({ url, documentId }: { url: string; documentId: string }) {
+/**
+ * 抽屉内复用的原文阅读器:自身完成鉴权与取文件 URL,打开即定位到 page。
+ * 返回填满 flex 父容器的阅读器(父需为限定高度的 flex 列)。
+ */
+export function SourceReader({ documentId, page }: { documentId: string; page: number }) {
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+  const fileQuery = useFileUrl(documentId, !!session);
+
+  if (sessionPending || (session && fileQuery.isPending)) {
+    return <p className="p-6 text-sm text-ink-faint">加载中…</p>;
+  }
+  if (!session) {
+    return <p className="p-6 text-sm text-ink-soft">请先登录后查看原文。</p>;
+  }
+  if (fileQuery.isError) {
+    return <p className="p-6 text-sm text-seal">无法加载 PDF:{String(fileQuery.error)}</p>;
+  }
+  if (!fileQuery.data) {
+    return null;
+  }
+  return <PdfReader url={fileQuery.data} documentId={documentId} initialPage={page} />;
+}
+
+function PdfReader({
+  url,
+  documentId,
+  initialPage,
+}: {
+  url: string;
+  documentId: string;
+  /** 打开即定位到该页(引用「查看原文」);变化时重新跳转。 */
+  initialPage?: number;
+}) {
   const rootRef = useRef<HTMLDivElement>(null); // 全屏目标(含工具条)
   const scrollRef = useRef<HTMLDivElement>(null);
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
@@ -194,14 +226,24 @@ function PdfReader({ url, documentId }: { url: string; documentId: string }) {
     setSelTool(null); // 选区工具栏是固定定位,滚动后位置失真,收起。
   }, [recomputeCurrent]);
 
-  const jumpTo = useCallback((page: number) => {
+  const jumpTo = useCallback((page: number, behavior: ScrollBehavior = "smooth") => {
     const el = scrollRef.current;
     if (!el) {
       return;
     }
     const slot = el.querySelector<HTMLElement>(`[data-page="${page}"]`);
-    slot?.scrollIntoView({ block: "start", behavior: "smooth" });
+    slot?.scrollIntoView({ block: "start", behavior });
   }, []);
+
+  // 带目标页打开(引用「查看原文」):文档就绪后跳到该页;initialPage 变化即重跳。
+  // 用 rAF 等分页 slot 挂载;首跳用 auto(瞬时),避免从首页平滑长滚。
+  useEffect(() => {
+    if (!pdf || !initialPage) {
+      return;
+    }
+    const id = requestAnimationFrame(() => jumpTo(initialPage, "auto"));
+    return () => cancelAnimationFrame(id);
+  }, [pdf, initialPage, jumpTo]);
 
   // 目录项 → 页码:dest 可能是命名目标(字符串)或显式数组,首元素是页面引用。
   const gotoDest = useCallback(
