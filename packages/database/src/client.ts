@@ -20,7 +20,7 @@ function getConnectionString(): string {
   return databaseEnv.url;
 }
 
-export const queryClient = postgres(getConnectionString());
+export const queryClient = postgres(getConnectionString(), { max: databaseEnv.poolMax });
 export const db = drizzle(queryClient, { schema });
 
 export type Database = typeof db;
