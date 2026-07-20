@@ -102,6 +102,71 @@ export function ChatView({ documentId }: { documentId: string }) {
     [messages, send],
   );
 
+  // 会话区正文按状态分支:加载中 → 未登录 → 出错 → 处理中 → 正常问答。
+  // 用卫语句自上而下读,取代深层嵌套三元(见架构体检)。
+  function renderBody() {
+    if (sessionPending || (session && docQuery.isPending)) {
+      return <p className="text-sm text-ink-faint">加载中…</p>;
+    }
+    if (!session) {
+      return (
+        <Button asChild className="w-fit">
+          <Link href="/login">请先登录</Link>
+        </Button>
+      );
+    }
+    if (docQuery.isError) {
+      return <p className="text-sm text-seal">{String(docQuery.error.message)}</p>;
+    }
+    if (doc && !askable) {
+      return (
+        <p className="text-sm leading-[1.7] text-ink-soft">
+          文档还在处理中,完成后才能问答。当前状态:{doc.status}。
+        </p>
+      );
+    }
+    return (
+      <>
+        {messages.length === 0 && !streaming ? (
+          <p className="text-sm leading-[1.7] text-ink-faint">
+            基于这份文档提问。回答只依据文档内容,并附带可核对的原文引用;文档里没有的,它会直说。
+          </p>
+        ) : null}
+
+        {hasMore && !atWindowCap ? (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={loadEarlier}
+              disabled={messagesQuery.isFetching}
+              className="rounded-full border border-hairline bg-paper px-3.5 py-1.5 text-xs text-ink-soft transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60 [@media(hover:hover)]:hover:text-ink"
+            >
+              {messagesQuery.isFetching ? "加载中…" : "↑ 加载更早的消息"}
+            </button>
+          </div>
+        ) : null}
+
+        {messages.map((m) =>
+          m.role === "user" ? (
+            <UserNote key={m.id} content={m.content} />
+          ) : (
+            <AssistantPassage key={m.id} message={m} onRetry={retry} onViewSource={viewSource} />
+          ),
+        )}
+
+        {streaming ? (
+          <>
+            <UserNote content={streaming.question} />
+            {/* clientRequestId 作 key:每问一轮重挂,打字机进度归零。 */}
+            <StreamingAnswer key={streaming.clientRequestId} streaming={streaming} />
+          </>
+        ) : null}
+
+        {sendError ? <p className="text-sm text-seal">{sendError}</p> : null}
+      </>
+    );
+  }
+
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col px-6 py-10">
       <header className={`space-y-3 ${rise}`}>
@@ -133,63 +198,7 @@ export function ChatView({ documentId }: { documentId: string }) {
         style={{ animationDelay: "80ms" }}
         aria-live="polite"
       >
-        {sessionPending || (session && docQuery.isPending) ? (
-          <p className="text-sm text-ink-faint">加载中…</p>
-        ) : !session ? (
-          <Button asChild className="w-fit">
-            <Link href="/login">请先登录</Link>
-          </Button>
-        ) : docQuery.isError ? (
-          <p className="text-sm text-seal">{String(docQuery.error.message)}</p>
-        ) : doc && !askable ? (
-          <p className="text-sm leading-[1.7] text-ink-soft">
-            文档还在处理中,完成后才能问答。当前状态:{doc.status}。
-          </p>
-        ) : (
-          <>
-            {messages.length === 0 && !streaming ? (
-              <p className="text-sm leading-[1.7] text-ink-faint">
-                基于这份文档提问。回答只依据文档内容,并附带可核对的原文引用;文档里没有的,它会直说。
-              </p>
-            ) : null}
-
-            {hasMore && !atWindowCap ? (
-              <div className="flex justify-center">
-                <button
-                  type="button"
-                  onClick={loadEarlier}
-                  disabled={messagesQuery.isFetching}
-                  className="rounded-full border border-hairline bg-paper px-3.5 py-1.5 text-xs text-ink-soft transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60 [@media(hover:hover)]:hover:text-ink"
-                >
-                  {messagesQuery.isFetching ? "加载中…" : "↑ 加载更早的消息"}
-                </button>
-              </div>
-            ) : null}
-
-            {messages.map((m) =>
-              m.role === "user" ? (
-                <UserNote key={m.id} content={m.content} />
-              ) : (
-                <AssistantPassage
-                  key={m.id}
-                  message={m}
-                  onRetry={retry}
-                  onViewSource={viewSource}
-                />
-              ),
-            )}
-
-            {streaming ? (
-              <>
-                <UserNote content={streaming.question} />
-                {/* clientRequestId 作 key:每问一轮重挂,打字机进度归零。 */}
-                <StreamingAnswer key={streaming.clientRequestId} streaming={streaming} />
-              </>
-            ) : null}
-
-            {sendError ? <p className="text-sm text-seal">{sendError}</p> : null}
-          </>
-        )}
+        {renderBody()}
       </section>
 
       {hasThread && !atBottom ? (
