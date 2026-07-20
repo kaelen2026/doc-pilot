@@ -1,4 +1,4 @@
-import { ForbiddenError } from "../modules/documents/document.errors";
+import { ForbiddenError } from "./errors";
 import type { Membership } from "./types";
 
 /**

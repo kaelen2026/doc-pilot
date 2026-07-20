@@ -1,5 +1,5 @@
 import { MAX_QUESTION_CHARS } from "@doc-pilot/contracts";
-import { ValidationError } from "../documents/document.errors";
+import { ValidationError } from "../../shared/errors";
 
 export interface CreateConversationInput {
   documentId: string;

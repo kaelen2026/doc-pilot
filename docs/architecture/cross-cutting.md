@@ -8,24 +8,19 @@
 
 `owner`。仍保留 Workspace 和 Membership。
 
-### 25.2 Policy
+### 25.2 授权：MVP 即租户过滤
 
-```ts
-interface DocumentPolicy {
-  canRead(user: AuthUser, document: Document): Promise<boolean>;
-  canUpload(user: AuthUser, workspaceId: string): Promise<boolean>;
-  canDelete(user: AuthUser, document: Document): Promise<boolean>;
-  canAsk(user: AuthUser, document: Document): Promise<boolean>;
-}
-```
-
-Controller 调用：
+MVP 只有 `owner` 一种角色,授权决策退化为一个问题:**资源是否属于当前用户的 workspace**。这个判断已经由**租户作用域 Repository**(ADR-008)在每条查询里强制完成——`workspaceId` 从已鉴权用户的 membership 解析(不信任请求参数),注入 SQL 过滤:
 
 ```
-load resource → policy.assertCanRead → service
+resolve workspaceId (from membership, 不信任请求参数)
+  → scopedRepo(workspaceId)
+  → 查不到 → 404 / 越权写 → 403
 ```
 
-不要仅依赖 `workspaceId` 请求参数。
+因此 MVP **不设独立的 Policy 层**——在单角色下 `DocumentPolicy.canRead/canDelete/canAsk` 每个方法都只会是"是不是本租户",与租户过滤重复,是一层浅模块。曾经的 `authorization/document.policy.ts` 未接线、成了死代码,已删除。
+
+**引入 Policy 层的触发条件**:出现多角色(如 viewer/editor)、跨 workspace 共享、或字段级/操作级细粒度权限时——那时授权不再等价于租户归属,`DocumentPolicy`(canRead/canUpload/canDelete/canAsk)才成为一个有深度的 seam,按 `load resource → policy.assertCanX → service` 接入 Controller/Service 入口。
 
 ## 26. 安全方案
 

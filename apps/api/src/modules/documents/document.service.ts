@@ -6,8 +6,9 @@ import {
   createPresignedPutUrl,
   headObject,
 } from "@doc-pilot/storage";
+import { NotFoundError, ValidationError } from "../../shared/errors";
 import { assertUploadQuota } from "../quota/quota.service";
-import { NotFoundError, UploadNotFoundError, ValidationError } from "./document.errors";
+import { UploadNotFoundError } from "./document.errors";
 import * as repo from "./document.repository";
 import { type CreateUploadInput, validateUploadConstraints } from "./document.schema";
 

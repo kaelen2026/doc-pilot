@@ -1,41 +1,9 @@
+import { DomainError } from "../../shared/errors";
+
 /**
- * 领域错误。app.onError 统一映射为 HTTP 响应（见 app.ts）。
+ * documents 模块专属错误。通用领域错误(DomainError/ValidationError/NotFoundError…)
+ * 已上移到 shared/errors,业务模块从那里 import;此处只保留 upload 领域特有的错误。
  */
-export class DomainError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
-    this.name = new.target.name;
-  }
-}
-
-export class ValidationError extends DomainError {
-  constructor(message: string) {
-    super("validation_error", message, 400);
-  }
-}
-
-export class QuotaExceededError extends DomainError {
-  constructor(message = "storage quota exceeded") {
-    super("quota_exceeded", message, 413);
-  }
-}
-
-export class NotFoundError extends DomainError {
-  constructor(message = "not found") {
-    super("not_found", message, 404);
-  }
-}
-
-export class ForbiddenError extends DomainError {
-  constructor(message = "forbidden") {
-    super("forbidden", message, 403);
-  }
-}
-
 export class UploadNotFoundError extends DomainError {
   constructor(message = "uploaded object not found in storage") {
     super("upload_not_found", message, 400);

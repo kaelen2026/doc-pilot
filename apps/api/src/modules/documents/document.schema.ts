@@ -1,5 +1,5 @@
 import { isAllowedMimeType, MAX_FILE_BYTES } from "@doc-pilot/contracts";
-import { ValidationError } from "./document.errors";
+import { ValidationError } from "../../shared/errors";
 
 export interface CreateUploadInput {
   filename: string;

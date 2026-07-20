@@ -8,7 +8,9 @@
 
 ## 决策
 
-以 Workspace 作为租户边界。所有核心表携带 `workspace_id`，包括 `document_chunks`（便于向量检索直接过滤）。所有数据库查询与向量检索必须包含 `workspace_id`。授权通过 Policy 在 Controller 层显式检查，不能仅依赖请求参数中的 `workspaceId`。
+以 Workspace 作为租户边界。所有核心表携带 `workspace_id`，包括 `document_chunks`（便于向量检索直接过滤）。所有数据库查询与向量检索必须包含 `workspace_id`。`workspaceId` 从已鉴权用户的 membership 解析，**不信任请求参数**。
+
+MVP 只有 `owner` 一种角色，**授权即租户过滤**：资源是否属于当前 workspace 由租户过滤在查询里判定（查不到 → 404，越权写 → 403），不设独立 Policy 层。多角色 / 跨 workspace 共享 / 细粒度权限出现时，再引入 `DocumentPolicy` 作为有深度的 seam（详见 [cross-cutting §25.2](../architecture/cross-cutting.md#252-授权mvp-即租户过滤)）。
 
 ### 实现约定：租户作用域 Repository
 

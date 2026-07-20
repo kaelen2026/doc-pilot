@@ -9,7 +9,7 @@ import {
 import { RETRIEVAL } from "@doc-pilot/contracts";
 import { errToLog, logger, ragMetrics, withSpan } from "@doc-pilot/observability";
 import { apiAIGateway } from "../../ai/gateway";
-import { NotFoundError } from "../documents/document.errors";
+import { NotFoundError } from "../../shared/errors";
 import { assertAskQuota } from "../quota/quota.service";
 import { AnswerRejectedError, ConflictError } from "./conversation.errors";
 import {

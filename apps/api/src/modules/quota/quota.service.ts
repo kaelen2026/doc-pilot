@@ -1,4 +1,4 @@
-import { QuotaExceededError } from "../documents/document.errors";
+import { QuotaExceededError } from "../../shared/errors";
 import { monthStartUtc } from "./month";
 import * as repo from "./quota.repository";
 import { checkAskQuota, checkUploadQuota, type QuotaUsage, toUsage } from "./quota.rules";

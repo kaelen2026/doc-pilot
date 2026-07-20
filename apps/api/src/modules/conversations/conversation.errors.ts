@@ -1,5 +1,5 @@
 import type { CitationIssue } from "@doc-pilot/ai";
-import { DomainError } from "../documents/document.errors";
+import { DomainError } from "../../shared/errors";
 
 export class ConflictError extends DomainError {
   constructor(code: string, message: string) {
