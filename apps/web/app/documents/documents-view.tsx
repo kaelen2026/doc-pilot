@@ -1,6 +1,8 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,9 +56,17 @@ export function DocumentsView() {
   const docsQuery = useDocuments(!!session);
   const docs = docsQuery.data;
 
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const upload = useUploadDocument();
+
+  async function signOut() {
+    await authClient.signOut();
+    queryClient.clear(); // 清掉缓存的文档数据,避免下个账号看到上个账号的列表
+    router.replace("/");
+  }
 
   function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -77,9 +87,16 @@ export function DocumentsView() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 py-16">
-      <header className={`space-y-2 ${rise}`}>
-        <h1 className="font-display text-3xl font-medium tracking-[-0.018em]">我的文档</h1>
-        <p className="text-sm text-ink-faint">就绪的文档可以直接问答,回答附原文引用</p>
+      <header className={`flex items-start justify-between gap-4 ${rise}`}>
+        <div className="space-y-2">
+          <h1 className="font-display text-3xl font-medium tracking-[-0.018em]">我的文档</h1>
+          <p className="text-sm text-ink-faint">就绪的文档可以直接问答,回答附原文引用</p>
+        </div>
+        {session ? (
+          <Button variant="outline" size="sm" onClick={signOut}>
+            退出登录
+          </Button>
+        ) : null}
       </header>
 
       <section className={rise} style={{ animationDelay: "100ms" }}>
@@ -160,10 +177,6 @@ export function DocumentsView() {
           </div>
         )}
       </section>
-
-      <Button asChild variant="link" size="sm" className="w-fit self-start px-0">
-        <Link href="/">返回首页</Link>
-      </Button>
     </main>
   );
 }
