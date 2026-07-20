@@ -43,12 +43,20 @@ docker compose -f docker-compose.prod.yml logs worker | grep worker.started
 - `S3_*` → R2/S3(`S3_ENDPOINT` 指向其端点,`S3_FORCE_PATH_STYLE` 多数设 `false`)。
 - Web 也可单独上 Vercel(§34.1),此时只容器化 api/worker。
 
+## Embedding 端点(自托管 ollama 默认)
+
+compose 默认带一个 `ollama` service 作 embedding 后端:`ollama-init` 一次性拉取模型(默认 `bge-m3`,1024 维),api/worker 的 `OPENAI_BASE_URL` 默认指向 `http://ollama:11434/v1`(免 key),并 `depends_on` `ollama-init` 完成后才启动。模型持久化在 `ollama-data` volume。
+
+- **首次启动**会拉取模型(约 1GB),`ollama-init` 完成前 api/worker 不启动;后续复用 volume。
+- **CPU 偏慢**:文档多时建议给 ollama 开 GPU(compose 里 `ollama` service 有注释好的 `deploy.resources` 片段,需宿主装 NVIDIA Container Toolkit)。
+- **改用官方 OpenAI / 带 embedding 的网关**:删掉 `ollama` / `ollama-init` 两个 service 及 api/worker 对 `ollama-init` 的 `depends_on`,在 `.env.production` 设 `OPENAI_API_KEY`(官方)或对应 `OPENAI_BASE_URL` / `AI_GATEWAY_*`。注意所选 embedding 模型维度须与 `document_chunks.embedding` 的 `vector(1024)` 一致(见 `failure-recovery.md §35.3` 回填)。
+
 ## 关键环境变量
 
 全量见 `.env.production.example`。要点:
 
-- **密钥**:`BETTER_AUTH_SECRET`、`ANTHROPIC_API_KEY`、`OPENAI_API_KEY`、`S3_ACCESS_KEY_ID/SECRET`、`DATABASE_URL`(含密码)、`REDIS_URL`。用部署平台的 secret 管理,别提交进仓库。
-- **AI Key 必配**:不配 `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` 会回落 mock(占位输出),生产不可用。
+- **密钥**:`BETTER_AUTH_SECRET`、文本 AI 凭据(`ANTHROPIC_API_KEY` 或 `AI_GATEWAY_API_KEY`)、`S3_ACCESS_KEY_ID/SECRET`、`DATABASE_URL`(含密码)、`REDIS_URL`。用部署平台的 secret 管理,别提交进仓库。
+- **文本 AI 凭据必配**:不配 `ANTHROPIC_API_KEY` / `AI_GATEWAY_API_KEY`,摘要/问答会回落 mock(占位输出),生产不可用。embedding 走默认自托管 ollama 时**无需** `OPENAI_API_KEY`(仅改用官方 OpenAI 时才需要)。
 - **`WEB_ORIGIN` / `NEXT_PUBLIC_*`** 要与真实公网域名一致(CORS + 前端内联)。
 - **SMTP 限制**:当前 `packages/auth/src/mailer.ts` 用无鉴权 SMTP(`secure:false`,无账号密码)。接需要鉴权/TLS 的真实邮件服务前需扩展 mailer,否则登录验证码发不出。
 

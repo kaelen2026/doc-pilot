@@ -2,9 +2,13 @@
 #   cp .env.production.example .env.production && 编辑
 #   docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 #
-# postgres/redis/minio 为自托管默认。生产建议换托管服务(Managed PostgreSQL、
+# postgres/redis/minio/ollama 为自托管默认。生产建议换托管服务(Managed PostgreSQL、
 # Managed Redis、Cloudflare R2 / S3),届时删掉对应 service,并把 .env.production 里的
 # DATABASE_URL / REDIS_URL / S3_* 指向托管端点即可(见 docs/runbooks/deployment.md)。
+#
+# embedding 默认走自托管 ollama(bge-m3, 1024 维,免 key)。若改用官方 OpenAI 或带 embedding
+# 的网关,删掉 ollama / ollama-init 两个 service 及 api/worker 对它们的 depends_on,并在
+# .env.production 设 OPENAI_API_KEY(官方)或对应 OPENAI_BASE_URL / AI_GATEWAY_* 即可。
 name: doc-pilot-prod
 
 services:
@@ -58,6 +62,37 @@ services:
       "
     restart: "no"
 
+  # 自托管 embedding 端点(OpenAI 兼容 /v1/embeddings,免鉴权)。
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+    restart: unless-stopped
+    # GPU 加速(可选,大幅提升吞吐):取消注释并确保宿主装了 NVIDIA Container Toolkit。
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # 一次性:等 ollama 就绪并拉取 embedding 模型(默认 bge-m3),之后 api/worker 才启动。
+  ollama-init:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c", "ollama pull ${AI_EMBEDDING_MODEL:-bge-m3}"]
+    restart: "no"
+
   # 一次性:数据库迁移(drizzle-kit)。api/worker 依赖它成功完成后再启动。
   migrate:
     build:
@@ -78,6 +113,10 @@ services:
       target: runtime
     env_file:
       - .env.production
+    # embedding 默认指向自托管 ollama;在 .env.production 设同名变量即可覆盖。
+    environment:
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-http://ollama:11434/v1}
+      AI_EMBEDDING_MODEL: ${AI_EMBEDDING_MODEL:-bge-m3}
     ports:
       - "${API_PORT:-3001}:3001"
     depends_on:
@@ -89,6 +128,8 @@ services:
         condition: service_started
       migrate:
         condition: service_completed_successfully
+      ollama-init:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   worker:
@@ -98,6 +139,10 @@ services:
       target: runtime
     env_file:
       - .env.production
+    # embedding 默认指向自托管 ollama;在 .env.production 设同名变量即可覆盖。
+    environment:
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-http://ollama:11434/v1}
+      AI_EMBEDDING_MODEL: ${AI_EMBEDDING_MODEL:-bge-m3}
     depends_on:
       postgres:
         condition: service_healthy
@@ -106,6 +151,8 @@ services:
       minio:
         condition: service_started
       migrate:
+        condition: service_completed_successfully
+      ollama-init:
         condition: service_completed_successfully
     restart: unless-stopped
 
@@ -127,3 +174,4 @@ volumes:
   postgres-data:
   redis-data:
   minio-data:
+  ollama-data:
