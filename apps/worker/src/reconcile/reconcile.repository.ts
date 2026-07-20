@@ -25,6 +25,20 @@ const LIVE_JOB_STATES = new Set([
 ]);
 
 /**
+ * recover / fail 共用的原子守卫 WHERE:锁定同一文档、processing_version 匹配、未软删除,
+ * 且当前状态在允许集内。与 processing-guard 的读取式守卫表达同一不变量(pipeline.md §24),
+ * 但这里是 UPDATE 的原子条件——命中 0 行即说明期间被删除 / 重处理 / 已流转,放弃本次写入。
+ */
+function guardedDocumentWhere(doc: StaleDocument, statuses: readonly string[]) {
+  return and(
+    eq(documents.id, doc.documentId),
+    eq(documents.processingVersion, doc.processingVersion),
+    inArray(documents.status, [...statuses]),
+    isNull(documents.deletedAt),
+  );
+}
+
+/**
  * 用真实 DB + document-processing 队列构造 ReconcileDeps。
  * 所有写入都带守卫(状态/版本/未删除),遵守 processing_version 不变量(CLAUDE.md)。
  */
@@ -80,14 +94,7 @@ export function createReconcileDeps(processingQueue: Queue): ReconcileDeps {
       const reset = await db
         .update(documents)
         .set({ status: "queued", currentStage: null, progress: 0, updatedAt: new Date() })
-        .where(
-          and(
-            eq(documents.id, doc.documentId),
-            eq(documents.processingVersion, doc.processingVersion),
-            inArray(documents.status, [...RECOVERABLE_STATUSES]),
-            isNull(documents.deletedAt),
-          ),
-        )
+        .where(guardedDocumentWhere(doc, RECOVERABLE_STATUSES))
         .returning({ id: documents.id });
 
       if (reset.length === 0) {
@@ -125,14 +132,7 @@ export function createReconcileDeps(processingQueue: Queue): ReconcileDeps {
       const failed = await db
         .update(documents)
         .set({ status: "failed", errorCode, errorMessage, updatedAt: new Date() })
-        .where(
-          and(
-            eq(documents.id, doc.documentId),
-            eq(documents.processingVersion, doc.processingVersion),
-            inArray(documents.status, [...RECONCILE_STATUSES]),
-            isNull(documents.deletedAt),
-          ),
-        )
+        .where(guardedDocumentWhere(doc, RECONCILE_STATUSES))
         .returning({ id: documents.id });
 
       if (failed.length === 0) {

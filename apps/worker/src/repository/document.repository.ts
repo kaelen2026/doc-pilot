@@ -9,6 +9,7 @@ import {
 } from "@doc-pilot/database/schema";
 import { and, eq } from "drizzle-orm";
 import type { Chunk, EmbeddedChunks } from "../pipeline";
+import { passesProcessingGuard } from "./processing-guard";
 
 export interface ClaimedDocument {
   documentId: string;
@@ -33,10 +34,7 @@ export async function claimDocument(params: {
     .where(eq(documents.id, params.documentId))
     .limit(1);
 
-  if (!doc || doc.deletedAt || doc.status === "deleting" || doc.status === "deleted") {
-    return null;
-  }
-  if (doc.processingVersion !== params.processingVersion) {
+  if (!passesProcessingGuard(doc, params.processingVersion)) {
     return null;
   }
 
@@ -110,13 +108,7 @@ export async function saveChunksAndFinalize(params: {
       .where(eq(documents.id, params.documentId))
       .for("update");
 
-    if (
-      !doc ||
-      doc.deletedAt ||
-      doc.status === "deleting" ||
-      doc.status === "deleted" ||
-      doc.processingVersion !== params.processingVersion
-    ) {
+    if (!passesProcessingGuard(doc, params.processingVersion)) {
       return false;
     }
 
