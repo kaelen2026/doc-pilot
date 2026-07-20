@@ -260,6 +260,8 @@ export function PdfReader({
   }
 
   async function toggleFullscreen() {
+    // 清掉残留选区,避免全屏切换的重排把选区从工具条扩展到整篇文档文本层。
+    window.getSelection()?.removeAllRanges();
     if (document.fullscreenElement) {
       await document.exitFullscreen().catch(() => {});
     } else {
@@ -279,8 +281,8 @@ export function PdfReader({
       className={`flex min-h-0 flex-1 flex-col bg-paper ${rise}`}
       style={{ animationDelay: "80ms" }}
     >
-      {/* 工具条 */}
-      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-hairline border-y py-2">
+      {/* 工具条:纯 UI chrome,禁止文本选中(按钮文字不该被选中) */}
+      <div className="flex flex-wrap select-none items-center justify-center gap-x-4 gap-y-2 border-hairline border-y py-2">
         {outline ? (
           <>
             <Button
