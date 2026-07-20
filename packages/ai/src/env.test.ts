@@ -55,6 +55,16 @@ describe("resolveProviderConfig", () => {
     expect(cfg.openai?.baseURL).toBe("https://api.openai.com/v1");
   });
 
+  it("自托管 embedding 端点(如 Ollama):仅 OPENAI_BASE_URL、无 key 也点亮 embedding", () => {
+    const cfg = resolveProviderConfig({
+      OPENAI_BASE_URL: "http://localhost:11434/v1",
+    });
+    expect(cfg.hasOpenAI).toBe(true);
+    expect(cfg.openai).toEqual({ apiKey: undefined, baseURL: "http://localhost:11434/v1" });
+    // 文本无凭据仍回落 mock。
+    expect(cfg.hasAnthropic).toBe(false);
+  });
+
   it("仅官方 Key、无网关:baseURL 为 undefined(走各自 SDK 默认端点)", () => {
     const cfg = resolveProviderConfig({
       ANTHROPIC_API_KEY: "sk-ant",

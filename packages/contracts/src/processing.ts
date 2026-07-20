@@ -11,14 +11,19 @@
 export const PARSER_VERSION = "pdf-v1";
 export const CHUNKER_VERSION = "semantic-v1";
 
-/** 与 document_chunks.embedding 的 vector 维度保持一致(见 rag.md)。 */
-export const EMBEDDING_DIMENSIONS = 1536;
+/**
+ * 与 document_chunks.embedding 的 vector 维度保持一致(见 rag.md)。
+ * 1024 对应默认 embedding 模型 bge-m3(本地 Ollama / OpenAI 兼容端点,原生 1024 维)。
+ * 换维度时须同步改 chunk schema 的 vector(...) 与对应 migration,并递增 EMBEDDING_VERSION 重建全部向量。
+ */
+export const EMBEDDING_DIMENSIONS = 1024;
 
 /**
  * Embedding 管线版本(写入 document_chunks.embedding_version)。
  * 换 embedding 模型或预处理方式时递增,用于判断已有向量是否需要重建。
+ * v2:从 text-embedding-3-small(1536)切到 bge-m3(1024)。
  */
-export const EMBEDDING_VERSION = "v1";
+export const EMBEDDING_VERSION = "v2";
 
 /**
  * 处理错误码。错误分类见 pipeline.md §12.3:

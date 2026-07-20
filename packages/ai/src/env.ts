@@ -58,7 +58,9 @@ export function resolveProviderConfig(env: Env = process.env): ResolvedProviderC
     env.OPENAI_BASE_URL ?? (openaiUsesGateway && gatewayBase ? `${gatewayBase}/v1` : undefined);
 
   const hasAnthropic = Boolean(anthropicKey);
-  const hasOpenAI = Boolean(openaiKey);
+  // 自托管 embedding 端点(如本地 Ollama)通常免鉴权:显式配了 OPENAI_BASE_URL 即视为具备
+  // embedding 能力,即使没有 key(adapter 只对官方 OpenAI 端点强制要求 key)。
+  const hasOpenAI = Boolean(openaiKey) || Boolean(openaiBase);
 
   return {
     hasAnthropic,

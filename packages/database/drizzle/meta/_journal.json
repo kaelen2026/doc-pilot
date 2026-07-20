@@ -50,6 +50,13 @@
       "when": 1784285865713,
       "tag": "0006_ai-generations-user-id-text",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784515599587,
+      "tag": "0007_square_blindfold",
+      "breakpoints": true
     }
   ]
 }

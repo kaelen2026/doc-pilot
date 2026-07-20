@@ -165,7 +165,7 @@ CREATE TABLE document_chunks (
   page_end INTEGER,
   section_path JSONB,
   metadata JSONB NOT NULL DEFAULT '{}',
-  embedding VECTOR(1536),
+  embedding VECTOR(1024),  -- 默认模型 bge-m3(本地 Ollama / OpenAI 兼容端点)原生 1024 维;换模型改维度须同步 migration 并递增 embedding_version
   embedding_model VARCHAR(100),
   embedding_version VARCHAR(50),
   created_at TIMESTAMPTZ NOT NULL,

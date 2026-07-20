@@ -2,14 +2,19 @@ import type { AdapterUsage, ProviderAdapter } from "../adapter";
 import { AIError } from "../errors";
 
 export interface OpenAIEmbeddingAdapterOptions {
-  /** 缺省读 OPENAI_API_KEY。 */
+  /** 缺省读 OPENAI_API_KEY;自托管端点(Ollama 等)可不设。 */
   apiKey?: string;
-  /** OpenAI 兼容端点,缺省 https://api.openai.com/v1;可指向任何兼容网关。 */
+  /**
+   * OpenAI 兼容端点,缺省官方端点。由 resolveProviderConfig 从 OPENAI_BASE_URL / 网关 host 注入。
+   * 本地 Ollama 填 http://localhost:11434/v1;可指向任何兼容网关。
+   */
   baseURL?: string;
   timeoutMs?: number;
   /** 测试注入用。 */
   fetchFn?: typeof fetch;
 }
+
+const OPENAI_OFFICIAL_BASE_URL = "https://api.openai.com/v1";
 
 interface EmbeddingsResponse {
   data: Array<{ index: number; embedding: number[] }>;
@@ -25,7 +30,9 @@ export function createOpenAIEmbeddingAdapter(
   options: OpenAIEmbeddingAdapterOptions = {},
 ): ProviderAdapter {
   const apiKey = options.apiKey ?? process.env.OPENAI_API_KEY;
-  const baseURL = (options.baseURL ?? "https://api.openai.com/v1").replace(/\/$/, "");
+  const baseURL = (options.baseURL ?? OPENAI_OFFICIAL_BASE_URL).replace(/\/$/, "");
+  // 仅官方 OpenAI 端点强制要求 API Key;自托管端点(Ollama 等)通常免鉴权。
+  const requiresApiKey = baseURL === OPENAI_OFFICIAL_BASE_URL;
   const timeoutMs = options.timeoutMs ?? 30_000;
   const fetchFn = options.fetchFn ?? fetch;
 
@@ -41,17 +48,21 @@ export function createOpenAIEmbeddingAdapter(
     },
 
     async embed(input) {
-      if (!apiKey) {
-        throw new Error("OPENAI_API_KEY 未设置,无法调用 embedding API");
+      if (requiresApiKey && !apiKey) {
+        throw new Error(
+          "OPENAI_API_KEY 未设置,无法调用官方 OpenAI embedding API(自托管端点请设 OPENAI_BASE_URL)",
+        );
+      }
+      const headers: Record<string, string> = { "content-type": "application/json" };
+      // 自托管端点可能免鉴权;有 key 就带上(Ollama 会忽略)。
+      if (apiKey) {
+        headers.authorization = `Bearer ${apiKey}`;
       }
       let response: Response;
       try {
         response = await fetchFn(`${baseURL}/embeddings`, {
           method: "POST",
-          headers: {
-            authorization: `Bearer ${apiKey}`,
-            "content-type": "application/json",
-          },
+          headers,
           body: JSON.stringify({ model: input.model, input: input.texts }),
           signal: AbortSignal.timeout(timeoutMs),
         });
