@@ -9,7 +9,7 @@ import {
 import { NotFoundError, ValidationError } from "../../shared/errors";
 import { assertUploadQuota } from "../quota/quota.service";
 import { UploadNotFoundError } from "./document.errors";
-import * as repo from "./document.repository";
+import { scopedDocumentRepo } from "./document.repository";
 import { type CreateUploadInput, validateUploadConstraints } from "./document.schema";
 
 const PROVIDER = "s3";
@@ -29,16 +29,18 @@ export async function createUpload(params: {
     throw new ValidationError(constraintError);
   }
 
+  const repo = scopedDocumentRepo(params.workspaceId);
+
   // 创建幂等（§23.1）：同一 workspace + owner + Idempotency-Key 复用已有文档（重试语义,优先于内容去重）。
   let document = params.idempotencyKey
-    ? await repo.findByOwnerIdempotency(params.workspaceId, params.ownerId, params.idempotencyKey)
+    ? await repo.findByOwnerIdempotency(params.ownerId, params.idempotencyKey)
     : undefined;
 
   // 内容去重快速通道（§23.4）：仅对全新创建生效——命中同 workspace 已就绪的相同内容文档时,
   // 直接返回该文档,既不新建、不签发上传 URL,也不占配额。客户端指纹仅作提示,权威指纹由
   // Worker 从真实字节计算(见 ADR-003);未带指纹或错报的上传由 Worker 侧兜底去重。
   if (!document && params.input.checksumSha256) {
-    const dup = await repo.findReadyByChecksum(params.workspaceId, params.input.checksumSha256);
+    const dup = await repo.findReadyByChecksum(params.input.checksumSha256);
     if (dup) {
       return { document: { id: dup.id, status: dup.status }, duplicate: true };
     }
@@ -52,7 +54,6 @@ export async function createUpload(params: {
 
   if (!document) {
     document = await repo.insertDocument({
-      workspaceId: params.workspaceId,
       ownerId: params.ownerId,
       title: titleFromFilename(params.input.filename),
       originalFilename: params.input.filename,
@@ -88,7 +89,8 @@ export async function completeUpload(params: {
   workspaceId: string;
   documentId: string;
 }): Promise<{ document: { id: string; status: string }; alreadyQueued: boolean }> {
-  const document = await repo.findByIdInWorkspace(params.documentId, params.workspaceId);
+  const repo = scopedDocumentRepo(params.workspaceId);
+  const document = await repo.findById(params.documentId);
   if (!document) {
     throw new NotFoundError("document not found");
   }
@@ -117,7 +119,6 @@ export async function completeUpload(params: {
 
   const result = await repo.completeUploadTx({
     documentId: document.id,
-    workspaceId: params.workspaceId,
     processingVersion: document.processingVersion,
     sizeBytes: head.sizeBytes,
     provider: PROVIDER,
@@ -138,7 +139,8 @@ export async function completeUpload(params: {
  * 原文件在上传完成后才存在,故 pending_upload 无文件可读。软删除中/已删同样拒绝。
  */
 export async function getFileUrl(params: { workspaceId: string; documentId: string }) {
-  const document = await repo.findByIdInWorkspace(params.documentId, params.workspaceId);
+  const repo = scopedDocumentRepo(params.workspaceId);
+  const document = await repo.findById(params.documentId);
   if (!document) {
     throw new NotFoundError("document not found");
   }
@@ -159,14 +161,14 @@ export async function getFileUrl(params: { workspaceId: string; documentId: stri
 }
 
 export async function listDocuments(workspaceId: string) {
-  return repo.listByWorkspace(workspaceId);
+  return scopedDocumentRepo(workspaceId).list();
 }
 
 /**
  * 单个文档的处理状态。租户隔离在查询里按 workspaceId 过滤;不存在 → 404。
  */
 export async function getDocument(params: { workspaceId: string; documentId: string }) {
-  const document = await repo.getStatusById(params.documentId, params.workspaceId);
+  const document = await scopedDocumentRepo(params.workspaceId).getStatusById(params.documentId);
   if (!document) {
     throw new NotFoundError("document not found");
   }

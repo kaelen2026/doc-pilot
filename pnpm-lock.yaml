@@ -99,6 +99,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@doc-pilot/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@radix-ui/react-label':
         specifier: ^2.1.11
         version: 2.1.11(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)

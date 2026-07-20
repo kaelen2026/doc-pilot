@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // monorepo 下把文件追踪根设到仓库根,standalone 才能正确收集依赖。
   outputFileTracingRoot: path.join(import.meta.dirname, "../.."),
+  // @doc-pilot/contracts 直接导出 TS 源(纯常量/类型),需让 Next 转译该 workspace 包。
+  transpilePackages: ["@doc-pilot/contracts"],
 };
 
 export default nextConfig;

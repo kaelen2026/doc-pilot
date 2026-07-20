@@ -1,31 +1,23 @@
+import { type CreateUploadResponse, isAllowedMimeType, MAX_FILE_BYTES } from "@doc-pilot/contracts";
 import { API_URL } from "@/lib/env";
 
-// 前端预校验常量。与 @doc-pilot/contracts 的 MAX_FILE_BYTES / ALLOWED_MIME_TYPES
-// 保持一致——这是「三处校验」的前端一环(product/overview.md §2.2);
-// API 创建上传与 Worker 解析会再次权威校验,前端仅用于即时反馈。
-export const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50MB
-export const ALLOWED_MIME_TYPE = "application/pdf";
+// 前端预校验是「三处校验」的前端一环(product/overview.md §2.2);限额常量与响应类型
+// 均取自 @doc-pilot/contracts,与 API/Worker 单一真相源,不再手抄。API 创建上传与
+// Worker 解析会再次权威校验,前端仅用于即时反馈。
+const MAX_FILE_MB = Math.round(MAX_FILE_BYTES / 1024 / 1024);
 
 /** 前端预校验:格式 + 大小。通过返回 null,否则返回中文错误信息。 */
 export function validateFile(file: File): string | null {
-  if (file.type !== ALLOWED_MIME_TYPE) {
+  if (!isAllowedMimeType(file.type)) {
     return "仅支持 PDF 文件";
   }
   if (file.size <= 0) {
     return "文件为空";
   }
   if (file.size > MAX_FILE_BYTES) {
-    return "文件超过 50MB 上限";
+    return `文件超过 ${MAX_FILE_MB}MB 上限`;
   }
   return null;
-}
-
-// 与后端 @doc-pilot/contracts 的 CreateUploadResponse 手工对齐:命中内容去重时
-// 不带 upload、duplicate 为 true(见 API createUpload)。
-interface CreateUploadResponse {
-  document: { id: string; status: string };
-  upload?: { method: string; url: string; headers: Record<string, string>; expiresAt: string };
-  duplicate?: boolean;
 }
 
 async function errorMessage(r: Response): Promise<string> {

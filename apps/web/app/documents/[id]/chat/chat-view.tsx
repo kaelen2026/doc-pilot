@@ -1,5 +1,6 @@
 "use client";
 
+import { MESSAGE_PAGE } from "@doc-pilot/contracts";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { type FormEvent, useCallback, useLayoutEffect, useRef, useState } from "react";
@@ -20,9 +21,6 @@ const rise = "animate-[rise_0.5s_cubic-bezier(0.2,0,0,1)_both]";
 
 const ASKABLE = new Set(["ready", "partially_ready"]);
 
-/** 消息窗口大小,也是「加载更早」的步长。与 @doc-pilot/contracts 的 MESSAGE_PAGE.size 对齐。 */
-const MESSAGE_PAGE_SIZE = 30;
-
 export function ChatView({ documentId }: { documentId: string }) {
   const { data: session, isPending: sessionPending } = authClient.useSession();
   const docQuery = useQuery({
@@ -37,10 +35,14 @@ export function ChatView({ documentId }: { documentId: string }) {
   const conversationId = conversationQuery.data?.id;
 
   // 只加载最近 limit 条,向上「加载更早」时递增(窗口即完整历史的后缀)。
-  const [limit, setLimit] = useState(MESSAGE_PAGE_SIZE);
+  // 上限为契约的 MESSAGE_PAGE.max——服务端对超限 limit 会封顶,客户端必须同口径,
+  // 否则窗口到顶后仍无限递增、每次都拿回同样的 max 条,「加载更早」变成死按钮(见架构体检 F)。
+  const [limit, setLimit] = useState<number>(MESSAGE_PAGE.size);
   const messagesQuery = useMessages(conversationId, limit);
   const messages = messagesQuery.data?.messages ?? [];
   const hasMore = messagesQuery.data?.hasMore ?? false;
+  // 窗口已到服务端上限:即便还有更早的消息,当前分页方式也无法再往前拉(游标分页为后续工作)。
+  const atWindowCap = limit >= MESSAGE_PAGE.max;
   const { send, streaming, sendError } = useSendMessage(conversationId);
 
   const [draft, setDraft] = useState("");
@@ -60,7 +62,7 @@ export function ChatView({ documentId }: { documentId: string }) {
   const anchorRef = useRef<number | null>(null);
   const loadEarlier = useCallback(() => {
     anchorRef.current = document.documentElement.scrollHeight;
-    setLimit((l) => l + MESSAGE_PAGE_SIZE);
+    setLimit((l) => Math.min(l + MESSAGE_PAGE.size, MESSAGE_PAGE.max));
   }, []);
   // biome-ignore lint/correctness/useExhaustiveDependencies: messages 是「新窗口已渲染」的触发信号,非在体内读取
   useLayoutEffect(() => {
@@ -154,7 +156,7 @@ export function ChatView({ documentId }: { documentId: string }) {
               </p>
             ) : null}
 
-            {hasMore ? (
+            {hasMore && !atWindowCap ? (
               <div className="flex justify-center">
                 <button
                   type="button"
