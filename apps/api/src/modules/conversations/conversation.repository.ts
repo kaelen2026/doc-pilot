@@ -21,7 +21,7 @@ import {
   isNull,
   sql,
 } from "drizzle-orm";
-import { NotFoundError } from "../documents/document.errors";
+import { NotFoundError } from "../../shared/errors";
 import type { ChunkCandidate } from "./retrieval";
 
 export type ConversationRow = typeof conversations.$inferSelect;

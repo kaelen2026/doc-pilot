@@ -8,11 +8,11 @@ import { apiEnv } from "./env";
 import { requireAuth } from "./middleware/auth.middleware";
 import { observability } from "./middleware/observability.middleware";
 import { createConversationRoutes } from "./modules/conversations/conversation.routes";
-import { DomainError } from "./modules/documents/document.errors";
 import { createDocumentRoutes } from "./modules/documents/document.routes";
 import { createHealthRoutes } from "./modules/health/health.routes";
 import { createMeRoutes } from "./modules/me/me.routes";
 import { getSession, loadMemberships } from "./shared/auth-context";
+import { DomainError } from "./shared/errors";
 import { NoopRateLimiter, otpRateLimit, type RateLimiter, rateLimit } from "./shared/rate-limit";
 import type { AppEnv } from "./shared/types";
 
