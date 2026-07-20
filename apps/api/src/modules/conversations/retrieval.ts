@@ -1,9 +1,5 @@
-import type { AIGateway, AIMetadata, CitationSource } from "@doc-pilot/ai";
+import type { CitationSource } from "@doc-pilot/ai";
 import { RETRIEVAL } from "@doc-pilot/contracts";
-import { db } from "@doc-pilot/database";
-import { documentChunks } from "@doc-pilot/database/schema";
-import { withSpan } from "@doc-pilot/observability";
-import { and, cosineDistance, eq, isNotNull, sql } from "drizzle-orm";
 import { apiEnv } from "../../env";
 
 export interface ChunkCandidate {
@@ -24,61 +20,13 @@ export interface RetrievedSource extends ChunkCandidate {
 }
 
 /**
- * 向量检索(rag.md §17.1):问题向量化 → pgvector 余弦召回。
- * 租户/文档/版本过滤全部发生在 SQL 里(ADR-008 + processing_version 守卫):
- * 跨文档、陈旧版本的 chunk 根本进不了候选集。
- */
-export async function retrieveCandidates(input: {
-  gateway: AIGateway;
-  question: string;
-  workspaceId: string;
-  documentId: string;
-  processingVersion: number;
-  metadata: AIMetadata;
-}): Promise<ChunkCandidate[]> {
-  const { embeddings } = await withSpan("retrieval.embed_query", () =>
-    input.gateway.embed({
-      capability: "embedding",
-      texts: [input.question],
-      metadata: input.metadata,
-    }),
-  );
-  const queryVector = embeddings[0];
-  if (!queryVector) {
-    return [];
-  }
-
-  const distance = cosineDistance(documentChunks.embedding, queryVector);
-  return withSpan("retrieval.vector_search", () =>
-    db
-      .select({
-        chunkId: documentChunks.id,
-        chunkIndex: documentChunks.chunkIndex,
-        content: documentChunks.content,
-        contentHash: documentChunks.contentHash,
-        tokenCount: documentChunks.tokenCount,
-        pageStart: documentChunks.pageStart,
-        pageEnd: documentChunks.pageEnd,
-        score: sql<number>`1 - (${distance})`,
-      })
-      .from(documentChunks)
-      .where(
-        and(
-          eq(documentChunks.workspaceId, input.workspaceId),
-          eq(documentChunks.documentId, input.documentId),
-          eq(documentChunks.processingVersion, input.processingVersion),
-          isNotNull(documentChunks.embedding),
-        ),
-      )
-      .orderBy(distance)
-      .limit(RETRIEVAL.candidateLimit),
-  );
-}
-
-/**
  * 低成本 rerank(rag.md §17.3):相似度过滤 → 去重 → 按分取 6~8 个,
  * 再受 Context Token Budget 约束(§18.1)。纯函数,便于单测。
  * 最终按 chunkIndex 升序编号注入 Prompt,保持原文阅读顺序。
+ *
+ * 向量召回(retrieveCandidates)已收编进 scopedConversationRepo:租户/文档/版本过滤
+ * 在 seam 里强制注入(ADR-008 + processing_version 守卫)。本文件只保留与租户无关的
+ * 纯选择/映射逻辑,不再直连数据库。
  */
 export function selectSources(
   candidates: ChunkCandidate[],

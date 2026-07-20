@@ -12,9 +12,15 @@ import { apiAIGateway } from "../../ai/gateway";
 import { NotFoundError } from "../documents/document.errors";
 import { assertAskQuota } from "../quota/quota.service";
 import { AnswerRejectedError, ConflictError } from "./conversation.errors";
-import * as repo from "./conversation.repository";
+import {
+  type AskableDocument,
+  type CitationRow,
+  type ConversationRow,
+  type MessageRow,
+  scopedConversationRepo,
+} from "./conversation.repository";
 import type { CreateConversationInput, SubmitMessageInput } from "./conversation.schema";
-import { retrieveCandidates, selectSources, toCitationSources } from "./retrieval";
+import { selectSources, toCitationSources } from "./retrieval";
 
 /** 允许问答的文档状态(pipeline.md §13:partially_ready = 向量就绪、仅摘要失败)。 */
 const ASKABLE_STATUS = new Set(["ready", "partially_ready"]);
@@ -25,16 +31,13 @@ export async function createConversation(params: {
   workspaceId: string;
   userId: string;
   input: CreateConversationInput;
-}): Promise<repo.ConversationRow> {
-  const document = await repo.loadDocument({
-    workspaceId: params.workspaceId,
-    documentId: params.input.documentId,
-  });
+}): Promise<ConversationRow> {
+  const repo = scopedConversationRepo(params.workspaceId);
+  const document = await repo.loadDocument({ documentId: params.input.documentId });
   if (!document) {
     throw new NotFoundError("document not found");
   }
   return repo.createConversation({
-    workspaceId: params.workspaceId,
     documentId: document.id,
     userId: params.userId,
     title: params.input.title ?? null,
@@ -44,12 +47,14 @@ export async function createConversation(params: {
 export async function listConversations(params: {
   workspaceId: string;
   documentId?: string;
-}): Promise<repo.ConversationRow[]> {
-  return repo.listConversations(params);
+}): Promise<ConversationRow[]> {
+  return scopedConversationRepo(params.workspaceId).listConversations({
+    documentId: params.documentId,
+  });
 }
 
-export interface MessageWithCitations extends repo.MessageRow {
-  citations: repo.CitationRow[];
+export interface MessageWithCitations extends MessageRow {
+  citations: CitationRow[];
 }
 
 export async function getMessages(params: {
@@ -57,7 +62,8 @@ export async function getMessages(params: {
   conversationId: string;
   limit: number;
 }): Promise<{ messages: MessageWithCitations[]; hasMore: boolean }> {
-  const conversation = await repo.getConversation(params);
+  const repo = scopedConversationRepo(params.workspaceId);
+  const conversation = await repo.getConversation({ conversationId: params.conversationId });
   if (!conversation) {
     throw new NotFoundError("conversation not found");
   }
@@ -66,7 +72,7 @@ export async function getMessages(params: {
     limit: params.limit,
   });
   const citationRows = await repo.listCitationsByMessageIds(rows.map((m) => m.id));
-  const byMessage = new Map<string, repo.CitationRow[]>();
+  const byMessage = new Map<string, CitationRow[]>();
   for (const citation of citationRows) {
     const list = byMessage.get(citation.messageId) ?? [];
     list.push(citation);
@@ -78,15 +84,15 @@ export async function getMessages(params: {
 export type PreparedSubmission =
   | {
       kind: "existing";
-      assistantMessage: repo.MessageRow;
-      citations: repo.CitationRow[];
+      assistantMessage: MessageRow;
+      citations: CitationRow[];
     }
   | {
       kind: "generate";
-      conversation: repo.ConversationRow;
-      document: repo.AskableDocument;
-      userMessage: repo.MessageRow;
-      assistantMessage: repo.MessageRow;
+      conversation: ConversationRow;
+      document: AskableDocument;
+      userMessage: MessageRow;
+      assistantMessage: MessageRow;
     };
 
 /**
@@ -101,17 +107,12 @@ export async function prepareSubmission(params: {
   conversationId: string;
   input: SubmitMessageInput;
 }): Promise<PreparedSubmission> {
-  const conversation = await repo.getConversation({
-    workspaceId: params.workspaceId,
-    conversationId: params.conversationId,
-  });
+  const repo = scopedConversationRepo(params.workspaceId);
+  const conversation = await repo.getConversation({ conversationId: params.conversationId });
   if (!conversation) {
     throw new NotFoundError("conversation not found");
   }
-  const document = await repo.loadDocument({
-    workspaceId: params.workspaceId,
-    documentId: conversation.documentId,
-  });
+  const document = await repo.loadDocument({ documentId: conversation.documentId });
   if (!document) {
     throw new NotFoundError("document not found");
   }
@@ -154,7 +155,6 @@ export async function prepareSubmission(params: {
 
     const pair = await repo.insertQuestionPair({
       conversationId: conversation.id,
-      workspaceId: params.workspaceId,
       content: params.input.content,
       clientRequestId: params.input.clientRequestId,
     });
@@ -172,7 +172,7 @@ export interface GenerateCallbacks {
 
 export interface GenerateOutcome {
   content: string;
-  citations: repo.CitationRow[];
+  citations: CitationRow[];
   insufficientEvidence: boolean;
   usage: AIUsage | null;
 }
@@ -182,14 +182,15 @@ export interface GenerateOutcome {
  * 任一环节失败都会把 assistant 消息标记为 failed(错误码保留),再向上抛。
  */
 export async function generateAnswer(params: {
-  conversation: repo.ConversationRow;
-  document: repo.AskableDocument;
-  userMessage: repo.MessageRow;
-  assistantMessage: repo.MessageRow;
+  conversation: ConversationRow;
+  document: AskableDocument;
+  userMessage: MessageRow;
+  assistantMessage: MessageRow;
   userId: string;
   callbacks: GenerateCallbacks;
 }): Promise<GenerateOutcome> {
   const { conversation, document, userMessage, assistantMessage, callbacks } = params;
+  const repo = scopedConversationRepo(conversation.workspaceId);
   const gateway = apiAIGateway();
   const metadata = {
     workspaceId: conversation.workspaceId,
@@ -199,10 +200,9 @@ export async function generateAnswer(params: {
   };
 
   try {
-    const candidates = await retrieveCandidates({
+    const candidates = await repo.retrieveCandidates({
       gateway,
       question: userMessage.content,
-      workspaceId: conversation.workspaceId,
       documentId: document.id,
       processingVersion: document.processingVersion,
       metadata,
@@ -323,7 +323,7 @@ export function errorCodeOf(err: unknown): string {
  * 超预算即停,返回按时间正序的 AIMessage。纯函数,便于单测。
  */
 export function pickHistory(
-  rows: Array<Pick<repo.MessageRow, "role" | "content">>,
+  rows: Array<Pick<MessageRow, "role" | "content">>,
   tokenBudget: number,
 ): AIMessage[] {
   const picked: AIMessage[] = [];
