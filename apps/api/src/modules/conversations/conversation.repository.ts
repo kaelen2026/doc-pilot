@@ -359,6 +359,8 @@ export function scopedConversationRepo(workspaceId: string) {
         db
           .select({
             chunkId: documentChunks.id,
+            // 携带 chunk 的真实归属文档,供引用跨文档校验(WRONG_DOCUMENT)独立成立,见 toCitationSources。
+            documentId: documentChunks.documentId,
             chunkIndex: documentChunks.chunkIndex,
             content: documentChunks.content,
             contentHash: documentChunks.contentHash,

@@ -4,6 +4,8 @@ import { apiEnv } from "../../env";
 
 export interface ChunkCandidate {
   chunkId: string;
+  /** chunk 所属文档的真实 id(从 document_chunks 行读出,非会话绑定 id)——引用跨文档校验的比对基准。 */
+  documentId: string;
   chunkIndex: number;
   content: string;
   contentHash: string;
@@ -68,14 +70,16 @@ export function selectSources(
     .map((c, i) => ({ ...c, sourceId: `S${i + 1}` }));
 }
 
-/** RetrievedSource → 引用校验用的 CitationSource(citations.ts)。 */
-export function toCitationSources(
-  sources: RetrievedSource[],
-  documentId: string,
-): CitationSource[] {
+/**
+ * RetrievedSource → 引用校验用的 CitationSource(citations.ts)。
+ * documentId 携带每个 chunk 的真实归属(而非用会话绑定文档覆盖):这样 validateAnswer 的
+ * WRONG_DOCUMENT 才是独立校验——若检索层某天串入他文档的 chunk,跨文档引用红线能真正拦下
+ * (架构体检 E,rag.md 跨文档引用验收)。
+ */
+export function toCitationSources(sources: RetrievedSource[]): CitationSource[] {
   return sources.map((s) => ({
     sourceId: s.sourceId,
-    documentId,
+    documentId: s.documentId,
     chunkId: s.chunkId,
     text: s.content,
     pageStart: s.pageStart ?? undefined,

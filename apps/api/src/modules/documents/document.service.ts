@@ -29,9 +29,9 @@ export async function createUpload(params: {
     throw new ValidationError(constraintError);
   }
 
-  // 创建幂等（§23.1）：同一 owner + Idempotency-Key 复用已有文档（重试语义,优先于内容去重）。
+  // 创建幂等（§23.1）：同一 workspace + owner + Idempotency-Key 复用已有文档（重试语义,优先于内容去重）。
   let document = params.idempotencyKey
-    ? await repo.findByOwnerIdempotency(params.ownerId, params.idempotencyKey)
+    ? await repo.findByOwnerIdempotency(params.workspaceId, params.ownerId, params.idempotencyKey)
     : undefined;
 
   // 内容去重快速通道（§23.4）：仅对全新创建生效——命中同 workspace 已就绪的相同内容文档时,

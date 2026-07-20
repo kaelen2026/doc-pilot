@@ -1,0 +1,2 @@
+ALTER TABLE "documents" DROP CONSTRAINT "documents_owner_idempotency_unique";--> statement-breakpoint
+ALTER TABLE "documents" ADD CONSTRAINT "documents_workspace_owner_idempotency_unique" UNIQUE("workspace_id","owner_id","idempotency_key");

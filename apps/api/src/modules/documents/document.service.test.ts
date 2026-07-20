@@ -73,4 +73,22 @@ describe("createUpload 内容去重（§23.4）", () => {
     expect(repo.findReadyByChecksum).not.toHaveBeenCalled();
     expect(repo.insertDocument).toHaveBeenCalledOnce();
   });
+
+  it("创建幂等查找按 workspace 作用域:workspaceId 必须进查询(租户隔离)", async () => {
+    vi.mocked(repo.insertDocument).mockResolvedValue({
+      id: "new3",
+      status: "pending_upload",
+      processingVersion: 1,
+    } as Awaited<ReturnType<typeof repo.insertDocument>>);
+
+    await createUpload({
+      workspaceId: "w1",
+      ownerId: "u1",
+      idempotencyKey: "key-1",
+      input: INPUT,
+    });
+
+    // 回归护栏:漏掉 workspaceId 时,同一 owner 跨 workspace 复用 key 会串到他工作区的文档。
+    expect(repo.findByOwnerIdempotency).toHaveBeenCalledWith("w1", "u1", "key-1");
+  });
 });

@@ -229,7 +229,7 @@ export async function generateAnswer(params: {
       };
     }
 
-    const citationSources = toCitationSources(sources, document.id);
+    const citationSources = toCitationSources(sources);
     const history = pickHistory(
       await repo.listCompletedMessagesBefore({
         conversationId: conversation.id,

@@ -5,13 +5,22 @@ import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 export type DocumentRow = typeof documents.$inferSelect;
 
 export async function findByOwnerIdempotency(
+  workspaceId: string,
   ownerId: string,
   idempotencyKey: string,
 ): Promise<DocumentRow | undefined> {
   const [row] = await db
     .select()
     .from(documents)
-    .where(and(eq(documents.ownerId, ownerId), eq(documents.idempotencyKey, idempotencyKey)))
+    .where(
+      and(
+        // 租户隔离:幂等命中必须限定在当前 workspace 内(CLAUDE.md 不变量)。
+        // 缺此过滤时,同一 owner 跨 workspace 复用 Idempotency-Key 会串到他工作区的文档。
+        eq(documents.workspaceId, workspaceId),
+        eq(documents.ownerId, ownerId),
+        eq(documents.idempotencyKey, idempotencyKey),
+      ),
+    )
     .limit(1);
   return row;
 }
