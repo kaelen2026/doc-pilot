@@ -7,6 +7,7 @@ import {
   createOpenAIEmbeddingAdapter,
   createPromptRegistry,
   documentAnswerPromptV1,
+  resolveProviderConfig,
 } from "@doc-pilot/ai";
 import { EMBEDDING_DIMENSIONS } from "@doc-pilot/contracts";
 import { judgePromptV1 } from "./judge";
@@ -20,11 +21,11 @@ export type EvalMode = "retrieval" | "full";
  * - full 模式:强制要求真实 Key,拒绝静默回落 mock 产出无意义分数。
  */
 export function evalGateway(mode: EvalMode): AIGateway {
-  const hasAnthropic = Boolean(process.env.ANTHROPIC_API_KEY);
-  const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
+  const providers = resolveProviderConfig();
+  const { hasAnthropic, hasOpenAI } = providers;
   if (mode === "full" && (!hasAnthropic || !hasOpenAI)) {
     throw new Error(
-      "EVAL_MODE=full 需要 ANTHROPIC_API_KEY 与 OPENAI_API_KEY(评测不允许 mock 兜底)",
+      "EVAL_MODE=full 需要文本与 embedding 凭据(ANTHROPIC_API_KEY/OPENAI_API_KEY 或 AI_GATEWAY_API_KEY;评测不允许 mock 兜底)",
     );
   }
 
@@ -50,8 +51,8 @@ export function evalGateway(mode: EvalMode): AIGateway {
       },
     },
     adapters: {
-      ...(hasAnthropic ? { anthropic: createAnthropicAdapter() } : {}),
-      ...(hasOpenAI ? { openai: createOpenAIEmbeddingAdapter() } : {}),
+      ...(providers.anthropic ? { anthropic: createAnthropicAdapter(providers.anthropic) } : {}),
+      ...(providers.openai ? { openai: createOpenAIEmbeddingAdapter(providers.openai) } : {}),
       mock: createMockAdapter({
         embeddingDim: EMBEDDING_DIMENSIONS,
         streamChunks: [

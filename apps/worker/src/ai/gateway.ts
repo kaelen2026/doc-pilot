@@ -7,6 +7,7 @@ import {
   createPromptRegistry,
   documentSummaryPromptV1,
   documentSummarySectionPromptV1,
+  resolveProviderConfig,
 } from "@doc-pilot/ai";
 import { EMBEDDING_DIMENSIONS } from "@doc-pilot/contracts";
 import { createAiGenerationRecorder, db } from "@doc-pilot/database";
@@ -28,20 +29,20 @@ export function workerAIGateway(): AIGateway {
 }
 
 function build(): AIGateway {
-  const hasAnthropic = Boolean(process.env.ANTHROPIC_API_KEY);
-  const hasOpenAI = Boolean(process.env.OPENAI_API_KEY);
+  const providers = resolveProviderConfig();
+  const { hasAnthropic, hasOpenAI } = providers;
   if (!hasAnthropic) {
     logger.warn("ai.mock_fallback", {
       app: "worker",
       capability: "summarize",
-      missing: "ANTHROPIC_API_KEY",
+      missing: "ANTHROPIC_API_KEY 或 AI_GATEWAY_API_KEY",
     });
   }
   if (!hasOpenAI) {
     logger.warn("ai.mock_fallback", {
       app: "worker",
       capability: "embedding",
-      missing: "OPENAI_API_KEY",
+      missing: "OPENAI_API_KEY 或 AI_GATEWAY_API_KEY",
     });
   }
 
@@ -73,8 +74,8 @@ function build(): AIGateway {
       },
     },
     adapters: {
-      ...(hasAnthropic ? { anthropic: createAnthropicAdapter() } : {}),
-      ...(hasOpenAI ? { openai: createOpenAIEmbeddingAdapter() } : {}),
+      ...(providers.anthropic ? { anthropic: createAnthropicAdapter(providers.anthropic) } : {}),
+      ...(providers.openai ? { openai: createOpenAIEmbeddingAdapter(providers.openai) } : {}),
       mock: devMockAdapter(),
     },
     prompts: createPromptRegistry([documentSummaryPromptV1, documentSummarySectionPromptV1]),
