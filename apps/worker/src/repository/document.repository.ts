@@ -7,7 +7,7 @@ import {
   documents,
   processingJobs,
 } from "@doc-pilot/database/schema";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
 import type { Chunk, EmbeddedChunks } from "../pipeline";
 import { passesProcessingGuard } from "./processing-guard";
 
@@ -57,6 +57,100 @@ export async function claimDocument(params: {
   };
 }
 
+export interface CanonicalDocument {
+  id: string;
+  processingVersion: number;
+  status: string;
+  pageCount: number | null;
+  textLength: number | null;
+  summary: Record<string, unknown> | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+}
+
+/**
+ * 内容去重兜底查找（§23.4）：同一 workspace 内是否已有相同内容且已就绪的其它文档。
+ * 只认 ready / partially_ready(已产出 chunk),排除自身;取最早的一份作 canonical(稳定)。
+ * 租户隔离:workspaceId 直接进 where。命中则复制其结果,避免对相同内容重复 parse + embed。
+ */
+export async function findCanonicalByChecksum(params: {
+  workspaceId: string;
+  checksum: string;
+  excludeDocumentId: string;
+}): Promise<CanonicalDocument | null> {
+  const [row] = await db
+    .select({
+      id: documents.id,
+      processingVersion: documents.processingVersion,
+      status: documents.status,
+      pageCount: documents.pageCount,
+      textLength: documents.textLength,
+      summary: documents.summary,
+      errorCode: documents.errorCode,
+      errorMessage: documents.errorMessage,
+    })
+    .from(documents)
+    .where(
+      and(
+        eq(documents.workspaceId, params.workspaceId),
+        eq(documents.checksumSha256, params.checksum),
+        ne(documents.id, params.excludeDocumentId),
+        inArray(documents.status, ["ready", "partially_ready"]),
+        isNull(documents.deletedAt),
+      ),
+    )
+    .orderBy(asc(documents.createdAt))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * 读出某文档某版本的全部 chunk,重建为 pipeline 的 Chunk[] + EmbeddedChunks 形状,
+ * 供去重路径直接复用(跳过 parse/clean/chunk/embed)。若无 chunk 或存在缺失向量,
+ * 返回 null——调用方据此回退正常处理,不冒险写入不完整数据。
+ */
+export async function loadFinalizedContent(
+  documentId: string,
+  processingVersion: number,
+): Promise<{ chunks: Chunk[]; embedded: EmbeddedChunks } | null> {
+  const rows = await db
+    .select()
+    .from(documentChunks)
+    .where(
+      and(
+        eq(documentChunks.documentId, documentId),
+        eq(documentChunks.processingVersion, processingVersion),
+      ),
+    )
+    .orderBy(asc(documentChunks.chunkIndex));
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const chunks: Chunk[] = [];
+  const vectors: number[][] = [];
+  let model = "";
+  for (const r of rows) {
+    if (!r.embedding) {
+      return null;
+    }
+    chunks.push({
+      chunkIndex: r.chunkIndex,
+      content: r.content,
+      contentHash: r.contentHash,
+      tokenCount: r.tokenCount,
+      pageStart: r.pageStart ?? 0,
+      pageEnd: r.pageEnd ?? 0,
+      sectionPath: r.sectionPath ?? [],
+      metadata: (r.metadata as Chunk["metadata"]) ?? { parserVersion: "", chunkerVersion: "" },
+    });
+    vectors.push(r.embedding);
+    model = r.embeddingModel ?? model;
+  }
+  return { chunks, embedded: { vectors, model } };
+}
+
 /** 推进阶段:更新 documents 的状态/阶段/进度,并把 processing_jobs 标为 running。 */
 export async function markStage(params: {
   documentId: string;
@@ -100,6 +194,8 @@ export async function saveChunksAndFinalize(params: {
   embedded: EmbeddedChunks;
   summary: Record<string, unknown> | null;
   summaryError: { code: string; message: string } | null;
+  /** 原始文件的权威 SHA256:回填到 documents / document_files,供内容去重查找（§23.4）。 */
+  checksumSha256?: string;
 }): Promise<boolean> {
   return db.transaction(async (tx) => {
     const [doc] = await tx
@@ -160,9 +256,22 @@ export async function saveChunksAndFinalize(params: {
         summary: params.summary,
         errorCode: params.summaryError?.code ?? null,
         errorMessage: params.summaryError?.message ?? null,
+        // 就绪时才写入内容指纹——findReadyByChecksum/findCanonicalByChecksum 只查已就绪文档,
+        // 故指纹与「可去重」状态同时生效,未就绪文档不会被误命中。
+        ...(params.checksumSha256 ? { checksumSha256: params.checksumSha256 } : {}),
         updatedAt: new Date(),
       })
       .where(eq(documents.id, params.documentId));
+
+    if (params.checksumSha256) {
+      // 回填物理文件记录的 checksum(兑现 document_files.checksum_sha256 原有设计)。
+      await tx
+        .update(documentFiles)
+        .set({ checksumSha256: params.checksumSha256 })
+        .where(
+          and(eq(documentFiles.documentId, params.documentId), eq(documentFiles.kind, "original")),
+        );
+    }
 
     await tx
       .update(processingJobs)

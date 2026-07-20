@@ -43,6 +43,10 @@ export const documents = pgTable(
     processingVersion: integer("processing_version").notNull().default(1),
     // 创建幂等（见 §23.1）：同一 owner + Idempotency-Key 返回同一文档。
     idempotencyKey: varchar("idempotency_key", { length: 255 }),
+    // 内容级去重（见 §23.4、pipeline.md §15.3）：原始文件的 SHA256(hex)。
+    // 由 Worker 从真实字节计算后回填(权威),用于同 workspace 内容去重的快速查找。
+    // 与 document_files.checksum_sha256 冗余,此处冗余出来只为按 workspace 建索引。
+    checksumSha256: varchar("checksum_sha256", { length: 64 }),
     errorCode: varchar("error_code", { length: 100 }),
     errorMessage: text("error_message"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -54,6 +58,11 @@ export const documents = pgTable(
       .on(t.workspaceId, t.createdAt.desc())
       .where(sql`${t.deletedAt} is null`),
     unique("documents_owner_idempotency_unique").on(t.ownerId, t.idempotencyKey),
+    // 内容去重查找（§23.4）：按 (workspace, checksum) 命中已就绪文档。
+    // 部分索引:只索引未删且已回填指纹的行,故未就绪/无指纹文档不参与去重。
+    index("documents_workspace_checksum_idx")
+      .on(t.workspaceId, t.checksumSha256)
+      .where(sql`${t.deletedAt} is null and ${t.checksumSha256} is not null`),
   ],
 );
 

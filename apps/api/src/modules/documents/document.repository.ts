@@ -1,6 +1,6 @@
 import { db } from "@doc-pilot/database";
 import { documentFiles, documents, outboxEvents, processingJobs } from "@doc-pilot/database/schema";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 
 export type DocumentRow = typeof documents.$inferSelect;
 
@@ -12,6 +12,30 @@ export async function findByOwnerIdempotency(
     .select()
     .from(documents)
     .where(and(eq(documents.ownerId, ownerId), eq(documents.idempotencyKey, idempotencyKey)))
+    .limit(1);
+  return row;
+}
+
+/**
+ * 内容去重的快速通道查找（§23.4）：同一 workspace 内是否已有相同内容且「可用」的文档。
+ * 只匹配 ready / partially_ready（已产出 chunk 可问答）——在途/失败的不算,避免把新上传
+ * 挂到一份最终会失败的文档上。租户隔离:workspaceId 直接进 where(见 CLAUDE.md 不变量)。
+ */
+export async function findReadyByChecksum(
+  workspaceId: string,
+  checksumSha256: string,
+): Promise<{ id: string; status: string } | undefined> {
+  const [row] = await db
+    .select({ id: documents.id, status: documents.status })
+    .from(documents)
+    .where(
+      and(
+        eq(documents.workspaceId, workspaceId),
+        eq(documents.checksumSha256, checksumSha256),
+        inArray(documents.status, ["ready", "partially_ready"]),
+        isNull(documents.deletedAt),
+      ),
+    )
     .limit(1);
   return row;
 }

@@ -1,4 +1,4 @@
-import { buildParseJobId } from "@doc-pilot/contracts";
+import { buildParseJobId, type CreateUploadResponse } from "@doc-pilot/contracts";
 import {
   bucket,
   buildOriginalObjectKey,
@@ -18,25 +18,30 @@ function titleFromFilename(filename: string): string {
   return filename.replace(/\.[^/.]+$/, "") || filename;
 }
 
-export interface CreateUploadResult {
-  document: { id: string; status: string };
-  upload: {
-    method: "PUT";
-    url: string;
-    headers: Record<string, string>;
-    expiresAt: string;
-  };
-}
-
 export async function createUpload(params: {
   workspaceId: string;
   ownerId: string;
   idempotencyKey?: string;
   input: CreateUploadInput;
-}): Promise<CreateUploadResult> {
+}): Promise<CreateUploadResponse> {
   const constraintError = validateUploadConstraints(params.input);
   if (constraintError) {
     throw new ValidationError(constraintError);
+  }
+
+  // 创建幂等（§23.1）：同一 owner + Idempotency-Key 复用已有文档（重试语义,优先于内容去重）。
+  let document = params.idempotencyKey
+    ? await repo.findByOwnerIdempotency(params.ownerId, params.idempotencyKey)
+    : undefined;
+
+  // 内容去重快速通道（§23.4）：仅对全新创建生效——命中同 workspace 已就绪的相同内容文档时,
+  // 直接返回该文档,既不新建、不签发上传 URL,也不占配额。客户端指纹仅作提示,权威指纹由
+  // Worker 从真实字节计算(见 ADR-003);未带指纹或错报的上传由 Worker 侧兜底去重。
+  if (!document && params.input.checksumSha256) {
+    const dup = await repo.findReadyByChecksum(params.workspaceId, params.input.checksumSha256);
+    if (dup) {
+      return { document: { id: dup.id, status: dup.status }, duplicate: true };
+    }
   }
 
   // 配额检查（在昂贵操作之前，见 cross-cutting.md §27.2）:存储字节 + 文档数量。
@@ -44,11 +49,6 @@ export async function createUpload(params: {
     workspaceId: params.workspaceId,
     additionalBytes: params.input.sizeBytes,
   });
-
-  // 创建幂等（§23.1）：同一 owner + Idempotency-Key 复用已有文档。
-  let document = params.idempotencyKey
-    ? await repo.findByOwnerIdempotency(params.ownerId, params.idempotencyKey)
-    : undefined;
 
   if (!document) {
     document = await repo.insertDocument({

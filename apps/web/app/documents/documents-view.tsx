@@ -60,6 +60,7 @@ export function DocumentsView() {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const upload = useUploadDocument();
 
   async function signOut() {
@@ -80,7 +81,14 @@ export function DocumentsView() {
       return;
     }
     setFileError(null);
-    upload.mutate(file);
+    setNotice(null);
+    upload.mutate(file, {
+      onSuccess: (data) => {
+        if (data.deduplicated) {
+          setNotice("该文件内容已存在,已为你复用现有文档,跳过重复上传。");
+        }
+      },
+    });
   }
 
   const uploadError = fileError ?? (upload.isError ? String(upload.error) : null);
@@ -123,6 +131,7 @@ export function DocumentsView() {
                 <span className="text-xs text-ink-faint">PDF · 最大 50MB</span>
               </div>
               {uploadError ? <p className="text-sm text-seal">{uploadError}</p> : null}
+              {notice ? <p className="text-sm text-ink-soft">{notice}</p> : null}
             </div>
 
             {docsQuery.isError ? (

@@ -12,6 +12,7 @@ import {
   cleanDocument,
   embedChunks,
   errorCodeOf,
+  hashFileSha256,
   isRetryable,
   parseDocument,
 } from "../pipeline";
@@ -55,6 +56,52 @@ export async function processDocumentJob(job: Job<DocumentJobData>): Promise<{
   try {
     await repo.markStage({ documentId, jobIdempotencyKey, stage: "parse", progress: 20 });
     await downloadObjectToFile(claim.objectKey, filePath);
+
+    // 权威内容指纹:从实际下载的字节计算(不信前端,见 ADR-003)。
+    const checksumSha256 = await hashFileSha256(filePath);
+
+    // 内容去重兜底（§23.4）:未走前端快速通道的重复上传在此拦下——命中同 workspace 已就绪的
+    // 相同内容文档,则直接复制其 chunk/摘要收尾,跳过 parse/clean/chunk/embed(省最贵的 AI 成本)。
+    const canonical = await repo.findCanonicalByChecksum({
+      workspaceId: claim.workspaceId,
+      checksum: checksumSha256,
+      excludeDocumentId: documentId,
+    });
+    if (canonical) {
+      const content = await repo.loadFinalizedContent(canonical.id, canonical.processingVersion);
+      if (content) {
+        const summaryError =
+          canonical.status === "partially_ready"
+            ? {
+                code: canonical.errorCode ?? "SUMMARY_FAILED",
+                message: canonical.errorMessage ?? "",
+              }
+            : null;
+        const written = await repo.saveChunksAndFinalize({
+          documentId,
+          workspaceId: claim.workspaceId,
+          processingVersion,
+          jobIdempotencyKey,
+          pageCount: canonical.pageCount ?? 0,
+          textLength: canonical.textLength ?? 0,
+          chunks: content.chunks,
+          embedded: content.embedded,
+          summary: canonical.summary,
+          summaryError,
+          checksumSha256,
+        });
+        if (!written) {
+          log.info("document.skip", { reason: "guard_failed_mid_run" });
+          return { status: "skipped" };
+        }
+        log.info("document.deduped", {
+          canonicalId: canonical.id,
+          chunkCount: content.chunks.length,
+        });
+        return { status: "done", chunkCount: content.chunks.length };
+      }
+    }
+
     const parsed = await parseDocument({ filePath, mimeType: claim.mimeType });
 
     await repo.markStage({ documentId, jobIdempotencyKey, stage: "clean", progress: 45 });
@@ -108,6 +155,7 @@ export async function processDocumentJob(job: Job<DocumentJobData>): Promise<{
       embedded,
       summary,
       summaryError,
+      checksumSha256,
     });
 
     if (!written) {

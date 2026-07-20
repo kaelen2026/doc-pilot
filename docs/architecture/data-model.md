@@ -103,6 +103,7 @@ CREATE TABLE documents (
   chunk_count INTEGER,
   summary JSONB,
   processing_version INTEGER NOT NULL DEFAULT 1,
+  checksum_sha256 VARCHAR(64),
   error_code VARCHAR(100),
   error_message TEXT,
   created_at TIMESTAMPTZ NOT NULL,
@@ -113,6 +114,12 @@ CREATE TABLE documents (
 CREATE INDEX idx_documents_workspace_created
 ON documents(workspace_id, created_at DESC)
 WHERE deleted_at IS NULL;
+
+-- 内容级去重查找（见 rag.md §23.4）：按 (workspace, checksum) 命中已就绪文档。
+-- 部分索引:只索引未删且已回填指纹的行。
+CREATE INDEX idx_documents_workspace_checksum
+ON documents(workspace_id, checksum_sha256)
+WHERE deleted_at IS NULL AND checksum_sha256 IS NOT NULL;
 ```
 
 `summary` 第一版可以使用 JSONB：
@@ -128,6 +135,10 @@ WHERE deleted_at IS NULL;
 > 实现补充（Phase 3）：`documents` 增加 `idempotency_key VARCHAR(255)` 列，配合
 > `UNIQUE(owner_id, idempotency_key)`，用于创建上传的幂等（见 §23.1）。`owner_id`
 > 为 TEXT 引用 `user(id)`（见 §8.1.1）。
+>
+> 实现补充（内容去重）：`documents` 增加 `checksum_sha256 VARCHAR(64)` 列（与
+> `document_files.checksum_sha256` 冗余，此处冗余以按 workspace 建索引），由 Worker
+> 从真实字节算出后在文档就绪时回填，用于内容级去重（见 rag.md §23.4）。
 
 ### 8.3 document_files
 
