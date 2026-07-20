@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -204,8 +204,11 @@ function UserNote({ content }: { content: string }) {
   );
 }
 
-/** 助手回答:墨字直接书写在纸面,引用是朱红脚注。 */
+/** 助手回答:墨字直接书写在纸面,结论处朱红上标锚点,底部朱红脚注一一对应。 */
 function AssistantPassage({ message, onRetry }: { message: MessageItem; onRetry: () => void }) {
+  // 内嵌锚点与底部脚注共享同一「展开项」:点其一即高亮并展开对应引用。
+  const [openId, setOpenId] = useState<string | null>(null);
+
   if (message.status === "failed") {
     return (
       <div className="space-y-2">
@@ -224,16 +227,106 @@ function AssistantPassage({ message, onRetry }: { message: MessageItem; onRetry:
 
   return (
     <div className="space-y-3">
-      <p className="whitespace-pre-wrap text-[15px] leading-[1.8] text-ink">{message.content}</p>
+      <AnswerBody
+        content={message.content}
+        citations={message.citations}
+        messageId={message.id}
+        openId={openId}
+        onToggle={setOpenId}
+      />
       {refused ? <Badge variant="seal">未在文档中找到依据</Badge> : null}
-      {message.citations.length > 0 ? <CitationFootnotes citations={message.citations} /> : null}
+      {message.citations.length > 0 ? (
+        <CitationFootnotes
+          citations={message.citations}
+          messageId={message.id}
+          openId={openId}
+          onToggle={setOpenId}
+        />
+      ) : null}
     </div>
   );
 }
 
-function CitationFootnotes({ citations }: { citations: CitationItem[] }) {
-  const [open, setOpen] = useState<string | null>(null);
-  const active = citations.find((c) => c.id === open);
+/**
+ * 答案正文:把模型内嵌的 [n] 标记(n 为引用序号,从 1 开始)渲染成朱红上标锚点,
+ * 点击即高亮并滚动到底部对应脚注,与脚注编号一一对应(rag.md §19)。
+ * 越界或无对应引用的 [n] 原样保留为文本——模型偶发跑偏时正文仍可读,不整条失败。
+ */
+function AnswerBody({
+  content,
+  citations,
+  messageId,
+  openId,
+  onToggle,
+}: {
+  content: string;
+  citations: CitationItem[];
+  messageId: string;
+  openId: string | null;
+  onToggle: (id: string | null) => void;
+}) {
+  const parts: ReactNode[] = [];
+  let cursor = 0;
+  let key = 0;
+  const re = /\[(\d+)\]/g;
+  let match: RegExpExecArray | null;
+  // biome-ignore lint/suspicious/noAssignInExpressions: 正则迭代惯用法
+  while ((match = re.exec(content)) !== null) {
+    const n = Number(match[1]);
+    // citations 已按 position 升序,数组下标 n-1 即第 n 条引用。
+    const citation = citations[n - 1];
+    if (match.index > cursor) {
+      parts.push(<span key={key++}>{content.slice(cursor, match.index)}</span>);
+    }
+    if (citation) {
+      const active = openId === citation.id;
+      parts.push(
+        <button
+          key={key++}
+          type="button"
+          onClick={() => {
+            const next = active ? null : citation.id;
+            onToggle(next);
+            if (next) {
+              document
+                .getElementById(`cite-${messageId}-${n}`)
+                ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+            }
+          }}
+          aria-label={`引用 ${n}${citation.pageStart != null ? `,第 ${citation.pageStart} 页` : ""}`}
+          className={`mx-px inline-flex items-center rounded-[3px] px-1 align-super text-[10px] font-medium leading-none tabular-nums transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring ${
+            active
+              ? "bg-seal text-paper"
+              : "bg-seal/10 text-seal [@media(hover:hover)]:hover:bg-seal/20"
+          }`}
+        >
+          {n}
+        </button>,
+      );
+    } else {
+      parts.push(<span key={key++}>{match[0]}</span>);
+    }
+    cursor = match.index + match[0].length;
+  }
+  if (cursor < content.length) {
+    parts.push(<span key={key++}>{content.slice(cursor)}</span>);
+  }
+
+  return <p className="whitespace-pre-wrap text-[15px] leading-[1.8] text-ink">{parts}</p>;
+}
+
+function CitationFootnotes({
+  citations,
+  messageId,
+  openId,
+  onToggle,
+}: {
+  citations: CitationItem[];
+  messageId: string;
+  openId: string | null;
+  onToggle: (id: string | null) => void;
+}) {
+  const active = citations.find((c) => c.id === openId);
 
   return (
     <div className="space-y-2 border-t border-hairline pt-2.5">
@@ -241,11 +334,12 @@ function CitationFootnotes({ citations }: { citations: CitationItem[] }) {
         {citations.map((c, i) => (
           <button
             key={c.id}
+            id={`cite-${messageId}-${i + 1}`}
             type="button"
-            onClick={() => setOpen(open === c.id ? null : c.id)}
-            aria-expanded={open === c.id}
+            onClick={() => onToggle(openId === c.id ? null : c.id)}
+            aria-expanded={openId === c.id}
             className={`rounded-sm px-2 py-1 text-xs tabular-nums transition-[color,background-color] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
-              open === c.id
+              openId === c.id
                 ? "bg-seal/10 text-seal-deep"
                 : "text-seal [@media(hover:hover)]:hover:bg-seal/10"
             }`}
