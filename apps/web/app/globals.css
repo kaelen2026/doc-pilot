@@ -133,6 +133,18 @@
   }
 }
 
+/* 原文抽屉：从右侧滑入 */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 /* PDF.js 文本层（可选中的透明文字覆盖在 canvas 上）。
    摘自 pdfjs-dist/web/pdf_viewer.css 的必需子集；容器需设 --total-scale-factor。 */
 .textLayer {
