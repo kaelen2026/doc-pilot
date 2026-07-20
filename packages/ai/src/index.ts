@@ -28,6 +28,7 @@ export {
   type ValidatedCitation,
   validateAnswer,
 } from "./citations";
+export { type ResolvedProviderConfig, resolveProviderConfig } from "./env";
 export { AI_ERROR_CODES, AIError, type AIErrorCode, isAIError, normalizeAIError } from "./errors";
 export {
   type AIGatewayHooks,
