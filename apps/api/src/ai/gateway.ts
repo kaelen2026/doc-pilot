@@ -11,6 +11,7 @@ import {
 import { EMBEDDING_DIMENSIONS } from "@doc-pilot/contracts";
 import { createAiGenerationRecorder, db } from "@doc-pilot/database";
 import { aiMetrics, logger } from "@doc-pilot/observability";
+import { apiEnv } from "../env";
 import { mockAnswerChunks } from "./mock-answer";
 
 let instance: AIGateway | undefined;
@@ -53,22 +54,22 @@ function build(): AIGateway {
     routes: {
       answer: {
         provider: hasAnthropic ? "anthropic" : "mock",
-        model: process.env.AI_ANSWER_MODEL ?? "claude-opus-4-8",
-        maxTokens: Number(process.env.AI_ANSWER_MAX_TOKENS ?? 8000),
+        model: apiEnv.ai.answer.model,
+        maxTokens: apiEnv.ai.answer.maxTokens,
         // 缺省按 claude-opus-4-8 定价($5/$25 每百万 token)。
         pricing: {
-          inputMicrosPerToken: Number(process.env.AI_ANSWER_INPUT_MICROS ?? 5),
-          outputMicrosPerToken: Number(process.env.AI_ANSWER_OUTPUT_MICROS ?? 25),
+          inputMicrosPerToken: apiEnv.ai.answer.inputMicrosPerToken,
+          outputMicrosPerToken: apiEnv.ai.answer.outputMicrosPerToken,
         },
       },
       embedding: {
         provider: hasOpenAI ? "openai" : "mock",
         // 必须与 Worker 侧 embedding 路由一致,查询向量与库内向量才在同一空间。
-        model: process.env.AI_EMBEDDING_MODEL ?? "text-embedding-3-small",
+        model: apiEnv.ai.embedding.model,
         pricing: {
           inputMicrosPerToken: 0,
           outputMicrosPerToken: 0,
-          embeddingMicrosPerToken: Number(process.env.AI_EMBEDDING_MICROS ?? 0.02),
+          embeddingMicrosPerToken: apiEnv.ai.embedding.embeddingMicrosPerToken,
         },
       },
     },

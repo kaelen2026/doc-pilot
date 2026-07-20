@@ -10,8 +10,9 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { bucket, s3 } from "./client";
+import { storageEnv } from "./env";
 
-const DEFAULT_EXPIRES_SECONDS = Number(process.env.UPLOAD_URL_EXPIRES_SECONDS ?? 900); // 15min
+const DEFAULT_EXPIRES_SECONDS = storageEnv.uploadUrlExpiresSeconds; // 默认 15min，见 env.ts
 
 /**
  * 生成客户端直传用的 PUT Presigned URL。

@@ -63,6 +63,7 @@ These are the cross-cutting rules the design keeps returning to; violating them 
 - **Structured AI output + business-level citation validation.** Model output is Zod-validated, then citations are re-checked against the actual retrieval context (sourceId exists, belongs to this doc, quote roughly matches). No evidence → explicit refusal. This backs the "citation ID validity 100%" target (ADR-007, `rag.md`).
 - **Three-tier limit enforcement.** File limits (PDF, 50MB, 500 pages, quotas) are checked at frontend, at the create-upload API, and again in the Worker. Never trust the frontend alone (`product/overview.md#22`).
 - **String enums, not Postgres ENUM.** Status/stage columns are `VARCHAR` + check constraints for cheaper migration (`data-model.md#81`).
+- **环境变量集中于各模块的 `env.ts`。** 每个 app/package 有且仅有一个读取 `process.env` 的文件——`apps/<app>/src/env.ts`、`packages/<pkg>/src/env.ts`(前端 `NEXT_PUBLIC_*` 见 `apps/web/lib/env.ts`,e2e 见 `e2e/helpers/env.ts`)。业务代码从该文件 import 类型化、带默认值的配置对象,**不得**在别处散写 `process.env`。默认值与降级语义(如 `DATABASE_URL` 缺省回退本地串以保 import 安全)集中在 `env.ts`;读取时机需与消费方一致(在 import 期构造的用常量,按调用实时读的用函数,如 `observability` 的 `logLevel()`)。`packages/ai` 的 `resolveProviderConfig(env)` 是「接线层集中、adapter 通用」的范式(ADR-006)。
 
 ## Runtime shape
 

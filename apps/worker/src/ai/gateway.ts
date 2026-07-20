@@ -12,6 +12,7 @@ import {
 import { EMBEDDING_DIMENSIONS } from "@doc-pilot/contracts";
 import { createAiGenerationRecorder, db } from "@doc-pilot/database";
 import { aiMetrics, logger } from "@doc-pilot/observability";
+import { workerEnv } from "../env";
 
 let instance: AIGateway | undefined;
 
@@ -53,23 +54,23 @@ function build(): AIGateway {
     routes: {
       summarize: {
         provider: hasAnthropic ? "anthropic" : "mock",
-        model: process.env.AI_SUMMARIZE_MODEL ?? "claude-opus-4-8",
-        maxTokens: Number(process.env.AI_SUMMARIZE_MAX_TOKENS ?? 16000),
+        model: workerEnv.ai.summarize.model,
+        maxTokens: workerEnv.ai.summarize.maxTokens,
         // 缺省按 claude-opus-4-8 定价($5/$25 每百万 token);换模型时用环境变量同步调整。
         pricing: {
-          inputMicrosPerToken: Number(process.env.AI_SUMMARIZE_INPUT_MICROS ?? 5),
-          outputMicrosPerToken: Number(process.env.AI_SUMMARIZE_OUTPUT_MICROS ?? 25),
+          inputMicrosPerToken: workerEnv.ai.summarize.inputMicrosPerToken,
+          outputMicrosPerToken: workerEnv.ai.summarize.outputMicrosPerToken,
         },
       },
       embedding: {
         provider: hasOpenAI ? "openai" : "mock",
         // text-embedding-3-small 输出 1536 维,与 document_chunks.embedding 一致。
-        model: process.env.AI_EMBEDDING_MODEL ?? "text-embedding-3-small",
+        model: workerEnv.ai.embedding.model,
         // 缺省按 text-embedding-3-small 定价($0.02 每百万 token)。
         pricing: {
           inputMicrosPerToken: 0,
           outputMicrosPerToken: 0,
-          embeddingMicrosPerToken: Number(process.env.AI_EMBEDDING_MICROS ?? 0.02),
+          embeddingMicrosPerToken: workerEnv.ai.embedding.embeddingMicrosPerToken,
         },
       },
     },

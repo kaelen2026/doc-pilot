@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
+import { e2eEnv } from "./helpers/env";
 
-const isCI = !!process.env.CI;
+const isCI = e2eEnv.ci;
 
 /**
  * DocPilot E2E(testing-and-eval.md §30.4)。
@@ -20,7 +21,7 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   reporter: isCI ? [["list"], ["html", { open: "never" }]] : "list",
   use: {
-    baseURL: process.env.E2E_WEB_URL ?? "http://localhost:3000",
+    baseURL: e2eEnv.webUrl,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",

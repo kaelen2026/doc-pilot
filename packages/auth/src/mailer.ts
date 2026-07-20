@@ -1,8 +1,7 @@
 import nodemailer from "nodemailer";
+import { authEnv } from "./env";
 
-const host = process.env.SMTP_HOST ?? "localhost";
-const port = Number(process.env.SMTP_PORT ?? 1025);
-const from = process.env.MAIL_FROM ?? "DocPilot <no-reply@docpilot.local>";
+const { host, port, from } = authEnv.smtp;
 
 // createTransport 是惰性的，不会在构造时建连——import 本模块安全。
 // 本地 Mailpit 无需鉴权 / TLS。

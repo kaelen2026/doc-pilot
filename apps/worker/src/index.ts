@@ -14,6 +14,7 @@ import {
   QUEUE_NAMES,
 } from "@doc-pilot/queue";
 import { Worker } from "bullmq";
+import { workerEnv } from "./env";
 import { startOutboxPublisher } from "./outbox/publisher";
 import { processDocumentJob } from "./processors/document.processor";
 import { createReconcileProcessor } from "./reconcile/reconcile.processor";
@@ -31,7 +32,7 @@ const maintenanceQueueConnection = createRedisConnection();
 
 const worker = new Worker(QUEUE_NAMES.documentProcessing, processDocumentJob, {
   connection: workerConnection,
-  concurrency: Number(process.env.WORKER_CONCURRENCY ?? 2),
+  concurrency: workerEnv.concurrency,
 });
 
 // queue_depth(§29.2):Prometheus 抓取时读取 waiting + active + delayed。
@@ -59,7 +60,7 @@ worker.on("failed", (job, err) => {
 
 const stopPublisher = startOutboxPublisher({
   connection: publisherConnection,
-  intervalMs: Number(process.env.OUTBOX_POLL_INTERVAL_MS ?? 2000),
+  intervalMs: workerEnv.outboxPollIntervalMs,
 });
 
 // 自动对账(runbooks/failure-recovery.md §35):maintenance 队列上的周期性任务。

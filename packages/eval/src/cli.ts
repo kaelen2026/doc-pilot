@@ -1,9 +1,8 @@
 import { writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { queryClient } from "@doc-pilot/database";
 import { loadDataset } from "./dataset";
-import { type EvalMode, evalGateway } from "./gateway";
+import { evalEnv } from "./env";
+import { evalGateway } from "./gateway";
 import { aggregate, type CaseAnswerMetrics, type CaseRetrievalMetrics } from "./metrics";
 import { ingestDataset, runCase } from "./runner";
 
@@ -12,11 +11,8 @@ import { ingestDataset, runCase } from "./runner";
  * EVAL_MODE=retrieval(缺省):只算检索指标,embedding 可 mock,CI 可跑。
  * EVAL_MODE=full:真实模型跑完整回答链路 + LLM Judge,发布新 Prompt/模型前必须跑。
  */
-const mode: EvalMode = process.env.EVAL_MODE === "full" ? "full" : "retrieval";
-const evalsDir =
-  process.env.EVALS_DIR ?? resolve(dirname(fileURLToPath(import.meta.url)), "../../../evals");
-
-const dataset = loadDataset(evalsDir);
+const mode = evalEnv.mode;
+const dataset = loadDataset(evalEnv.evalsDir);
 console.log(
   `[eval] mode=${mode} documents=${dataset.documents.size} cases=${dataset.cases.length}`,
 );
@@ -59,12 +55,12 @@ try {
     );
   }
 
-  if (process.env.EVAL_REPORT_PATH) {
+  if (evalEnv.reportPath) {
     writeFileSync(
-      process.env.EVAL_REPORT_PATH,
+      evalEnv.reportPath,
       JSON.stringify({ mode, generatedAt: new Date().toISOString(), report }, null, 2),
     );
-    console.log(`[eval] 报告已写入 ${process.env.EVAL_REPORT_PATH}`);
+    console.log(`[eval] 报告已写入 ${evalEnv.reportPath}`);
   }
 } finally {
   await fixture.cleanup();

@@ -2,6 +2,7 @@ import { db, schema } from "@doc-pilot/database";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP } from "better-auth/plugins";
+import { authEnv } from "./env";
 import { sendOtpEmail } from "./mailer";
 import { createPersonalWorkspace } from "./workspace";
 
@@ -12,9 +13,9 @@ import { createPersonalWorkspace } from "./workspace";
  * - user.create.after 钩子自动创建个人 workspace（见最终验收 #2）。
  */
 export const auth = betterAuth({
-  baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3001",
+  baseURL: authEnv.baseURL,
   basePath: "/api/auth",
-  secret: process.env.BETTER_AUTH_SECRET ?? "dev-secret-change-me",
+  secret: authEnv.secret,
   trustedOrigins: ["http://localhost:3000", "http://localhost:3001"],
   database: drizzleAdapter(db, { provider: "pg", schema }),
   plugins: [

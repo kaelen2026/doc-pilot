@@ -10,6 +10,7 @@ import {
   resolveProviderConfig,
 } from "@doc-pilot/ai";
 import { EMBEDDING_DIMENSIONS } from "@doc-pilot/contracts";
+import { evalEnv } from "./env";
 import { judgePromptV1 } from "./judge";
 
 export type EvalMode = "retrieval" | "full";
@@ -36,17 +37,17 @@ export function evalGateway(mode: EvalMode): AIGateway {
     routes: {
       embedding: {
         provider: embeddingProvider,
-        model: process.env.AI_EMBEDDING_MODEL ?? "text-embedding-3-small",
+        model: evalEnv.ai.embeddingModel,
       },
       answer: {
         provider: textProvider,
-        model: process.env.AI_ANSWER_MODEL ?? "claude-opus-4-8",
+        model: evalEnv.ai.answerModel,
         maxTokens: 8000,
       },
       judge: {
         provider: textProvider,
         // Judge 与被评模型解耦,缺省同型号;换 judge 模型不影响被评链路。
-        model: process.env.AI_JUDGE_MODEL ?? "claude-opus-4-8",
+        model: evalEnv.ai.judgeModel,
         maxTokens: 4000,
       },
     },

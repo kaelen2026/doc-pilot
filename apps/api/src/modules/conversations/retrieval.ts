@@ -4,6 +4,7 @@ import { db } from "@doc-pilot/database";
 import { documentChunks } from "@doc-pilot/database/schema";
 import { withSpan } from "@doc-pilot/observability";
 import { and, cosineDistance, eq, isNotNull, sql } from "drizzle-orm";
+import { apiEnv } from "../../env";
 
 export interface ChunkCandidate {
   chunkId: string;
@@ -90,7 +91,7 @@ export function selectSources(
 ): RetrievedSource[] {
   const maxSources = options.maxSources ?? RETRIEVAL.maxSources;
   const tokenBudget = options.tokenBudget ?? RETRIEVAL.contextTokenBudget;
-  const minScore = options.minScore ?? Number(process.env.RAG_MIN_SCORE ?? 0);
+  const minScore = options.minScore ?? apiEnv.ragMinScore;
 
   const seenHash = new Set<string>();
   const picked: ChunkCandidate[] = [];

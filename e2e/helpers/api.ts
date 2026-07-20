@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
+import { e2eEnv } from "./env";
 
-const API_URL = process.env.E2E_API_URL ?? "http://localhost:3001";
+const API_URL = e2eEnv.apiUrl;
 const PDF_PATH = fileURLToPath(new URL("../fixtures/sample.pdf", import.meta.url));
 
 interface CreateUploadResponse {
