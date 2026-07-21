@@ -114,6 +114,18 @@ Provider Adapter
                 └────────────────┘
 ```
 
+### 4.1 系统数据流图
+
+上面的组件框图给出静态结构;下图给出**数据流转**——文档处理管线(绿色实线)与 RAG 问答(下方)如何贯穿各层。交互版(明暗主题切换、PNG/SVG 导出)见 [system-dataflow.html](system-dataflow.html)。
+
+![DocPilot 系统数据流图](system-dataflow.svg)
+
+要点:
+
+- **文档处理管线**:客户端凭预签名 URL 把 PDF 直传对象存储,API 只落元数据并计配额;完成上传时文档状态 + `ProcessingJob` + `outbox_events` 在同一事务写入;Publisher 以 `SKIP LOCKED` 外发到 BullMQ;Worker 解析→清洗→分层 Chunk→Embedding→摘要,结果写回 Postgres/pgvector。
+- **异步与一致性**:事务性 Outbox 消除「DB 已提交但队列发布失败」;幂等 JobID 使重复发布不重复处理;`processing_version` + `status` 守卫阻止陈旧任务回写。
+- **RAG 问答**:检索在 SQL 内按 `workspace_id` + `document_id` 过滤(租户隔离即授权);AI 全部经 AI Gateway;结构化输出经 Zod + 业务级引用校验,无证据则显式拒答;答案以 SSE 流式返回。
+
 ## 5. 代码仓库结构
 
 ```
