@@ -13,6 +13,7 @@ import { validateFile } from "@/features/documents/upload";
 import { useDocuments } from "@/features/documents/use-documents";
 import { useUploadDocument } from "@/features/documents/use-upload-document";
 import { openCommandPalette } from "@/features/search/use-command-palette";
+import { ThemeToggle } from "@/features/theme/theme-toggle";
 import { authClient } from "../../lib/auth-client";
 
 const rise = "animate-[rise_0.5s_cubic-bezier(0.2,0,0,1)_both]";
@@ -103,6 +104,7 @@ export function DocumentsView() {
         </div>
         {session ? (
           <div className="flex shrink-0 items-center gap-2">
+            <ThemeToggle />
             <Button variant="ghost" size="sm" onClick={openCommandPalette}>
               搜索 <kbd className="ml-1.5 text-ink-faint text-xs">⌘K</kbd>
             </Button>
