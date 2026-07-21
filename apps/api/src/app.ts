@@ -9,7 +9,7 @@ import { requireAuth } from "./middleware/auth.middleware";
 import { observability } from "./middleware/observability.middleware";
 import { createConversationRoutes } from "./modules/conversations/conversation.routes";
 import { createDocumentRoutes } from "./modules/documents/document.routes";
-import { createHealthRoutes } from "./modules/health/health.routes";
+import { createHealthRoutes, type ReadinessProbes } from "./modules/health/health.routes";
 import { createMeRoutes } from "./modules/me/me.routes";
 import { getSession, loadMemberships } from "./shared/auth-context";
 import { DomainError } from "./shared/errors";
@@ -27,7 +27,7 @@ function onMethod(method: string, mw: MiddlewareHandler<AppEnv>): MiddlewareHand
  *
  * rateLimiter 通过依赖注入:index.ts 注入 Redis 实现,单测默认 Noop(不连 Redis)。
  */
-export function createApp(deps: { rateLimiter?: RateLimiter } = {}) {
+export function createApp(deps: { rateLimiter?: RateLimiter; readiness?: ReadinessProbes } = {}) {
   const app = new Hono<AppEnv>();
   const limiter = deps.rateLimiter ?? new NoopRateLimiter();
 
@@ -43,7 +43,7 @@ export function createApp(deps: { rateLimiter?: RateLimiter } = {}) {
   app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
   // 公开路由
-  app.route("/health", createHealthRoutes());
+  app.route("/health", createHealthRoutes(deps.readiness));
 
   // 受保护路由：未登录返回 401（满足「未登录无法访问文档」验收）。
   const guard = requireAuth({ getSession, loadMemberships });

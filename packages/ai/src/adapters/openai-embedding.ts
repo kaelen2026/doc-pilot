@@ -2,7 +2,7 @@ import type { AdapterUsage, ProviderAdapter } from "../adapter";
 import { AIError } from "../errors";
 
 export interface OpenAIEmbeddingAdapterOptions {
-  /** 缺省读 OPENAI_API_KEY;自托管端点(Ollama 等)可不设。 */
+  /** 由接线层注入；自托管端点(Ollama 等)可不设。 */
   apiKey?: string;
   /**
    * OpenAI 兼容端点,缺省官方端点。由 resolveProviderConfig 从 OPENAI_BASE_URL / 网关 host 注入。
@@ -29,7 +29,7 @@ interface EmbeddingsResponse {
 export function createOpenAIEmbeddingAdapter(
   options: OpenAIEmbeddingAdapterOptions = {},
 ): ProviderAdapter {
-  const apiKey = options.apiKey ?? process.env.OPENAI_API_KEY;
+  const apiKey = options.apiKey;
   const baseURL = (options.baseURL ?? OPENAI_OFFICIAL_BASE_URL).replace(/\/$/, "");
   // 仅官方 OpenAI 端点强制要求 API Key;自托管端点(Ollama 等)通常免鉴权。
   const requiresApiKey = baseURL === OPENAI_OFFICIAL_BASE_URL;

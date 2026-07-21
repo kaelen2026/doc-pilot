@@ -91,6 +91,8 @@ CREATE TABLE outbox_events (
   payload JSONB NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'pending',
   attempts INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT,
+  attempted_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL,
   published_at TIMESTAMPTZ
 );
@@ -106,13 +108,19 @@ CREATE TABLE outbox_events (
 写入 OutboxEvent
 ```
 
-独立 Publisher 定时读取 Outbox：
+独立 Publisher 定时读取 Outbox。领取阶段使用短事务：
 
 ```sql
 SELECT ... FOR UPDATE SKIP LOCKED
 ```
 
-发布到 BullMQ 后标记 `published`。这样确保：**业务状态和待发布事件原子提交**。
+事务内把事件标记为 `publishing` 并释放行锁，随后在事务外发布 BullMQ，成功后再标记
+`published`。Redis 故障时恢复为 `pending`；稳定 Job ID 保证“发布成功但确认失败”的重试不会
+产生重复 Job。Publisher 崩溃后，超过租约时间的 `publishing` 会被重新领取。未知事件或非法
+payload 标记 `failed` 并保留错误，避免协议不兼容时丢事件。这样同时保证：**业务状态和待发布
+事件原子提交**，且外部队列延迟不会长期占用数据库事务。
+
+`status` 取值为 `pending`、`publishing`、`published`、`failed`。
 
 ## 12. 异步任务设计
 

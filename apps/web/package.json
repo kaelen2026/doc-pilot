@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start -p 3000",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage --coverage.include='features/chat/{api,find-question,parse-citations}.ts' --coverage.include=features/pdf/geometry.ts --coverage.thresholds.lines=50 --coverage.thresholds.functions=50 --coverage.thresholds.branches=90 --coverage.thresholds.statements=50"
   },
   "dependencies": {
     "@doc-pilot/contracts": "workspace:*",

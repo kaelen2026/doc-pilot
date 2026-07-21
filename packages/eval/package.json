@@ -6,7 +6,8 @@
   "scripts": {
     "eval": "tsx src/cli.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage --coverage.include=src/metrics.ts --coverage.thresholds.lines=85 --coverage.thresholds.functions=90 --coverage.thresholds.branches=75 --coverage.thresholds.statements=85"
   },
   "dependencies": {
     "@doc-pilot/ai": "workspace:*",

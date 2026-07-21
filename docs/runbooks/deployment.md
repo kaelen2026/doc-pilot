@@ -23,7 +23,8 @@ docker compose --env-file .env.production -f docker-compose.prod.yml up -d --bui
 启动顺序由 `depends_on` 保证:postgres/redis 健康 → `minio-init` 建桶 → `migrate` 迁移成功 → api/worker/web 启动。健康核对:
 
 ```bash
-curl -sf http://localhost:3001/health     # {"status":"ok",...}
+curl -sf http://localhost:3001/health       # liveness:{"status":"ok",...}
+curl -sf http://localhost:3001/health/ready # readiness:检查 PostgreSQL、Redis、对象存储
 curl -sf http://localhost:3000            # web 200
 docker compose -f docker-compose.prod.yml logs worker | grep worker.started
 ```
