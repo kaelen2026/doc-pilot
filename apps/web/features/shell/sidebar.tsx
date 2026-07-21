@@ -22,7 +22,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
   return (
     <div
       className={cn(
-        "flex h-full shrink-0 flex-col gap-3 border-hairline border-r bg-paper-sunken py-3 transition-[width] duration-200 ease-out",
+        "z-40 flex h-full shrink-0 flex-col gap-3 border-hairline border-r bg-paper-sunken py-3 transition-[width] duration-200 ease-out max-md:absolute max-md:inset-y-0 max-md:left-0",
         collapsed ? "w-14" : "w-60",
       )}
     >

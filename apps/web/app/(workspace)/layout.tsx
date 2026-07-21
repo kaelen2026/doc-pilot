@@ -22,7 +22,7 @@ export default function WorkspaceLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-dvh overflow-hidden">
       <Sidebar collapsed={collapsed} onToggle={toggle} />
-      <div className="min-w-0 flex-1 overflow-y-auto">{children}</div>
+      <div className="min-w-0 flex-1 overflow-y-auto max-md:pl-14">{children}</div>
     </div>
   );
 }
