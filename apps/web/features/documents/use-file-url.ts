@@ -1,12 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { API_URL } from "@/lib/env";
+import { apiFetch } from "@/lib/api-client";
 
 async function fetchFileUrl(documentId: string): Promise<string> {
-  const r = await fetch(`${API_URL}/documents/${documentId}/file-url`, {
-    credentials: "include",
-  });
+  const r = await apiFetch(`/documents/${documentId}/file-url`);
   if (!r.ok) {
     throw new Error(r.status === 404 ? "文档不存在或尚未上传" : `HTTP ${r.status}`);
   }

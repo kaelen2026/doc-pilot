@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { API_URL } from "@/lib/env";
+import { apiFetch } from "@/lib/api-client";
 
 export interface DocItem {
   id: string;
@@ -19,7 +19,7 @@ export interface DocItem {
 const IN_FLIGHT = new Set(["queued", "processing", "deleting"]);
 
 async function fetchDocuments(): Promise<DocItem[]> {
-  const r = await fetch(`${API_URL}/documents`, { credentials: "include" });
+  const r = await apiFetch(`/documents`);
   if (!r.ok) {
     throw new Error(`HTTP ${r.status}`);
   }
