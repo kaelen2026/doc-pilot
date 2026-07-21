@@ -25,6 +25,13 @@ open apps/apple/DocPilot.xcodeproj
 
 开发环境 API 地址配置在 `apps/apple/Config/Debug.xcconfig`；发布构建使用 `Release.xcconfig`。命令行门禁为 macOS 单元测试与 iOS Simulator 通用构建，两者均不依赖签名身份。
 
+启动本地服务后，可运行真实 OTP 冒烟测试（Mailpit 自动取码）：
+
+```bash
+TEST_RUNNER_LIVE_SMOKE=1 xcodebuild -project apps/apple/DocPilot.xcodeproj \
+  -scheme DocPilotLiveSmoke -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
+```
+
 ## 文档索引
 
 ### 产品

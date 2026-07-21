@@ -3,6 +3,12 @@
 export const authEnv = {
   baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3001",
   secret: process.env.BETTER_AUTH_SECRET ?? "dev-secret-change-me",
+  trustedOrigins: (
+    process.env.AUTH_TRUSTED_ORIGINS ?? "http://localhost:3000,http://localhost:3001,docpilot://"
+  )
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
   smtp: {
     host: process.env.SMTP_HOST ?? "localhost",
     port: Number(process.env.SMTP_PORT ?? 1025),

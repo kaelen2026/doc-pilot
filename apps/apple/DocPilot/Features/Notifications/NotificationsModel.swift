@@ -16,8 +16,8 @@ final class NotificationsModel {
 
     func load() async {
         do {
-            async let list: NotificationsResponse = api.send("/api/v1/notifications?limit=50")
-            async let count: UnreadCountResponse = api.send("/api/v1/notifications/unread-count")
+            async let list: NotificationsResponse = api.send("/notifications?limit=50")
+            async let count: UnreadCountResponse = api.send("/notifications/unread-count")
             let (loaded, unread) = try await (list, count)
             items = loaded.notifications
             unreadCount = unread.count
@@ -27,7 +27,7 @@ final class NotificationsModel {
 
     func markAllRead() async {
         do {
-            let _: UpdatedCountResponse = try await api.send("/api/v1/notifications/read-all", method: "POST")
+            let _: UpdatedCountResponse = try await api.send("/notifications/read-all", method: "POST")
             items = items.map { item in
                 NotificationItem(id: item.id, type: item.type, title: item.title, body: item.body,
                                  resourceType: item.resourceType, resourceId: item.resourceId,

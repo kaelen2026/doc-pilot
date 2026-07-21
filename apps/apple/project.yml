@@ -37,7 +37,6 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.docpilot.app
         MARKETING_VERSION: 0.1.0
         CURRENT_PROJECT_VERSION: 1
-        CODE_SIGNING_ALLOWED: NO
     scheme:
       testTargets:
         - DocPilotTests
@@ -55,3 +54,25 @@ targets:
         CODE_SIGNING_ALLOWED: NO
         "TEST_HOST[sdk=macosx*]": $(BUILT_PRODUCTS_DIR)/DocPilot.app/Contents/MacOS/DocPilot
         "BUNDLE_LOADER[sdk=macosx*]": $(TEST_HOST)
+  DocPilotUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: DocPilotUITests
+    dependencies:
+      - target: DocPilot
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.docpilot.app.uitests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  DocPilotLiveSmoke:
+    build:
+      targets:
+        DocPilot: all
+        DocPilotUITests: [test]
+    test:
+      targets:
+        - name: DocPilotUITests

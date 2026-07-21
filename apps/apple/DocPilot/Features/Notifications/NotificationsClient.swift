@@ -12,7 +12,7 @@ struct NotificationsClient: Sendable {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    guard let url = URL(string: "/api/v1/notifications/stream", relativeTo: api.baseURL) else {
+                    guard let url = URL(string: "/notifications/stream", relativeTo: api.baseURL) else {
                         throw APIError.invalidResponse
                     }
                     var request = URLRequest(url: url)

@@ -20,6 +20,7 @@ struct APIClient: Sendable {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("docpilot://", forHTTPHeaderField: "Origin")
         for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
         if let bearer = await token?(), !bearer.isEmpty {
             request.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization")
