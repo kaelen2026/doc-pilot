@@ -16,6 +16,28 @@ export function PdfView({ documentId }: { documentId: string }) {
   const { data: session, isPending: sessionPending } = authClient.useSession();
   const fileQuery = useFileUrl(documentId, !!session);
 
+  function renderBody() {
+    if (sessionPending || (session && fileQuery.isPending)) {
+      return <p className="p-6 text-sm text-ink-faint">加载中…</p>;
+    }
+    if (!session) {
+      return (
+        <div className="p-6">
+          <Button asChild>
+            <Link href="/login">请先登录</Link>
+          </Button>
+        </div>
+      );
+    }
+    if (fileQuery.isError) {
+      return <p className="p-6 text-sm text-seal">{String(fileQuery.error)}</p>;
+    }
+    if (fileQuery.data) {
+      return <PdfReader url={fileQuery.data} documentId={documentId} />;
+    }
+    return null;
+  }
+
   return (
     <main className="mx-auto flex h-screen max-w-4xl flex-col px-6 py-6">
       <header className={`flex items-center justify-between gap-4 pb-3 ${rise}`}>
@@ -31,19 +53,7 @@ export function PdfView({ documentId }: { documentId: string }) {
         ) : null}
       </header>
 
-      {sessionPending || (session && fileQuery.isPending) ? (
-        <p className="p-6 text-sm text-ink-faint">加载中…</p>
-      ) : !session ? (
-        <div className="p-6">
-          <Button asChild>
-            <Link href="/login">请先登录</Link>
-          </Button>
-        </div>
-      ) : fileQuery.isError ? (
-        <p className="p-6 text-sm text-seal">{String(fileQuery.error)}</p>
-      ) : fileQuery.data ? (
-        <PdfReader url={fileQuery.data} documentId={documentId} />
-      ) : null}
+      {renderBody()}
     </main>
   );
 }
