@@ -7,18 +7,29 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		072800B4240CF6A43127AEA5 /* WorkspaceShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D13F8F5C1E9CCD0DA855096 /* WorkspaceShell.swift */; };
+		1961CBDC6FC120D468A6B154 /* UploadClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7032394235D7C27F335A9F /* UploadClient.swift */; };
 		1F6B3E1563F066587BCA0E41 /* DesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B9EB69440ABFC79D7E60B31 /* DesignTokens.swift */; };
 		2B0AAB4324679FE8A775947C /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B7CD75FCB6F35080BCFF75E /* KeychainStore.swift */; };
+		34E2C7AA8140DB31FC43DC03 /* PDFValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DDA713E214E3EA55AD50558 /* PDFValidator.swift */; };
+		3552F5D99AE9A43EDA0309AA /* UploadStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EBB055A3125F7AB6E7DEB13 /* UploadStateTests.swift */; };
 		400E3AABF1146F8E75504F87 /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA27C35D7C25A3E8D3C80B2E /* APIError.swift */; };
 		571A356EC2358EE8A6584D17 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD9270FF1534656C565A201C /* AppEnvironment.swift */; };
+		5A483D86A33253D3FF472BEA /* DocumentsContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3003B57F523A591844B0036 /* DocumentsContractTests.swift */; };
 		65FE0F0697D5F097ECC855C4 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F81CEA71A7E940861A89271 /* APIClient.swift */; };
 		7885B21E00506912B92DA0D8 /* HTTPTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BB4B4C64ABF97AD5D819D27 /* HTTPTransport.swift */; };
 		9A2652EA2055A81F54C18988 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C105BF75D5D0061F4D73EC4 /* LoginView.swift */; };
+		A9C952DF15B8CA984D2984F1 /* UploadState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F1E1A2D9E5D39F027AA8B1C /* UploadState.swift */; };
 		AA5735D251488E6F7D467C24 /* AuthClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EDC63DACD2ED46D258775ED /* AuthClient.swift */; };
+		BB43AAF078518207C8778548 /* DocumentsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E74EA3A79E5DF6CEBA4FF65C /* DocumentsModel.swift */; };
+		BF52260017510E912F26ADF3 /* PDFValidatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC3A69C12838E7B9A024349D /* PDFValidatorTests.swift */; };
+		C10422B93CB9C76DF6F87341 /* DocumentsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31AD40962BC52B6DBB4C205F /* DocumentsClient.swift */; };
+		C8E8E4381BD0C03CA1480481 /* DocumentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64EB1DCF03C6C5DEC9D53129 /* DocumentsView.swift */; };
 		CDCFE69B3DEEDA3E3291BE59 /* LoginModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B0F034B7D279EBB2535CB41 /* LoginModel.swift */; };
 		D835273A1249E16F38D950F0 /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCAB735E1EDC4EA1D6215D53 /* SmokeTests.swift */; };
 		EA5314CCC37DCB70FAA4D632 /* APIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5681CBFD4A96BF92D038664 /* APIClientTests.swift */; };
 		F23A55540D3A30235894EFCE /* DocPilotApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FDD3C36B19A91F128A3804E /* DocPilotApp.swift */; };
+		FA2B285544E0771051A160A2 /* Documents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6329F631C808CC6D60723B16 /* Documents.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -33,24 +44,45 @@
 
 /* Begin PBXFileReference section */
 		0EDC63DACD2ED46D258775ED /* AuthClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthClient.swift; sourceTree = "<group>"; };
+		31AD40962BC52B6DBB4C205F /* DocumentsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentsClient.swift; sourceTree = "<group>"; };
 		4B0F034B7D279EBB2535CB41 /* LoginModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginModel.swift; sourceTree = "<group>"; };
+		4F1E1A2D9E5D39F027AA8B1C /* UploadState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadState.swift; sourceTree = "<group>"; };
+		5DDA713E214E3EA55AD50558 /* PDFValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFValidator.swift; sourceTree = "<group>"; };
+		5EBB055A3125F7AB6E7DEB13 /* UploadStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadStateTests.swift; sourceTree = "<group>"; };
+		6329F631C808CC6D60723B16 /* Documents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Documents.swift; sourceTree = "<group>"; };
+		64EB1DCF03C6C5DEC9D53129 /* DocumentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentsView.swift; sourceTree = "<group>"; };
 		6B7CD75FCB6F35080BCFF75E /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		6FDD3C36B19A91F128A3804E /* DocPilotApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocPilotApp.swift; sourceTree = "<group>"; };
 		7B9EB69440ABFC79D7E60B31 /* DesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignTokens.swift; sourceTree = "<group>"; };
 		7C105BF75D5D0061F4D73EC4 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		7D13F8F5C1E9CCD0DA855096 /* WorkspaceShell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceShell.swift; sourceTree = "<group>"; };
 		7D72DF19AC25115D1EB852FD /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		7F81CEA71A7E940861A89271 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		8BB4B4C64ABF97AD5D819D27 /* HTTPTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPTransport.swift; sourceTree = "<group>"; };
 		9CC0DB4EE976ADB891DD2454 /* DocPilotTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = DocPilotTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C7C2F8CDB098F8E0912D945C /* DocPilot.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DocPilot.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D3003B57F523A591844B0036 /* DocumentsContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentsContractTests.swift; sourceTree = "<group>"; };
 		DA27C35D7C25A3E8D3C80B2E /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
 		DCAB735E1EDC4EA1D6215D53 /* SmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmokeTests.swift; sourceTree = "<group>"; };
+		E74EA3A79E5DF6CEBA4FF65C /* DocumentsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentsModel.swift; sourceTree = "<group>"; };
+		EA7032394235D7C27F335A9F /* UploadClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadClient.swift; sourceTree = "<group>"; };
 		F5681CBFD4A96BF92D038664 /* APIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClientTests.swift; sourceTree = "<group>"; };
 		FBCD6408EBDC7B646F745A4D /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		FC3A69C12838E7B9A024349D /* PDFValidatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFValidatorTests.swift; sourceTree = "<group>"; };
 		FD9270FF1534656C565A201C /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		1BE5355C20FE1E401BE3386F /* Upload */ = {
+			isa = PBXGroup;
+			children = (
+				5DDA713E214E3EA55AD50558 /* PDFValidator.swift */,
+				EA7032394235D7C27F335A9F /* UploadClient.swift */,
+				4F1E1A2D9E5D39F027AA8B1C /* UploadState.swift */,
+			);
+			path = Upload;
+			sourceTree = "<group>";
+		};
 		22B3307DFB31B05E46500C10 /* Authentication */ = {
 			isa = PBXGroup;
 			children = (
@@ -64,8 +96,19 @@
 			isa = PBXGroup;
 			children = (
 				22B3307DFB31B05E46500C10 /* Authentication */,
+				2A5DABC9B9BE409ACA2E69C1 /* Documents */,
 			);
 			path = Features;
+			sourceTree = "<group>";
+		};
+		2A5DABC9B9BE409ACA2E69C1 /* Documents */ = {
+			isa = PBXGroup;
+			children = (
+				31AD40962BC52B6DBB4C205F /* DocumentsClient.swift */,
+				E74EA3A79E5DF6CEBA4FF65C /* DocumentsModel.swift */,
+				64EB1DCF03C6C5DEC9D53129 /* DocumentsView.swift */,
+			);
+			path = Documents;
 			sourceTree = "<group>";
 		};
 		34EFDCE900151B635873C36A /* App */ = {
@@ -73,6 +116,7 @@
 			children = (
 				FD9270FF1534656C565A201C /* AppEnvironment.swift */,
 				6FDD3C36B19A91F128A3804E /* DocPilotApp.swift */,
+				7D13F8F5C1E9CCD0DA855096 /* WorkspaceShell.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -135,8 +179,19 @@
 			children = (
 				DCAB735E1EDC4EA1D6215D53 /* SmokeTests.swift */,
 				53CFF59450150F2EA978A2E1 /* Core */,
+				A1B7D91E25EFFF724E2E1A91 /* Documents */,
 			);
 			path = DocPilotTests;
+			sourceTree = "<group>";
+		};
+		A1B7D91E25EFFF724E2E1A91 /* Documents */ = {
+			isa = PBXGroup;
+			children = (
+				D3003B57F523A591844B0036 /* DocumentsContractTests.swift */,
+				FC3A69C12838E7B9A024349D /* PDFValidatorTests.swift */,
+				5EBB055A3125F7AB6E7DEB13 /* UploadStateTests.swift */,
+			);
+			path = Documents;
 			sourceTree = "<group>";
 		};
 		B2B1D02426ACC76ACCE6A4DE /* DocPilot */ = {
@@ -154,7 +209,9 @@
 			isa = PBXGroup;
 			children = (
 				84BABD9F0382ACA225F8A49D /* Auth */,
+				E93C8061967BFEAED37E58C3 /* Contracts */,
 				E82D2B17E62EECA6292FE4E0 /* Networking */,
+				1BE5355C20FE1E401BE3386F /* Upload */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -167,6 +224,14 @@
 				8BB4B4C64ABF97AD5D819D27 /* HTTPTransport.swift */,
 			);
 			path = Networking;
+			sourceTree = "<group>";
+		};
+		E93C8061967BFEAED37E58C3 /* Contracts */ = {
+			isa = PBXGroup;
+			children = (
+				6329F631C808CC6D60723B16 /* Documents.swift */,
+			);
+			path = Contracts;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -252,7 +317,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				EA5314CCC37DCB70FAA4D632 /* APIClientTests.swift in Sources */,
+				5A483D86A33253D3FF472BEA /* DocumentsContractTests.swift in Sources */,
+				BF52260017510E912F26ADF3 /* PDFValidatorTests.swift in Sources */,
 				D835273A1249E16F38D950F0 /* SmokeTests.swift in Sources */,
+				3552F5D99AE9A43EDA0309AA /* UploadStateTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -266,10 +334,18 @@
 				AA5735D251488E6F7D467C24 /* AuthClient.swift in Sources */,
 				1F6B3E1563F066587BCA0E41 /* DesignTokens.swift in Sources */,
 				F23A55540D3A30235894EFCE /* DocPilotApp.swift in Sources */,
+				FA2B285544E0771051A160A2 /* Documents.swift in Sources */,
+				C10422B93CB9C76DF6F87341 /* DocumentsClient.swift in Sources */,
+				BB43AAF078518207C8778548 /* DocumentsModel.swift in Sources */,
+				C8E8E4381BD0C03CA1480481 /* DocumentsView.swift in Sources */,
 				7885B21E00506912B92DA0D8 /* HTTPTransport.swift in Sources */,
 				2B0AAB4324679FE8A775947C /* KeychainStore.swift in Sources */,
 				CDCFE69B3DEEDA3E3291BE59 /* LoginModel.swift in Sources */,
 				9A2652EA2055A81F54C18988 /* LoginView.swift in Sources */,
+				34E2C7AA8140DB31FC43DC03 /* PDFValidator.swift in Sources */,
+				1961CBDC6FC120D468A6B154 /* UploadClient.swift in Sources */,
+				A9C952DF15B8CA984D2984F1 /* UploadState.swift in Sources */,
+				072800B4240CF6A43127AEA5 /* WorkspaceShell.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
