@@ -16,7 +16,6 @@
 - Tailwind CSS
 - shadcn/ui
 - TanStack Query
-- Zustand（仅用于少量客户端状态）
 - PDF.js
 
 职责：登录、文档列表、上传、处理进度、PDF 阅读器、摘要、流式问答、引用定位。
@@ -139,14 +138,21 @@ doc-pilot/
 │   ├── api/
 │   │   └── src/
 │   │       ├── app.ts
-│   │       ├── index.ts
+│   │       ├── env.ts
+│   │       ├── ai/
 │   │       ├── middleware/
 │   │       ├── modules/
-│   │       └── shared/
+│   │       ├── shared/
+│   │       └── index.ts
 │   └── worker/
 │       └── src/
-│           ├── workers/
+│           ├── env.ts
+│           ├── ai/
+│           ├── pipeline/
 │           ├── processors/
+│           ├── outbox/
+│           ├── reconcile/
+│           ├── repository/
 │           └── index.ts
 ├── packages/
 │   ├── database/
@@ -156,20 +162,17 @@ doc-pilot/
 │   ├── queue/
 │   ├── storage/
 │   ├── observability/
-│   ├── testing/
+│   ├── eval/
 │   └── config/
+├── e2e/
+├── evals/
 ├── docs/
 │   ├── product/
 │   ├── architecture/
 │   ├── adr/
 │   └── runbooks/
 ├── .ai/
-│   ├── contracts/
-│   ├── specs/
-│   ├── plans/
-│   ├── tasks/
-│   ├── reviews/
-│   └── verifications/
+│   └── plans/
 ├── docker-compose.yml
 ├── turbo.json
 └── pnpm-workspace.yaml
@@ -179,47 +182,50 @@ doc-pilot/
 
 API 内部采用**模块化单体**。
 
+当前已落地的模块：
+
 ```
 modules/
-├── users/
-├── workspaces/
-├── authorization/
-├── documents/
-├── uploads/
-├── processing/
 ├── conversations/
-├── retrieval/
-├── generations/
-├── usage/
-└── admin/
+├── documents/
+├── health/
+├── me/
+└── quota/
 ```
 
-每个模块建议采用：
+> **与早期设计的差异(现状说明)**:早期草案曾规划 users/workspaces/authorization/
+> uploads/processing/retrieval/generations/admin 等更细的模块拆分,并给每个模块设
+> Controller 与 Policy 两层。实际实现做了收敛:
+> - **Controller 合入 routes**——路由层直接编排 service,不再单设 controller 文件。
+> - **Policy 层按 [ADR-008](../adr/ADR-008-workspace-tenant.md) 延后**:MVP 的授权
+>   *即*租户过滤(资源不在你的 workspace → 404/403),独立 authorization 模块作为
+>   死代码已删除(#44);待多角色访问出现再引入 Policy 层。
+> - uploads/processing/retrieval/generations 的职责分别并入 documents(上传/处理)、
+>   conversations(检索/生成)域,未单列模块。
+
+每个模块采用(以 `documents/` 为活样板):
 
 ```
 documents/
-├── document.routes.ts
-├── document.controller.ts
-├── document.service.ts
-├── document.repository.ts
-├── document.policy.ts
-├── document.schema.ts
-├── document.types.ts
-└── document.errors.ts
+├── document.routes.ts       # 路由 + 入参校验(合并了 Controller 职责)
+├── document.service.ts      # 业务逻辑
+├── document.repository.ts   # 数据访问(租户作用域仓库注入 workspace_id 过滤)
+├── document.schema.ts       # Zod schema
+└── document.errors.ts       # 错误契约
 ```
 
 调用方向：
 
 ```
-Route → Controller → Service → Repository / External Port
+Route → Service → Repository / External Port
 ```
 
 限制：
 
-- Route 不写业务逻辑
-- Controller 不直接操作数据库
-- Repository 不处理授权
-- Provider SDK 不出现在业务模块
+- Route 不写业务逻辑,只做编排与入参校验
+- Service 不直接拼 SQL,数据访问一律走 Repository
+- 授权在 MVP 即租户过滤,由**租户作用域仓库**注入 `workspace_id`(见 `scopedConversationRepo`)
+- Provider SDK 不出现在业务模块(AI 一律经 AI Gateway)
 - 模块之间通过 Service 或接口调用
 
 ## 7. 核心领域模型
