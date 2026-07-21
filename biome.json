@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!**/drizzle", "!docs/architecture/*.html"]
+    "includes": ["**", "!**/drizzle", "!docs/**/*.html"]
   },
   "formatter": {
     "enabled": true,
