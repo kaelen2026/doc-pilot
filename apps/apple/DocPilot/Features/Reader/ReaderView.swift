@@ -6,12 +6,14 @@ struct ReaderView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var highlights: [Highlight] = []
     @State private var selection: (page: Int, bounds: CGRect, text: String)?
+    @Binding private var requestedPage: Int
     private let documentID: String
     private let userID: String
 
-    init(documentID: String, userID: String, api: APIClient) {
+    init(documentID: String, userID: String, api: APIClient, requestedPage: Binding<Int>) {
         self.documentID = documentID
         self.userID = userID
+        _requestedPage = requestedPage
         _model = State(initialValue: ReaderModel(documentID: documentID, userID: userID, api: api))
     }
 
@@ -39,6 +41,7 @@ struct ReaderView: View {
             )) ?? []
             await model.load()
         }
+        .onChange(of: requestedPage) { _, page in model.pageIndex = page }
     }
 
     private func addHighlight() {
