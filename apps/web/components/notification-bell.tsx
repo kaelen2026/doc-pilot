@@ -32,7 +32,7 @@ function BellIcon() {
 
 /**
  * 通知中心入口:铃铛 + 未读计数(seal 变体 Badge),点开锚定下拉面板。
- * 全站头部共用(见 header-actions)。仅登录后渲染。
+ * 全站侧栏顶部操作簇共用(见 features/shell/sidebar)。仅登录后渲染。
  */
 export function NotificationBell() {
   const { data: session } = authClient.useSession();

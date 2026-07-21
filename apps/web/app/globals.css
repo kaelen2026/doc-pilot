@@ -121,8 +121,16 @@
     @apply border-border outline-ring/50;
   }
 
+  /* 根元素也铺纸色:过滚(overscroll)橡皮筋回弹时露出的是纸底而非深色根画布;
+     overscroll-behavior:none 直接禁掉回弹,双保险(见工作台外壳固定布局)。 */
+  html {
+    @apply bg-background;
+    overscroll-behavior: none;
+  }
+
   body {
     @apply bg-background text-foreground;
+    overscroll-behavior: none;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }

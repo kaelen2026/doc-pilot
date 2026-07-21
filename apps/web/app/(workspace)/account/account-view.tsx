@@ -1,10 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useMe } from "@/features/account/use-me";
-import { UserMenu } from "@/features/account/user-menu";
 import { authClient } from "@/lib/auth-client";
 import { AppearanceSection } from "./appearance-section";
 import { DangerSection } from "./danger-section";
@@ -57,20 +55,8 @@ export function AccountView() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 py-16">
-      {/* relative z-30:头部含头像下拉菜单,须压过下方带 rise(永久 transform→独立堆叠上下文)的区块 */}
-      <header className={`relative z-30 flex items-start justify-between gap-4 ${rise}`}>
-        <div className="space-y-2">
-          <Link
-            href="/documents"
-            className="text-ink-faint text-xs underline-offset-4 transition-colors duration-150 [@media(hover:hover)]:hover:text-ink-soft [@media(hover:hover)]:hover:underline"
-          >
-            ← 我的文档
-          </Link>
-          <h1 className="font-display font-medium text-3xl tracking-[-0.018em]">设置</h1>
-        </div>
-        <div className="shrink-0">
-          <UserMenu />
-        </div>
+      <header className={rise}>
+        <h1 className="font-display font-medium text-3xl tracking-[-0.018em]">设置</h1>
       </header>
 
       <section className={rise} style={{ animationDelay: "100ms" }}>
