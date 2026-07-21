@@ -16,7 +16,7 @@ export const auth = betterAuth({
   baseURL: authEnv.baseURL,
   basePath: "/api/auth",
   secret: authEnv.secret,
-  trustedOrigins: ["http://localhost:3000", "http://localhost:3001"],
+  trustedOrigins: authEnv.trustedOrigins,
   database: drizzleAdapter(db, { provider: "pg", schema }),
   plugins: createAuthPlugins({ sendOtpEmail }),
   databaseHooks: {

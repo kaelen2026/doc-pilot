@@ -16,8 +16,8 @@ final class AccountModel {
 
     func load() async {
         do {
-            async let meRequest: MeResponse = api.send("/api/v1/me")
-            async let usageRequest: UsageResponse = api.send("/api/v1/me/usage")
+            async let meRequest: MeResponse = api.send("/me")
+            async let usageRequest: UsageResponse = api.send("/me/usage")
             let (me, usage) = try await (meRequest, usageRequest)
             self.me = me
             self.usage = usage.usage

@@ -52,7 +52,9 @@ struct AuthClient: Sendable {
         if try tokenStore.loadToken() != nil {
             var authenticated = api
             authenticated.token = { try? tokenStore.loadToken() }
-            let _: EmptyResponse = try await authenticated.send("/api/auth/sign-out", method: "POST")
+            let _: EmptyResponse = try await authenticated.send(
+                "/api/auth/sign-out", method: "POST", body: EmptyBody()
+            )
         }
         try tokenStore.deleteToken()
     }
@@ -64,9 +66,11 @@ struct AuthClient: Sendable {
         request.httpBody = try JSONEncoder().encode(body)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("docpilot://", forHTTPHeaderField: "Origin")
         return request
     }
 }
 
 private struct SendOTPBody: Encodable, Sendable { let email: String; let type: String }
 private struct VerifyOTPBody: Encodable, Sendable { let email: String; let otp: String }
+private struct EmptyBody: Encodable, Sendable {}

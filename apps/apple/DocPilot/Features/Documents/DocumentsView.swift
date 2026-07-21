@@ -8,7 +8,8 @@ struct DocumentsView: View {
     var body: some View {
         Group {
             switch model.state {
-            case .idle, .loading where model.documents.isEmpty:
+            case .idle where model.documents.isEmpty,
+                 .loading where model.documents.isEmpty:
                 ProgressView("正在加载文档…")
             case .failed where model.documents.isEmpty:
                 ContentUnavailableView {

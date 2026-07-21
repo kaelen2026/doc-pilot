@@ -15,6 +15,7 @@
 		22407A18EC56C00D0EDCD23A /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C244492A10A61EF83ADA477B /* AccountView.swift */; };
 		25409AA130E25600F94F19E4 /* ChatModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FDDA58A3EA274F338834B08 /* ChatModel.swift */; };
 		2B0AAB4324679FE8A775947C /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B7CD75FCB6F35080BCFF75E /* KeychainStore.swift */; };
+		31A6AE00D68A14AA4F8F47E5 /* LiveSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAA628AA8F9020A4CEA2270D /* LiveSmokeTests.swift */; };
 		34E2C7AA8140DB31FC43DC03 /* PDFValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DDA713E214E3EA55AD50558 /* PDFValidator.swift */; };
 		3552F5D99AE9A43EDA0309AA /* UploadStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EBB055A3125F7AB6E7DEB13 /* UploadStateTests.swift */; };
 		3A99B83888B98B7FF7707F18 /* DocumentCacheTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0CF5F2AD049CBC9B60B3B1 /* DocumentCacheTests.swift */; };
@@ -64,9 +65,17 @@
 			remoteGlobalIDString = 99B0A27A0D9DBFF5E405AB2E;
 			remoteInfo = DocPilot;
 		};
+		44BF6FBD5D526C06414AA2E9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 28316B7F323F17BE346EB81A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 99B0A27A0D9DBFF5E405AB2E;
+			remoteInfo = DocPilot;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		01DA64EAF820D7D2DFD0F92A /* DocPilotUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = DocPilotUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		05900E7AA9C677E807DBCF43 /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
 		0EDC63DACD2ED46D258775ED /* AuthClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthClient.swift; sourceTree = "<group>"; };
 		2197504EA720D4FF475D5702 /* SSEParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSEParser.swift; sourceTree = "<group>"; };
@@ -100,6 +109,7 @@
 		A00B7384B35176C48E10865A /* NotificationsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsModel.swift; sourceTree = "<group>"; };
 		AEE5C7A75B70B613CA2A2A6B /* ReaderChatSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderChatSplitView.swift; sourceTree = "<group>"; };
 		B38A401F33D10F5A0CC58709 /* DocumentCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentCache.swift; sourceTree = "<group>"; };
+		BAA628AA8F9020A4CEA2270D /* LiveSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSmokeTests.swift; sourceTree = "<group>"; };
 		C244492A10A61EF83ADA477B /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
 		C7C2F8CDB098F8E0912D945C /* DocPilot.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DocPilot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C886E045FACAEBAAEC85BC0D /* HighlightTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighlightTests.swift; sourceTree = "<group>"; };
@@ -197,6 +207,7 @@
 			children = (
 				C7C2F8CDB098F8E0912D945C /* DocPilot.app */,
 				9CC0DB4EE976ADB891DD2454 /* DocPilotTests.xctest */,
+				01DA64EAF820D7D2DFD0F92A /* DocPilotUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -226,12 +237,21 @@
 			path = Core;
 			sourceTree = "<group>";
 		};
+		5B69D4D9EF5E32858280D0A2 /* DocPilotUITests */ = {
+			isa = PBXGroup;
+			children = (
+				BAA628AA8F9020A4CEA2270D /* LiveSmokeTests.swift */,
+			);
+			path = DocPilotUITests;
+			sourceTree = "<group>";
+		};
 		68FC23D02E5BCB9A1F58BBC0 = {
 			isa = PBXGroup;
 			children = (
 				8A63B31C3E3ED76A52BBB21A /* Config */,
 				B2B1D02426ACC76ACCE6A4DE /* DocPilot */,
 				909B2D04E2C176DA0080D9C1 /* DocPilotTests */,
+				5B69D4D9EF5E32858280D0A2 /* DocPilotUITests */,
 				42961B89C084C05CA0D9A88C /* Products */,
 			);
 			sourceTree = "<group>";
@@ -432,6 +452,24 @@
 			productReference = C7C2F8CDB098F8E0912D945C /* DocPilot.app */;
 			productType = "com.apple.product-type.application";
 		};
+		B42B5B1B159A9EC7E93CE70E /* DocPilotUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 015C36B73A4E979757753528 /* Build configuration list for PBXNativeTarget "DocPilotUITests" */;
+			buildPhases = (
+				593F1006C819912B87F51B34 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				68EE4DDF789D99FA7A194B7E /* PBXTargetDependency */,
+			);
+			name = DocPilotUITests;
+			packageProductDependencies = (
+			);
+			productName = DocPilotUITests;
+			productReference = 01DA64EAF820D7D2DFD0F92A /* DocPilotUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -448,6 +486,11 @@
 					99B0A27A0D9DBFF5E405AB2E = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
+					};
+					B42B5B1B159A9EC7E93CE70E = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+						TestTargetID = 99B0A27A0D9DBFF5E405AB2E;
 					};
 				};
 			};
@@ -467,6 +510,7 @@
 			targets = (
 				99B0A27A0D9DBFF5E405AB2E /* DocPilot */,
 				30797A874E2E4C5974F1F021 /* DocPilotTests */,
+				B42B5B1B159A9EC7E93CE70E /* DocPilotUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -485,6 +529,14 @@
 				F0C0FCBA22DC6D4DEF44A040 /* SSEParserTests.swift in Sources */,
 				D835273A1249E16F38D950F0 /* SmokeTests.swift in Sources */,
 				3552F5D99AE9A43EDA0309AA /* UploadStateTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		593F1006C819912B87F51B34 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				31A6AE00D68A14AA4F8F47E5 /* LiveSmokeTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -541,9 +593,32 @@
 			target = 99B0A27A0D9DBFF5E405AB2E /* DocPilot */;
 			targetProxy = 2BF5D9A996BA893B1EDC4DE3 /* PBXContainerItemProxy */;
 		};
+		68EE4DDF789D99FA7A194B7E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 99B0A27A0D9DBFF5E405AB2E /* DocPilot */;
+			targetProxy = 44BF6FBD5D526C06414AA2E9 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		30FE78159608112DE7F099EC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.docpilot.app.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = DocPilot;
+			};
+			name = Release;
+		};
 		35FBE0DC756D4BCCCFE6445D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -567,6 +642,24 @@
 				"TEST_HOST[sdk=macosx*]" = "$(BUILT_PRODUCTS_DIR)/DocPilot.app/Contents/MacOS/DocPilot";
 			};
 			name = Release;
+		};
+		3BEAB46D947AF76251194EC2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.docpilot.app.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = DocPilot;
+			};
+			name = Debug;
 		};
 		4BF230EBAAC6617F9E805DB3 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -627,7 +720,6 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 6.0;
@@ -639,7 +731,6 @@
 			baseConfigurationReference = FBCD6408EBDC7B646F745A4D /* Debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = Config/Info.plist;
@@ -734,7 +825,6 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 6.0;
@@ -746,7 +836,6 @@
 			baseConfigurationReference = 7D72DF19AC25115D1EB852FD /* Release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = Config/Info.plist;
@@ -768,6 +857,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		015C36B73A4E979757753528 /* Build configuration list for PBXNativeTarget "DocPilotUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3BEAB46D947AF76251194EC2 /* Debug */,
+				30FE78159608112DE7F099EC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		35937939EBA55EBBBEE72346 /* Build configuration list for PBXProject "DocPilot" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

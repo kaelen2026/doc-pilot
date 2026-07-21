@@ -17,6 +17,7 @@ struct APIClientTests {
 
         #expect(response.value == "ok")
         #expect(await transport.authorization == "Bearer fixture-token")
+        #expect(await transport.origin == "docpilot://")
         #expect(await transport.url?.absoluteString == "https://api.example.invalid/v1/example")
     }
 
@@ -39,12 +40,14 @@ private actor RecordingTransport: HTTPTransport {
     private let data: Data
     private let statusCode: Int
     private(set) var authorization: String?
+    private(set) var origin: String?
     private(set) var url: URL?
 
     init(data: Data, statusCode: Int) { self.data = data; self.statusCode = statusCode }
 
     func send(_ request: URLRequest) async throws -> HTTPResponse {
         authorization = request.value(forHTTPHeaderField: "Authorization")
+        origin = request.value(forHTTPHeaderField: "Origin")
         url = request.url
         let response = HTTPURLResponse(
             url: request.url!, statusCode: statusCode, httpVersion: nil, headerFields: nil

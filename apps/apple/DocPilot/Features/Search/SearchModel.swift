@@ -20,7 +20,7 @@ final class SearchModel {
             isLoading = true
             defer { isLoading = false }
             var components = URLComponents()
-            components.path = "/api/v1/search"
+            components.path = "/search"
             components.queryItems = [URLQueryItem(name: "q", value: value)]
             guard let path = components.string else { throw APIError.invalidResponse }
             let response: SearchResponse = try await api.send(path)
