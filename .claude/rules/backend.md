@@ -4,9 +4,9 @@
 **`Route(handler) → Service → 租户作用域 Repository → Drizzle`**——**没有独立的 Controller
 层**,handler 就兼了 controller 的活。
 
-- 横切不变量(租户隔离、Outbox、幂等、AI Gateway、env.ts、字符串枚举……)见
-   [`CLAUDE.md`](../../CLAUDE.md) 的「Architectural invariants」——本篇讲**结构与落点**,不复述。
-- 行为契约以 `docs/architecture/` 为权威(`data-model` / `pipeline` / `rag` / `cross-cutting`)。
+- 横切不变量(租户隔离、Outbox、幂等、AI Gateway、env.ts、字符串枚举……)与行为契约,
+   均以 `docs/architecture/`(`cross-cutting` / `pipeline` / `rag` / `data-model`)为权威——
+   本篇讲**结构与落点**,不复述。
 - git/PR 流程见 [`workflow.md`](workflow.md);测试写法见 [`tdd.md`](tdd.md)。
 
 **优先跟随仓库已有模块(`conversations` / `documents`)的写法,不另起一套。**
