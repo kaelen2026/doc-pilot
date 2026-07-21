@@ -1,6 +1,7 @@
 import { auth } from "@doc-pilot/auth";
 import { RATE_LIMITS } from "@doc-pilot/contracts";
 import { errToLog, logger } from "@doc-pilot/observability";
+import { InMemoryNotificationBus, type NotificationBus } from "@doc-pilot/queue";
 import type { Context, MiddlewareHandler } from "hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
@@ -11,6 +12,7 @@ import { createConversationRoutes } from "./modules/conversations/conversation.r
 import { createDocumentRoutes } from "./modules/documents/document.routes";
 import { createHealthRoutes, type ReadinessProbes } from "./modules/health/health.routes";
 import { createMeRoutes } from "./modules/me/me.routes";
+import { createNotificationRoutes } from "./modules/notifications/notification.routes";
 import { createSearchRoutes } from "./modules/search/search.routes";
 import { getSession, loadMemberships } from "./shared/auth-context";
 import { DomainError } from "./shared/errors";
@@ -28,9 +30,17 @@ function onMethod(method: string, mw: MiddlewareHandler<AppEnv>): MiddlewareHand
  *
  * rateLimiter 通过依赖注入:index.ts 注入 Redis 实现,单测默认 Noop(不连 Redis)。
  */
-export function createApp(deps: { rateLimiter?: RateLimiter; readiness?: ReadinessProbes } = {}) {
+export function createApp(
+  deps: {
+    rateLimiter?: RateLimiter;
+    readiness?: ReadinessProbes;
+    notificationBus?: NotificationBus;
+  } = {},
+) {
   const app = new Hono<AppEnv>();
   const limiter = deps.rateLimiter ?? new NoopRateLimiter();
+  // 通知实时脉冲总线:index.ts 注入 Redis 实现;未注入时用内存实现(单测/单进程)。
+  const notificationBus = deps.notificationBus ?? new InMemoryNotificationBus();
 
   // 请求级可观测:结构化访问日志 + http 指标 + requestId。
   app.use("*", observability());
@@ -54,6 +64,8 @@ export function createApp(deps: { rateLimiter?: RateLimiter; readiness?: Readine
   app.use("/conversations", guard);
   app.use("/conversations/*", guard);
   app.use("/search", guard);
+  app.use("/notifications", guard);
+  app.use("/notifications/*", guard);
 
   // 贵操作限流(用户维度),挂在 guard 之后以便拿到 user。
   const subjectByUser = (c: Context<AppEnv>) => c.get("user")?.id ?? null;
@@ -89,6 +101,7 @@ export function createApp(deps: { rateLimiter?: RateLimiter; readiness?: Readine
   app.route("/documents", createDocumentRoutes());
   app.route("/conversations", createConversationRoutes());
   app.route("/search", createSearchRoutes());
+  app.route("/notifications", createNotificationRoutes({ bus: notificationBus }));
 
   // 统一错误映射：领域错误 → 对应 HTTP 状态。
   app.onError((err, c) => {
