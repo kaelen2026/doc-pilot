@@ -11,6 +11,7 @@ struct APIClient: Sendable {
         _ path: String,
         method: String = "GET",
         body: (any Encodable & Sendable)? = nil,
+        headers: [String: String] = [:],
         responseType: Response.Type = Response.self
     ) async throws -> Response {
         guard let url = URL(string: path, relativeTo: baseURL) else {
@@ -19,6 +20,7 @@ struct APIClient: Sendable {
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
         if let bearer = await token?(), !bearer.isEmpty {
             request.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization")
         }

@@ -13,7 +13,7 @@ describe("Apple 客户端契约夹具", () => {
   it("文档列表只使用共享状态枚举", async () => {
     const fixture = await readJson("documents/list.json");
 
-    for (const document of fixture.items) {
+    for (const document of fixture.documents) {
       expect(DOCUMENT_STATUS).toContain(document.status);
     }
   });

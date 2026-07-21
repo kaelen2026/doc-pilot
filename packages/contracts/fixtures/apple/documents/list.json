@@ -1,23 +1,26 @@
 {
-  "items": [
+  "documents": [
     {
       "id": "doc_fixture_ready",
-      "filename": "产品方案.pdf",
+      "title": "产品方案",
       "status": "ready",
       "sizeBytes": 1048576,
       "pageCount": 12,
       "createdAt": "2026-07-21T08:00:00.000Z",
-      "updatedAt": "2026-07-21T08:01:00.000Z"
+      "currentStage": null,
+      "progress": 100,
+      "errorCode": null
     },
     {
       "id": "doc_fixture_processing",
-      "filename": "研究资料.pdf",
+      "title": "研究资料",
       "status": "processing",
       "sizeBytes": 2097152,
       "pageCount": null,
       "createdAt": "2026-07-21T09:00:00.000Z",
-      "updatedAt": "2026-07-21T09:00:30.000Z"
+      "currentStage": "parse",
+      "progress": 30,
+      "errorCode": null
     }
-  ],
-  "nextCursor": null
+  ]
 }
