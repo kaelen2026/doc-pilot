@@ -6,7 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Workflow
 
-read the relevant `.claude/rules/workflow.md`
+read the relevant rule under `.claude/rules/`:
+
+- [`workflow.md`](.claude/rules/workflow.md) — 分支/worktree/PR 流程(禁止直接在 main 提交)。
+- [`frontend-refactor.md`](.claude/rules/frontend-refactor.md) — 胖组件拆「控制器 Hooks + 展示组件」的判据与手法。
 
 ## Current state: Phase 1–7 implemented
 
