@@ -1,22 +1,14 @@
-import { API_URL } from "@/lib/env";
+import { apiFetch, requireOk } from "@/lib/api-client";
 import type { ChatStreamEvent, ConversationItem, DocDetail, MessageItem } from "./types";
 
 /** 取文档详情(问答页头部 + 状态门禁)。 */
 export async function fetchDocument(id: string): Promise<DocDetail> {
-  const r = await fetch(`${API_URL}/documents/${id}`, { credentials: "include" });
+  const r = await apiFetch(`/documents/${id}`);
   if (!r.ok) {
     throw new Error(r.status === 404 ? "文档不存在" : `HTTP ${r.status}`);
   }
   const { document } = (await r.json()) as { document: DocDetail };
   return document;
-}
-
-async function requireOk(r: Response): Promise<Response> {
-  if (!r.ok) {
-    const body = (await r.json().catch(() => null)) as { error?: string; message?: string } | null;
-    throw new Error(body?.message ?? body?.error ?? `HTTP ${r.status}`);
-  }
-  return r;
 }
 
 /**
@@ -25,9 +17,7 @@ async function requireOk(r: Response): Promise<Response> {
  */
 export async function ensureConversation(documentId: string): Promise<ConversationItem> {
   const list = await requireOk(
-    await fetch(`${API_URL}/conversations?documentId=${encodeURIComponent(documentId)}`, {
-      credentials: "include",
-    }),
+    await apiFetch(`/conversations?documentId=${encodeURIComponent(documentId)}`),
   );
   const { conversations } = (await list.json()) as { conversations: ConversationItem[] };
   const existing = conversations[0];
@@ -35,12 +25,7 @@ export async function ensureConversation(documentId: string): Promise<Conversati
     return existing;
   }
   const created = await requireOk(
-    await fetch(`${API_URL}/conversations`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ documentId }),
-    }),
+    await apiFetch(`/conversations`, { method: "POST", json: { documentId } }),
   );
   const { conversation } = (await created.json()) as { conversation: ConversationItem };
   return conversation;
@@ -55,9 +40,7 @@ export interface MessagesPage {
 
 export async function fetchMessages(conversationId: string, limit: number): Promise<MessagesPage> {
   const r = await requireOk(
-    await fetch(`${API_URL}/conversations/${conversationId}/messages?limit=${limit}`, {
-      credentials: "include",
-    }),
+    await apiFetch(`/conversations/${conversationId}/messages?limit=${limit}`),
   );
   return (await r.json()) as MessagesPage;
 }
@@ -73,11 +56,9 @@ export async function* streamAnswer(input: {
   clientRequestId: string;
   signal?: AbortSignal;
 }): AsyncGenerator<ChatStreamEvent> {
-  const r = await fetch(`${API_URL}/conversations/${input.conversationId}/messages`, {
+  const r = await apiFetch(`/conversations/${input.conversationId}/messages`, {
     method: "POST",
-    credentials: "include",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ content: input.content, clientRequestId: input.clientRequestId }),
+    json: { content: input.content, clientRequestId: input.clientRequestId },
     signal: input.signal,
   });
 

@@ -1,5 +1,5 @@
 import { type CreateUploadResponse, isAllowedMimeType, MAX_FILE_BYTES } from "@doc-pilot/contracts";
-import { API_URL } from "@/lib/env";
+import { apiFetch, errorMessage } from "@/lib/api-client";
 
 // 前端预校验是「三处校验」的前端一环(product/overview.md §2.2);限额常量与响应类型
 // 均取自 @doc-pilot/contracts,与 API/Worker 单一真相源,不再手抄。API 创建上传与
@@ -18,11 +18,6 @@ export function validateFile(file: File): string | null {
     return `文件超过 ${MAX_FILE_MB}MB 上限`;
   }
   return null;
-}
-
-async function errorMessage(r: Response): Promise<string> {
-  const body = (await r.json().catch(() => null)) as { message?: string; error?: string } | null;
-  return body?.message ?? body?.error ?? `HTTP ${r.status}`;
 }
 
 /** 用浏览器原生 WebCrypto 算文件内容的 SHA256(hex),作为内容去重的客户端指纹。 */
@@ -47,16 +42,14 @@ export async function uploadDocument(
 ): Promise<{ documentId: string; deduplicated: boolean }> {
   const checksumSha256 = await sha256Hex(file);
 
-  const createRes = await fetch(`${API_URL}/documents`, {
+  const createRes = await apiFetch(`/documents`, {
     method: "POST",
-    credentials: "include",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
+    json: {
       filename: file.name,
       contentType: file.type,
       sizeBytes: file.size,
       checksumSha256,
-    }),
+    },
   });
   if (!createRes.ok) {
     throw new Error(await errorMessage(createRes));
@@ -77,9 +70,8 @@ export async function uploadDocument(
     throw new Error(`直传存储失败(HTTP ${putRes.status})`);
   }
 
-  const completeRes = await fetch(`${API_URL}/documents/${document.id}/complete-upload`, {
+  const completeRes = await apiFetch(`/documents/${document.id}/complete-upload`, {
     method: "POST",
-    credentials: "include",
   });
   if (!completeRes.ok) {
     throw new Error(await errorMessage(completeRes));
