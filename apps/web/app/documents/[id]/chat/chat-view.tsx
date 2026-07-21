@@ -1,16 +1,16 @@
 "use client";
 
-import { MESSAGE_PAGE } from "@doc-pilot/contracts";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { type FormEvent, useCallback, useLayoutEffect, useRef, useState } from "react";
+import { type FormEvent, useCallback, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fetchDocument } from "@/features/chat/api";
 import { findQuestionFor } from "@/features/chat/find-question";
 import type { CitationItem, MessageItem } from "@/features/chat/types";
-import { useConversation, useMessages, useSendMessage } from "@/features/chat/use-chat";
+import { useConversation, useSendMessage } from "@/features/chat/use-chat";
+import { useEarlierMessages } from "@/features/chat/use-earlier-messages";
 import { useStickToBottom } from "@/features/chat/use-stick-to-bottom";
 import { authClient } from "@/lib/auth-client";
 import { AssistantPassage } from "./answer";
@@ -35,15 +35,8 @@ export function ChatView({ documentId }: { documentId: string }) {
   const conversationQuery = useConversation(documentId, askable);
   const conversationId = conversationQuery.data?.id;
 
-  // 只加载最近 limit 条,向上「加载更早」时递增(窗口即完整历史的后缀)。
-  // 上限为契约的 MESSAGE_PAGE.max——服务端对超限 limit 会封顶,客户端必须同口径,
-  // 否则窗口到顶后仍无限递增、每次都拿回同样的 max 条,「加载更早」变成死按钮(见架构体检 F)。
-  const [limit, setLimit] = useState<number>(MESSAGE_PAGE.size);
-  const messagesQuery = useMessages(conversationId, limit);
-  const messages = messagesQuery.data?.messages ?? [];
-  const hasMore = messagesQuery.data?.hasMore ?? false;
-  // 窗口已到服务端上限:即便还有更早的消息,当前分页方式也无法再往前拉(游标分页为后续工作)。
-  const atWindowCap = limit >= MESSAGE_PAGE.max;
+  const { messages, hasMore, atWindowCap, isFetching, loadEarlier } =
+    useEarlierMessages(conversationId);
   const { send, streaming, sendError } = useSendMessage(conversationId);
 
   const [draft, setDraft] = useState("");
@@ -57,25 +50,6 @@ export function ChatView({ documentId }: { documentId: string }) {
       setSource({ page: citation.pageStart });
     }
   }, []);
-
-  // 「加载更早」:向前扩窗。加载会在顶部插入内容,记录扩窗前的文档高度,
-  // 待新窗口渲染后按增量回补 scrollY,保持用户当前阅读位置不跳动。
-  const anchorRef = useRef<number | null>(null);
-  const loadEarlier = useCallback(() => {
-    anchorRef.current = document.documentElement.scrollHeight;
-    setLimit((l) => Math.min(l + MESSAGE_PAGE.size, MESSAGE_PAGE.max));
-  }, []);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: messages 是「新窗口已渲染」的触发信号,非在体内读取
-  useLayoutEffect(() => {
-    if (anchorRef.current == null) {
-      return;
-    }
-    const delta = document.documentElement.scrollHeight - anchorRef.current;
-    if (delta > 0) {
-      window.scrollBy(0, delta);
-    }
-    anchorRef.current = null;
-  }, [messages]);
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -138,10 +112,10 @@ export function ChatView({ documentId }: { documentId: string }) {
             <button
               type="button"
               onClick={loadEarlier}
-              disabled={messagesQuery.isFetching}
+              disabled={isFetching}
               className="rounded-full border border-hairline bg-paper px-3.5 py-1.5 text-xs text-ink-soft transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60 [@media(hover:hover)]:hover:text-ink"
             >
-              {messagesQuery.isFetching ? "加载中…" : "↑ 加载更早的消息"}
+              {isFetching ? "加载中…" : "↑ 加载更早的消息"}
             </button>
           </div>
         ) : null}
