@@ -42,4 +42,11 @@ final class LoginModel {
             errorMessage = "请求失败，请稍后重试。"
         }
     }
+
+    func signOut() async {
+        try? await authClient.signOut()
+        session = nil
+        otp = ""
+        step = .email
+    }
 }

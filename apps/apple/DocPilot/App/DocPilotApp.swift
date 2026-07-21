@@ -45,7 +45,8 @@ private struct RootView: View {
                 WorkspaceShell(
                     documentsModel: documentsModel,
                     userID: loginModel.session?.user.id ?? "",
-                    api: api
+                    api: api,
+                    signOut: { await loginModel.signOut() }
                 )
             }
         }
