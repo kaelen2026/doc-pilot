@@ -1,0 +1,12 @@
+{
+  "user": {
+    "id": "user_fixture_01",
+    "name": "示例用户",
+    "email": "apple-client@example.invalid",
+    "image": null
+  },
+  "session": {
+    "id": "session_fixture_01",
+    "expiresAt": "2030-01-01T00:00:00.000Z"
+  }
+}

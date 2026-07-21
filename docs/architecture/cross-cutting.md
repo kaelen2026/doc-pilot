@@ -24,6 +24,23 @@ resolve workspaceId (from membership, 不信任请求参数)
 
 ## 26. 安全方案
 
+### 26.0 客户端会话接线
+
+Web 与 Apple 原生客户端共用 Better Auth session 和同一 API 鉴权中间件，但凭据的传输与
+存储遵循各自平台能力：
+
+- Web 继续使用 `HttpOnly`、`Secure`、`SameSite` Cookie，不在浏览器 JavaScript 中读取
+  session token。
+- Apple 客户端在 OTP 登录响应的 `set-auth-token` header 中接收 Better Auth Bearer
+  session，保存到 Keychain；后续请求使用 `Authorization: Bearer <token>`。
+- 服务端启用官方 Bearer 插件并要求签名校验；workspace 仍只从鉴权 session 的 membership
+  解析，绝不接受客户端传入的 `workspace_id` 作为授权依据。
+- Bearer Token、Cookie、OTP、预签名 URL 及其 header 属于 Secret：不得写入日志、trace、
+  analytics、崩溃报告、fixture 或错误响应。401 时 Apple 客户端清除本机 Keychain session。
+
+Bearer 只改变认证凭据的承载方式，不为原生客户端建立第二套 API 或绕过既有限流、配额和
+租户作用域 Repository。
+
 ### 26.1 文件安全
 
 - 限制 PDF

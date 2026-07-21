@@ -1,7 +1,7 @@
 import { db, schema } from "@doc-pilot/database";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { emailOTP } from "better-auth/plugins";
+import { createAuthPlugins } from "./auth-plugins";
 import { authEnv } from "./env";
 import { sendOtpEmail } from "./mailer";
 import { createPersonalWorkspace } from "./workspace";
@@ -18,20 +18,7 @@ export const auth = betterAuth({
   secret: authEnv.secret,
   trustedOrigins: ["http://localhost:3000", "http://localhost:3001"],
   database: drizzleAdapter(db, { provider: "pg", schema }),
-  plugins: [
-    emailOTP({
-      overrideDefaultEmailVerification: true,
-      async sendVerificationOTP({ email, otp, type }) {
-        // 本地开发直接打印，便于在无邮箱客户端时取码；同时投递到 SMTP(Mailpit)。
-        console.log(`[auth] OTP for ${email} (${type}): ${otp}`);
-        try {
-          await sendOtpEmail(email, otp, type);
-        } catch (err) {
-          console.error("[auth] failed to send OTP email:", err);
-        }
-      },
-    }),
-  ],
+  plugins: createAuthPlugins({ sendOtpEmail }),
   databaseHooks: {
     user: {
       create: {

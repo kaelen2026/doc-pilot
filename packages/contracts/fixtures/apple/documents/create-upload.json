@@ -1,0 +1,15 @@
+{
+  "document": {
+    "id": "doc_fixture_upload",
+    "status": "pending_upload"
+  },
+  "upload": {
+    "method": "PUT",
+    "url": "https://storage.example.invalid/uploads/doc_fixture_upload",
+    "headers": {
+      "Content-Type": "application/pdf"
+    },
+    "expiresAt": "2030-01-01T00:15:00.000Z"
+  },
+  "duplicate": false
+}
