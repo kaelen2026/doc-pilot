@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { HeaderActions } from "@/components/header-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,7 +10,7 @@ import { failureReason } from "@/features/documents/failure-reason";
 import { validateFile } from "@/features/documents/upload";
 import { useDocuments } from "@/features/documents/use-documents";
 import { useUploadDocument } from "@/features/documents/use-upload-document";
-import { authClient } from "../../lib/auth-client";
+import { authClient } from "@/lib/auth-client";
 
 const rise = "animate-[rise_0.5s_cubic-bezier(0.2,0,0,1)_both]";
 
@@ -86,13 +85,9 @@ export function DocumentsView() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 py-16">
-      {/* relative z-30:头部含头像下拉菜单,须压过下方带 rise(永久 transform→独立堆叠上下文)的区块 */}
-      <header className={`relative z-30 flex items-start justify-between gap-4 ${rise}`}>
-        <div className="space-y-2">
-          <h1 className="font-display text-3xl font-medium tracking-[-0.018em]">我的文档</h1>
-          <p className="text-sm text-ink-faint">就绪的文档可以直接问答,回答附原文引用</p>
-        </div>
-        <HeaderActions />
+      <header className={`space-y-2 ${rise}`}>
+        <h1 className="font-display text-3xl font-medium tracking-[-0.018em]">我的文档</h1>
+        <p className="text-sm text-ink-faint">就绪的文档可以直接问答,回答附原文引用</p>
       </header>
 
       <section className={rise} style={{ animationDelay: "100ms" }}>
