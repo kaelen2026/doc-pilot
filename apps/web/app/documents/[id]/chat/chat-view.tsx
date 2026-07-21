@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { type FormEvent, useCallback, useState } from "react";
+import { HeaderActions } from "@/components/header-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -144,9 +145,12 @@ export function ChatView({ documentId }: { documentId: string }) {
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col px-6 py-10">
       <header className={`space-y-3 ${rise}`}>
-        <Button asChild variant="link" size="sm" className="px-0">
-          <Link href="/documents">← 我的文档</Link>
-        </Button>
+        <div className="flex items-center justify-between gap-4">
+          <Button asChild variant="link" size="sm" className="px-0">
+            <Link href="/documents">← 我的文档</Link>
+          </Button>
+          <HeaderActions />
+        </div>
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <h1 className="min-w-0 break-words font-display text-2xl font-medium tracking-[-0.012em]">
             {doc?.title ?? "文档问答"}
