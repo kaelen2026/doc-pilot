@@ -1,0 +1,236 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "DocPilot 系统架构",
+    "subtitle": "AI 原生 PDF 文档工作台 · pnpm + Turborepo 单体仓库 · 三服务 + 共享包 + 数据/AI 层",
+    "output": "doc-pilot-arch.html",
+    "viewBox": [1460, 900]
+  },
+  "components": [
+    {
+      "id": "web",
+      "type": "frontend",
+      "label": "Next.js Web",
+      "sublabel": "App Router · PDF.js · TanStack Query",
+      "tag": "SSE 流式问答",
+      "pos": [110, 70],
+      "size": [250, 72]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "API · Hono 模块化单体",
+      "sublabel": "documents / conversations / usage · Node",
+      "tag": "租户作用域仓库 · 限流/配额/Zod",
+      "pos": [110, 270],
+      "size": [250, 96]
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "Document Worker · BullMQ",
+      "sublabel": "parse→clean→chunk→embed→summarize→finalize",
+      "tag": "processing_version 守卫 · reconciler",
+      "pos": [95, 660],
+      "size": [330, 100]
+    },
+
+    {
+      "id": "obj",
+      "type": "cloud",
+      "label": "Object Storage",
+      "sublabel": "S3 兼容 / MinIO",
+      "tag": "原始 PDF + 派生文本",
+      "pos": [600, 80],
+      "size": [230, 72]
+    },
+    {
+      "id": "pg",
+      "type": "database",
+      "label": "PostgreSQL 16 + pgvector",
+      "sublabel": "documents · chunks(向量) · outbox · jobs",
+      "tag": "每行带 workspace_id",
+      "pos": [600, 268],
+      "size": [230, 96]
+    },
+    {
+      "id": "publisher",
+      "type": "backend",
+      "label": "Outbox Publisher",
+      "sublabel": "轮询 outbox · FOR UPDATE SKIP LOCKED",
+      "tag": "稳定 jobId 幂等",
+      "pos": [600, 452],
+      "size": [230, 74]
+    },
+    {
+      "id": "redis",
+      "type": "messagebus",
+      "label": "Redis + BullMQ",
+      "sublabel": "document-processing 队列",
+      "pos": [600, 612],
+      "size": [230, 68]
+    },
+
+    {
+      "id": "gateway",
+      "type": "security",
+      "label": "AI Gateway",
+      "sublabel": "能力路由 · Prompt Registry · Usage/Trace",
+      "tag": "AI_* 归一 · 结构化输出 + 引用校验",
+      "pos": [1090, 380],
+      "size": [250, 100]
+    },
+    {
+      "id": "newapi",
+      "type": "external",
+      "label": "new-api 网关",
+      "sublabel": "生成模型 (Claude)",
+      "pos": [1000, 600],
+      "size": [180, 66]
+    },
+    {
+      "id": "ollama",
+      "type": "external",
+      "label": "Ollama bge-m3",
+      "sublabel": "embedding · 1024 维",
+      "pos": [1205, 600],
+      "size": [185, 66]
+    }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "apps/ — 三个可部署服务", "wraps": ["web", "api", "worker"] },
+    { "kind": "region", "label": "数据与基础设施", "wraps": ["obj", "pg", "publisher", "redis"] },
+    { "kind": "region", "label": "AI Providers（仅经 Gateway）", "wraps": ["newapi", "ollama"] }
+  ],
+  "connections": [
+    {
+      "from": "web",
+      "to": "api",
+      "label": "HTTPS / SSE",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [235, 205]
+    },
+    {
+      "from": "web",
+      "to": "obj",
+      "label": "① 预签名直传 PUT",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelDy": -12
+    },
+    {
+      "from": "api",
+      "to": "pg",
+      "label": "② 写 outbox（同事务）· 向量检索",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelDy": -12
+    },
+    {
+      "from": "pg",
+      "to": "publisher",
+      "label": "③ 轮询 outbox",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [715, 410]
+    },
+    {
+      "from": "publisher",
+      "to": "redis",
+      "label": "④ 发布 · 稳定 jobId",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [715, 571]
+    },
+    {
+      "from": "redis",
+      "to": "worker",
+      "label": "⑤ 消费任务",
+      "variant": "emphasis",
+      "fromSide": "left",
+      "toSide": "right"
+    },
+    {
+      "from": "worker",
+      "to": "obj",
+      "label": "取原文 PDF",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "via": [[480, 560]],
+      "labelAt": [405, 520]
+    },
+    {
+      "from": "worker",
+      "to": "pg",
+      "label": "写 chunks（向量）",
+      "fromSide": "top",
+      "toSide": "left",
+      "via": [[470, 470], [540, 420]],
+      "labelDy": 14
+    },
+    {
+      "from": "api",
+      "to": "gateway",
+      "label": "streamText（问答）",
+      "variant": "emphasis",
+      "fromSide": "top",
+      "toSide": "top",
+      "via": [[520, 210], [1010, 210]]
+    },
+    {
+      "from": "worker",
+      "to": "gateway",
+      "label": "embed / summarize",
+      "fromSide": "top",
+      "toSide": "left",
+      "via": [[520, 400], [1010, 400]]
+    },
+    { "from": "gateway", "to": "newapi", "label": "生成", "fromSide": "bottom", "toSide": "top" },
+    {
+      "from": "gateway",
+      "to": "ollama",
+      "label": "embedding",
+      "fromSide": "bottom",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "关键数据流",
+      "items": [
+        "① Web 取预签名 URL 后直传 Object Storage",
+        "② complete-upload 在单事务写 Document+Job+outbox",
+        "③④ Publisher 排空 outbox → BullMQ",
+        "⑤ Worker 消费并跑六阶段解析流水线",
+        "问答：检索(pgvector)→Gateway→SSE 流式回传"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "一致性不变量",
+      "items": [
+        "租户隔离：workspace_id 经作用域仓库注入每条查询",
+        "Transactional Outbox：异步交接绝不直连队列",
+        "幂等：稳定 jobId + DB 唯一约束，重处理不重复",
+        "processing_version 写守卫：陈旧任务不复活数据"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "AI 边界",
+      "items": [
+        "业务/Worker 只走 AI Gateway，不直连 provider SDK",
+        "生成→new-api 网关；embedding→自托管 Ollama",
+        "结构化输出 + 引用业务级校验，无证据则拒答",
+        "流式问答用 SSE，非 WebSocket"
+      ]
+    }
+  ]
+}
