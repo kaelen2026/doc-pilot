@@ -1,9 +1,11 @@
 {
-  "items": [
+  "messages": [
     {
       "id": "message_fixture_user",
       "role": "user",
       "status": "completed",
+      "errorCode": null,
+      "clientRequestId": "request_fixture_01",
       "content": "这份文档的核心结论是什么？",
       "citations": [],
       "createdAt": "2026-07-21T10:00:00.000Z"
@@ -12,17 +14,23 @@
       "id": "message_fixture_assistant",
       "role": "assistant",
       "status": "completed",
+      "errorCode": null,
+      "clientRequestId": null,
       "content": "核心结论见第一章。",
       "citations": [
         {
-          "sourceId": "source_fixture_01",
-          "documentId": "doc_fixture_ready",
-          "pageNumber": 2,
-          "quote": "核心结论示例"
+          "id": "citation_fixture_01",
+          "chunkId": "chunk_fixture_01",
+          "quote": "核心结论示例",
+          "claim": "核心结论见第一章",
+          "pageStart": 1,
+          "pageEnd": 1,
+          "score": "0.95",
+          "position": 0
         }
       ],
       "createdAt": "2026-07-21T10:00:01.000Z"
     }
   ],
-  "nextCursor": null
+  "hasMore": false
 }

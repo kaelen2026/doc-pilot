@@ -61,7 +61,7 @@ private struct DocumentDestination: View {
     let api: APIClient
     var body: some View {
         if let documentID {
-            ReaderView(documentID: documentID, userID: userID, api: api)
+            ReaderChatSplitView(documentID: documentID, userID: userID, api: api)
         } else {
             ContentUnavailableView("选择一份文档", systemImage: "doc.richtext")
         }
