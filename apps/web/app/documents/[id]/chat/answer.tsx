@@ -3,8 +3,8 @@
 import { memo, useCallback, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { parseCitationSegments } from "@/features/chat/parse-citations";
 import type { CitationItem, MessageItem } from "@/features/chat/types";
+import { AnswerMarkdown } from "./answer-markdown";
 import { CitationPopover } from "./citation-popover";
 
 /** 点开的引用及其触发元素(popover 锚点)。 */
@@ -52,7 +52,7 @@ export const AssistantPassage = memo(function AssistantPassage({
 
   return (
     <div className="space-y-3">
-      <AnswerBody
+      <AnswerMarkdown
         content={message.content}
         citations={message.citations}
         openId={open?.citation.id ?? null}
@@ -70,50 +70,3 @@ export const AssistantPassage = memo(function AssistantPassage({
     </div>
   );
 });
-
-/**
- * 答案正文:把模型内嵌的 [n] 标记(n 为引用序号,从 1 开始)渲染成朱红上标锚点,
- * 点击即弹出对应引用原文,与脚注编号一一对应(rag.md §19)。
- * 越界或无对应引用的 [n] 原样保留为文本——模型偶发跑偏时正文仍可读,不整条失败。
- */
-function AnswerBody({
-  content,
-  citations,
-  openId,
-  onToggle,
-}: {
-  content: string;
-  citations: CitationItem[];
-  openId: string | null;
-  onToggle: (citation: CitationItem, anchor: HTMLElement) => void;
-}) {
-  // 正文按 [n] 切段(纯逻辑见 parseCitationSegments),这里只把段映射成 ReactNode。
-  const parts = parseCitationSegments(content, citations).map((seg, i) => {
-    if (seg.kind === "text") {
-      // biome-ignore lint/suspicious/noArrayIndexKey: 段序稳定,index 即稳定 key
-      return <span key={i}>{seg.text}</span>;
-    }
-    const { n, citation } = seg;
-    const active = openId === citation.id;
-    return (
-      <button
-        // biome-ignore lint/suspicious/noArrayIndexKey: 段序稳定,index 即稳定 key
-        key={i}
-        type="button"
-        onClick={(e) => onToggle(citation, e.currentTarget)}
-        aria-haspopup="dialog"
-        aria-expanded={active}
-        aria-label={`引用 ${n}${citation.pageStart != null ? `,第 ${citation.pageStart} 页` : ""}`}
-        className={`mx-px inline-flex items-center rounded-[3px] px-1 align-super text-[10px] font-medium leading-none tabular-nums transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring ${
-          active
-            ? "bg-seal text-paper"
-            : "bg-seal/10 text-seal [@media(hover:hover)]:hover:bg-seal/20"
-        }`}
-      >
-        {n}
-      </button>
-    );
-  });
-
-  return <p className="whitespace-pre-wrap text-[15px] leading-[1.8] text-ink">{parts}</p>;
-}
