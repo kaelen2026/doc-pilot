@@ -8,7 +8,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage --coverage.thresholds.lines=70 --coverage.thresholds.functions=60 --coverage.thresholds.branches=60 --coverage.thresholds.statements=70"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.1",

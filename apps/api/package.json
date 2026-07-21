@@ -8,7 +8,9 @@
     "build": "tsup",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage --coverage.include='src/{ai/mock-answer,middleware/auth.middleware,modules/conversations/retrieval,modules/health/health.routes,modules/quota/{month,quota.rules},shared/{rate-limit,token-bucket}}.ts' --coverage.thresholds.lines=75 --coverage.thresholds.functions=65 --coverage.thresholds.branches=65 --coverage.thresholds.statements=75",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1089.0",

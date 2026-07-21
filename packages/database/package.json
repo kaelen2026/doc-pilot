@@ -12,7 +12,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage --coverage.include=src/ai-generation.ts --coverage.thresholds.lines=80 --coverage.thresholds.functions=50 --coverage.thresholds.branches=70 --coverage.thresholds.statements=80"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",

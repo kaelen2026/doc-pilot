@@ -23,6 +23,13 @@ export interface IngestedFixture {
   cleanup(): Promise<void>;
 }
 
+function requireInserted<T>(row: T | undefined, entity: string): T {
+  if (!row) {
+    throw new Error(`${entity} 插入后未返回记录`);
+  }
+  return row;
+}
+
 /**
  * 评测语料入库:独立 user + workspace,预切片语料经 Gateway embed 后写入
  * document_chunks——与线上同库同查询路径,评测覆盖真实的 pgvector 行为。
@@ -32,7 +39,7 @@ export async function ingestDataset(
   dataset: EvalDataset,
 ): Promise<IngestedFixture> {
   const runId = `eval-${Date.now().toString(36)}`;
-  const [evalUser] = await db
+  const [insertedUser] = await db
     .insert(user)
     .values({
       id: runId,
@@ -43,62 +50,74 @@ export async function ingestDataset(
       updatedAt: new Date(),
     })
     .returning();
-  const [workspace] = await db
-    .insert(workspaces)
-    .values({ name: runId, ownerId: evalUser!.id })
-    .returning();
-
-  const documentIds = new Map<string, string>();
-  for (const [name, chunks] of dataset.documents) {
-    const [doc] = await db
-      .insert(documents)
-      .values({
-        workspaceId: workspace!.id,
-        ownerId: evalUser!.id,
-        title: name,
-        originalFilename: `${name}.jsonl`,
-        mimeType: "application/pdf",
-        sizeBytes: 1,
-        status: "ready",
-        processingVersion: 1,
-      })
+  const evalUser = requireInserted(insertedUser, "评测用户");
+  try {
+    const [insertedWorkspace] = await db
+      .insert(workspaces)
+      .values({ name: runId, ownerId: evalUser.id })
       .returning();
-    documentIds.set(name, doc!.id);
+    const workspace = requireInserted(insertedWorkspace, "评测 workspace");
 
-    const metadata: AIMetadata = { workspaceId: workspace!.id, documentId: doc!.id };
-    const { embeddings } = await gateway.embed({
-      capability: "embedding",
-      texts: chunks.map((c) => c.content),
-      metadata,
-    });
-    await db.insert(documentChunks).values(
-      chunks.map((c, i) => ({
-        workspaceId: workspace!.id,
-        documentId: doc!.id,
-        processingVersion: 1,
-        chunkIndex: c.chunkIndex,
-        content: c.content,
-        contentHash: `${name}-${c.chunkIndex}`,
-        tokenCount: Math.max(1, Math.ceil(c.content.length / 4)),
-        pageStart: c.pageStart,
-        pageEnd: c.pageEnd,
-        metadata: {},
-        embedding: embeddings[i],
-        embeddingModel: "eval",
-        embeddingVersion: EMBEDDING_VERSION,
-      })),
-    );
+    const documentIds = new Map<string, string>();
+    for (const [name, chunks] of dataset.documents) {
+      const [insertedDocument] = await db
+        .insert(documents)
+        .values({
+          workspaceId: workspace.id,
+          ownerId: evalUser.id,
+          title: name,
+          originalFilename: `${name}.jsonl`,
+          mimeType: "application/pdf",
+          sizeBytes: 1,
+          status: "ready",
+          processingVersion: 1,
+        })
+        .returning();
+      const doc = requireInserted(insertedDocument, "评测文档");
+      documentIds.set(name, doc.id);
+
+      const metadata: AIMetadata = { workspaceId: workspace.id, documentId: doc.id };
+      const { embeddings } = await gateway.embed({
+        capability: "embedding",
+        texts: chunks.map((c) => c.content),
+        metadata,
+      });
+      await db.insert(documentChunks).values(
+        chunks.map((c, i) => ({
+          workspaceId: workspace.id,
+          documentId: doc.id,
+          processingVersion: 1,
+          chunkIndex: c.chunkIndex,
+          content: c.content,
+          contentHash: `${name}-${c.chunkIndex}`,
+          tokenCount: Math.max(1, Math.ceil(c.content.length / 4)),
+          pageStart: c.pageStart,
+          pageEnd: c.pageEnd,
+          metadata: {},
+          embedding: embeddings[i],
+          embeddingModel: "eval",
+          embeddingVersion: EMBEDDING_VERSION,
+        })),
+      );
+    }
+
+    return {
+      workspaceId: workspace.id,
+      userId: evalUser.id,
+      documentIds,
+      async cleanup() {
+        await db.delete(workspaces).where(eq(workspaces.id, workspace.id));
+        await db.delete(user).where(eq(user.id, evalUser.id));
+      },
+    };
+  } catch (error) {
+    // user 级联删除本次评测已创建的 workspace/documents/chunks，避免半成品 fixture 残留。
+    await db
+      .delete(user)
+      .where(eq(user.id, evalUser.id))
+      .catch(() => {});
+    throw error;
   }
-
-  return {
-    workspaceId: workspace!.id,
-    userId: evalUser!.id,
-    documentIds,
-    async cleanup() {
-      await db.delete(workspaces).where(eq(workspaces.id, workspace!.id));
-      await db.delete(user).where(eq(user.id, evalUser!.id));
-    },
-  };
 }
 
 interface Candidate {

@@ -144,6 +144,8 @@ export const outboxEvents = pgTable(
     payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
     status: varchar("status", { length: 20 }).notNull().default("pending"),
     attempts: integer("attempts").notNull().default(0),
+    lastError: text("last_error"),
+    attemptedAt: timestamp("attempted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     publishedAt: timestamp("published_at", { withTimezone: true }),
   },

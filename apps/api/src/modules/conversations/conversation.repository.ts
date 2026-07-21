@@ -389,10 +389,14 @@ export type ScopedConversationRepo = ReturnType<typeof scopedConversationRepo>;
 
 /** postgres.js 的唯一约束冲突(SQLSTATE 23505)。 */
 function isUniqueViolation(err: unknown): boolean {
-  return (
-    typeof err === "object" &&
-    err !== null &&
-    "code" in err &&
-    (err as { code?: unknown }).code === "23505"
-  );
+  let current = err;
+  const seen = new Set<unknown>();
+  while (typeof current === "object" && current !== null && !seen.has(current)) {
+    seen.add(current);
+    if ("code" in current && (current as { code?: unknown }).code === "23505") {
+      return true;
+    }
+    current = "cause" in current ? (current as { cause?: unknown }).cause : undefined;
+  }
+  return false;
 }

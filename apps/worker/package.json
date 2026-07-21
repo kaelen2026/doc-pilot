@@ -9,7 +9,8 @@
     "start": "node dist/index.js",
     "backfill:embeddings": "tsx --env-file-if-exists=../../.env scripts/backfill-embeddings.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage --coverage.include='src/pipeline/{chunk,clean,embed,errors,hash,summarize,tokens}.ts' --coverage.include=src/outbox/publisher.ts --coverage.include=src/reconcile/reconciler.ts --coverage.include=src/repository/processing-guard.ts --coverage.thresholds.lines=75 --coverage.thresholds.functions=70 --coverage.thresholds.branches=70 --coverage.thresholds.statements=75"
   },
   "dependencies": {
     "@doc-pilot/ai": "workspace:*",
@@ -22,7 +23,8 @@
     "drizzle-orm": "^0.45.2",
     "ioredis": "^5.4.0",
     "postgres": "^3.4.9",
-    "unpdf": "^1.6.2"
+    "unpdf": "^1.6.2",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@doc-pilot/config": "workspace:*",
