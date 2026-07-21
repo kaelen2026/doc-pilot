@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 @main
 struct DocPilotApp: App {
@@ -9,6 +10,7 @@ struct DocPilotApp: App {
             RootView(environment: environment)
                 .tint(DesignTokens.accent)
         }
+        .modelContainer(for: Highlight.self)
     }
 }
 
@@ -16,6 +18,7 @@ private struct RootView: View {
     let environment: AppEnvironment
     @State private var loginModel: LoginModel
     @State private var documentsModel: DocumentsModel
+    private let api: APIClient
 
     init(environment: AppEnvironment) {
         self.environment = environment
@@ -25,6 +28,7 @@ private struct RootView: View {
             transport: URLSessionTransport(),
             token: { try? tokenStore.loadToken() }
         )
+        self.api = api
         _loginModel = State(initialValue: LoginModel(
             authClient: AuthClient(api: api, tokenStore: tokenStore)
         ))
@@ -38,7 +42,11 @@ private struct RootView: View {
             if loginModel.session == nil {
                 LoginView(model: loginModel)
             } else {
-                WorkspaceShell(documentsModel: documentsModel)
+                WorkspaceShell(
+                    documentsModel: documentsModel,
+                    userID: loginModel.session?.user.id ?? "",
+                    api: api
+                )
             }
         }
         .task { await loginModel.restore() }

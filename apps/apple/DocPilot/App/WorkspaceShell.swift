@@ -2,12 +2,14 @@ import SwiftUI
 
 struct WorkspaceShell: View {
     @Bindable var documentsModel: DocumentsModel
+    let userID: String
+    let api: APIClient
 
     var body: some View {
 #if os(macOS)
         splitView
 #else
-        AdaptiveWorkspaceShell(documentsModel: documentsModel)
+        AdaptiveWorkspaceShell(documentsModel: documentsModel, userID: userID, api: api)
 #endif
     }
 
@@ -18,7 +20,7 @@ struct WorkspaceShell: View {
         } content: {
             DocumentsView(model: documentsModel)
         } detail: {
-            DocumentDestination(documentID: documentsModel.selectedDocumentID)
+            DocumentDestination(documentID: documentsModel.selectedDocumentID, userID: userID, api: api)
         }
     }
 }
@@ -27,6 +29,8 @@ struct WorkspaceShell: View {
 private struct AdaptiveWorkspaceShell: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Bindable var documentsModel: DocumentsModel
+    let userID: String
+    let api: APIClient
 
     var body: some View {
         if sizeClass == .regular {
@@ -35,7 +39,7 @@ private struct AdaptiveWorkspaceShell: View {
             } content: {
                 DocumentsView(model: documentsModel)
             } detail: {
-                DocumentDestination(documentID: documentsModel.selectedDocumentID)
+                DocumentDestination(documentID: documentsModel.selectedDocumentID, userID: userID, api: api)
             }
         } else {
             TabView {
@@ -53,9 +57,11 @@ private struct AdaptiveWorkspaceShell: View {
 
 private struct DocumentDestination: View {
     let documentID: String?
+    let userID: String
+    let api: APIClient
     var body: some View {
         if let documentID {
-            ContentUnavailableView("文档 \(documentID)", systemImage: "doc.richtext")
+            ReaderView(documentID: documentID, userID: userID, api: api)
         } else {
             ContentUnavailableView("选择一份文档", systemImage: "doc.richtext")
         }
