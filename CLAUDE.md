@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 read the relevant rule under `.claude/rules/`:
 
 - [`workflow.md`](.claude/rules/workflow.md) — 分支/worktree/PR 流程(禁止直接在 main 提交)。
+- [`tdd.md`](.claude/rules/tdd.md) — 红-绿-重构:哪些层先写测试、跑法、Vitest 写法与不变量测试。
 - [`frontend.md`](.claude/rules/frontend.md) — 前端组件:怎么写对(三层分工、契约、墨水纸、a11y、effect)+ 长胖了怎么拆。
 
 ## Current state: Phase 1–7 implemented
