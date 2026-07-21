@@ -44,4 +44,6 @@ export const RATE_LIMITS = {
   uploadCreate: { capacity: 20, refillTokens: 20, intervalMs: MINUTE_MS },
   /** 问答:10 次 / 分钟 / 用户 */
   ask: { capacity: 10, refillTokens: 10, intervalMs: MINUTE_MS },
+  /** 全局搜索:每次触发一次查询 embedding,30 次 / 分钟 / 用户 */
+  search: { capacity: 30, refillTokens: 30, intervalMs: MINUTE_MS },
 } as const satisfies Record<string, RateLimitRule>;

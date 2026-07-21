@@ -11,6 +11,7 @@ import { createConversationRoutes } from "./modules/conversations/conversation.r
 import { createDocumentRoutes } from "./modules/documents/document.routes";
 import { createHealthRoutes, type ReadinessProbes } from "./modules/health/health.routes";
 import { createMeRoutes } from "./modules/me/me.routes";
+import { createSearchRoutes } from "./modules/search/search.routes";
 import { getSession, loadMemberships } from "./shared/auth-context";
 import { DomainError } from "./shared/errors";
 import { NoopRateLimiter, otpRateLimit, type RateLimiter, rateLimit } from "./shared/rate-limit";
@@ -52,6 +53,7 @@ export function createApp(deps: { rateLimiter?: RateLimiter; readiness?: Readine
   app.use("/documents/*", guard);
   app.use("/conversations", guard);
   app.use("/conversations/*", guard);
+  app.use("/search", guard);
 
   // 贵操作限流(用户维度),挂在 guard 之后以便拿到 user。
   const subjectByUser = (c: Context<AppEnv>) => c.get("user")?.id ?? null;
@@ -74,10 +76,19 @@ export function createApp(deps: { rateLimiter?: RateLimiter; readiness?: Readine
       rateLimit({ limiter, rule: RATE_LIMITS.ask, name: "ask", subject: subjectByUser }),
     ),
   );
+  // 每次搜索触发一次查询 embedding,按用户限流。
+  app.use(
+    "/search",
+    onMethod(
+      "GET",
+      rateLimit({ limiter, rule: RATE_LIMITS.search, name: "search", subject: subjectByUser }),
+    ),
+  );
 
   app.route("/me", createMeRoutes());
   app.route("/documents", createDocumentRoutes());
   app.route("/conversations", createConversationRoutes());
+  app.route("/search", createSearchRoutes());
 
   // 统一错误映射：领域错误 → 对应 HTTP 状态。
   app.onError((err, c) => {
