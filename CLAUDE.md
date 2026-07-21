@@ -14,6 +14,7 @@
 | 起分支 · worktree · PR(**禁止在 main 直接提交**) | [`.claude/rules/workflow.md`](.claude/rules/workflow.md) |
 | 写测试(红-绿-重构、哪层先测、Vitest 写法、不变量测试) | [`.claude/rules/tdd.md`](.claude/rules/tdd.md) |
 | 前端组件(三层分工、契约、墨水纸、a11y、effect;拆胖) | [`.claude/rules/frontend.md`](.claude/rules/frontend.md) |
+| 后端模块(Route→Service→租户仓库 链路、模块解剖、错误映射) | [`.claude/rules/backend.md`](.claude/rules/backend.md) |
 | 数据模型 · 存储 Schema · 枚举 | [`docs/architecture/data-model.md`](docs/architecture/data-model.md) |
 | 解析管线 · Transactional Outbox · 状态机 · 删除 | [`docs/architecture/pipeline.md`](docs/architecture/pipeline.md) |
 | RAG · 向量检索 · AI Gateway · 摘要 · 问答流 | [`docs/architecture/rag.md`](docs/architecture/rag.md) |
