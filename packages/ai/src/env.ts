@@ -19,7 +19,7 @@ export interface ResolvedProviderConfig {
   /** 文本生成(Anthropic 格式)adapter 选项;凭据缺失时 undefined。 */
   anthropic?: Pick<AnthropicAdapterOptions, "apiKey" | "baseURL" | "thinking">;
   /** embedding(OpenAI 兼容)adapter 选项;凭据缺失时 undefined。 */
-  openai?: Pick<OpenAIEmbeddingAdapterOptions, "apiKey" | "baseURL">;
+  openai?: Pick<OpenAIEmbeddingAdapterOptions, "apiKey" | "baseURL" | "timeoutMs">;
   /** 是否具备文本能力凭据(决定路由到 anthropic 还是回落 mock)。 */
   hasAnthropic: boolean;
   /** 是否具备 embedding 能力凭据。 */
@@ -56,6 +56,9 @@ export function resolveProviderConfig(env: Env = process.env): ResolvedProviderC
   const openaiUsesGateway = !env.OPENAI_API_KEY && Boolean(gatewayKey);
   const openaiBase =
     env.OPENAI_BASE_URL ?? (openaiUsesGateway && gatewayBase ? `${gatewayBase}/v1` : undefined);
+  const embeddingTimeoutMs = Number(env.AI_EMBEDDING_TIMEOUT_MS);
+  const timeoutMs =
+    Number.isFinite(embeddingTimeoutMs) && embeddingTimeoutMs > 0 ? embeddingTimeoutMs : undefined;
 
   const hasAnthropic = Boolean(anthropicKey);
   // 自托管 embedding 端点(如本地 Ollama)通常免鉴权:显式配了 OPENAI_BASE_URL 即视为具备
@@ -68,6 +71,8 @@ export function resolveProviderConfig(env: Env = process.env): ResolvedProviderC
     anthropic: hasAnthropic
       ? { apiKey: anthropicKey, baseURL: anthropicBase, ...(thinking ? { thinking } : {}) }
       : undefined,
-    openai: hasOpenAI ? { apiKey: openaiKey, baseURL: openaiBase } : undefined,
+    openai: hasOpenAI
+      ? { apiKey: openaiKey, baseURL: openaiBase, ...(timeoutMs ? { timeoutMs } : {}) }
+      : undefined,
   };
 }

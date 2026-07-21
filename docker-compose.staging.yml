@@ -1,0 +1,58 @@
+name: docpilot-staging-local
+
+services:
+  postgres:
+    ports:
+      - "35432:5432"
+
+  redis:
+    ports:
+      - "36379:6379"
+
+  minio:
+    ports:
+      - "39000:9000"
+      - "39001:9001"
+
+  ollama:
+    ports:
+      - "31434:11434"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "38025:8025"
+      - "31025:1025"
+    restart: unless-stopped
+
+  api:
+    ports:
+      - "3301:3001"
+      - "39464:9464"
+    environment:
+      METRICS_PORT: "9464"
+      S3_ENDPOINT: http://host.docker.internal:39000
+      AI_EMBEDDING_TIMEOUT_MS: "900000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      mailpit:
+        condition: service_started
+
+  worker:
+    ports:
+      - "39465:9464"
+    environment:
+      METRICS_PORT: "9464"
+      S3_ENDPOINT: http://host.docker.internal:39000
+      AI_EMBEDDING_TIMEOUT_MS: "900000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  web:
+    build:
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3301
+        NEXT_PUBLIC_APP_URL: http://localhost:3300
+    ports:
+      - "3300:3000"

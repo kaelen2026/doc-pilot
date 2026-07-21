@@ -19,20 +19,33 @@ interface CreateUploadResponse {
  * 点按钮——问答闭环用例只需把文档送进解析,API 路径更快更稳、不受 UI 变动影响。
  * 上传 UI 自身的浏览器闭环由前端用例覆盖。
  */
-export async function uploadDocumentViaApi(page: Page): Promise<{ documentId: string }> {
-  const pdf = readFileSync(PDF_PATH);
+export async function uploadDocumentViaApi(
+  page: Page,
+  options: { path?: string; filename?: string } = {},
+): Promise<{ documentId: string }> {
+  const pdf = readFileSync(options.path ?? PDF_PATH);
+  const filename = options.filename ?? "e2e-sample.pdf";
 
   const createRes = await page.request.post(`${API_URL}/documents`, {
-    data: { filename: "e2e-sample.pdf", contentType: "application/pdf", sizeBytes: pdf.byteLength },
+    data: { filename, contentType: "application/pdf", sizeBytes: pdf.byteLength },
   });
   if (!createRes.ok()) {
     throw new Error(`创建文档失败 ${createRes.status()}: ${await createRes.text()}`);
   }
   const { document, upload } = (await createRes.json()) as CreateUploadResponse;
 
-  const putRes = await page.request.fetch(upload.url, {
+  const signedUrl = new URL(upload.url);
+  const stagingUploadUrl = new URL(upload.url);
+  if (e2eEnv.staging.runId && signedUrl.hostname === "host.docker.internal") {
+    stagingUploadUrl.hostname = "localhost";
+  }
+
+  const putRes = await page.request.fetch(stagingUploadUrl.toString(), {
     method: upload.method,
-    headers: upload.headers,
+    headers: {
+      ...upload.headers,
+      ...(stagingUploadUrl.hostname !== signedUrl.hostname ? { host: signedUrl.host } : {}),
+    },
     data: pdf,
   });
   if (!putRes.ok()) {
