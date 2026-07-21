@@ -12,7 +12,7 @@ const rise = "animate-[rise_0.5s_cubic-bezier(0.2,0,0,1)_both]";
  * 在线阅读原始 PDF 的整页视图:鉴权 + 取文件 URL + 头部(返回/下载),
  * 阅读器本体在 @/features/pdf。
  */
-export function PdfView({ documentId }: { documentId: string }) {
+export function PdfView({ documentId, initialPage }: { documentId: string; initialPage?: number }) {
   const { data: session, isPending: sessionPending } = authClient.useSession();
   const fileQuery = useFileUrl(documentId, !!session);
 
@@ -33,7 +33,7 @@ export function PdfView({ documentId }: { documentId: string }) {
       return <p className="p-6 text-sm text-seal">{String(fileQuery.error)}</p>;
     }
     if (fileQuery.data) {
-      return <PdfReader url={fileQuery.data} documentId={documentId} />;
+      return <PdfReader url={fileQuery.data} documentId={documentId} initialPage={initialPage} />;
     }
     return null;
   }
