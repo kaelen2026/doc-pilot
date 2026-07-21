@@ -2,6 +2,12 @@
 export { buildParseJobId, JOB_NAMES, PROCESSING_RETRY, QUEUE_NAMES } from "@doc-pilot/contracts";
 export { createRedisConnection, type Redis } from "./connection";
 export {
+  InMemoryNotificationBus,
+  type NotificationBus,
+  type NotificationPulse,
+  RedisNotificationBus,
+} from "./notification-bus";
+export {
   buildParseBullJobId,
   getDocumentProcessingQueue,
   getMaintenanceQueue,

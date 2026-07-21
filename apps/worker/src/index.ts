@@ -12,11 +12,12 @@ import {
   getMaintenanceQueue,
   JOB_NAMES,
   QUEUE_NAMES,
+  RedisNotificationBus,
 } from "@doc-pilot/queue";
 import { Worker } from "bullmq";
 import { workerEnv } from "./env";
 import { startOutboxPublisher } from "./outbox/publisher";
-import { processDocumentJob } from "./processors/document.processor";
+import { createDocumentProcessor } from "./processors/document.processor";
 import { createReconcileProcessor } from "./reconcile/reconcile.processor";
 
 // Metrics:配置 METRICS_PORT 时暴露 Prometheus /metrics;未配置则 no-op。
@@ -30,10 +31,21 @@ const metricsConnection = createRedisConnection();
 const maintenanceWorkerConnection = createRedisConnection();
 const maintenanceQueueConnection = createRedisConnection();
 
-const worker = new Worker(QUEUE_NAMES.documentProcessing, processDocumentJob, {
-  connection: workerConnection,
-  concurrency: workerEnv.concurrency,
+// 通知脉冲:Worker 只发布(不订阅)。发布连接单独一条,提交终态后推给在线的 SSE 连接。
+const notificationPublisherConnection = createRedisConnection();
+const notificationBus = new RedisNotificationBus({
+  publisher: notificationPublisherConnection,
+  createSubscriber: createRedisConnection,
 });
+
+const worker = new Worker(
+  QUEUE_NAMES.documentProcessing,
+  createDocumentProcessor({ notificationBus }),
+  {
+    connection: workerConnection,
+    concurrency: workerEnv.concurrency,
+  },
+);
 
 // queue_depth(§29.2):Prometheus 抓取时读取 waiting + active + delayed。
 const metricsQueue = getDocumentProcessingQueue(metricsConnection);
@@ -102,11 +114,13 @@ async function shutdown(signal: string): Promise<void> {
   await maintenanceQueue.close();
   await reconcileProcessingQueue.close();
   await metricsQueue.close();
+  await notificationBus.close();
   await workerConnection.quit();
   await publisherConnection.quit();
   await metricsConnection.quit();
   await maintenanceWorkerConnection.quit();
   await maintenanceQueueConnection.quit();
+  await notificationPublisherConnection.quit();
   process.exit(0);
 }
 

@@ -1,15 +1,25 @@
 import type { ProcessingStage } from "@doc-pilot/contracts";
-import { EMBEDDING_VERSION } from "@doc-pilot/contracts";
+import { EMBEDDING_VERSION, NOTIFICATION_RESOURCE, NOTIFICATION_TYPE } from "@doc-pilot/contracts";
 import { db } from "@doc-pilot/database";
 import {
   documentChunks,
   documentFiles,
   documents,
+  notifications,
   processingJobs,
 } from "@doc-pilot/database/schema";
 import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
 import type { Chunk, EmbeddedChunks } from "../pipeline";
 import { passesProcessingGuard, READY_STATUSES } from "./processing-guard";
+
+/**
+ * 终态写入时顺带创建的通知(收件人为文档 owner)。返回给处理器,在事务提交后发实时脉冲。
+ * 通知行本身与状态变更同事务落库(持久事实源);脉冲是 best-effort(见 @doc-pilot/queue)。
+ */
+export interface CreatedNotification {
+  id: string;
+  userId: string;
+}
 
 export interface ClaimedDocument {
   documentId: string;
@@ -198,7 +208,11 @@ export async function markStage(params: {
  * 2. 先删后插当前版本的所有 Chunk —— 保证重复任务不产生重复 Chunk。
  * 3. 更新 documents 为 ready + 统计信息 + 摘要,processing_jobs 为 completed。
  * 摘要失败(summaryError 非空)时状态为 partially_ready:允许问答,摘要显示生成失败
- * (pipeline.md §13)。守卫失败返回 false(不写入)。
+ * (pipeline.md §13)。守卫失败返回 finalized=false(不写入)。
+ *
+ * 收尾为 ready 时,在**同一事务**内写一条 document.ready 通知(与状态变更原子落库);
+ * partially_ready 不发通知(见通知中心决策:v1 只 ready + failed)。返回的 notification 供
+ * 处理器在提交后发实时脉冲;dedupe_key 冲突(重放)时为 null,不重复通知(幂等不变量)。
  */
 export async function saveChunksAndFinalize(params: {
   documentId: string;
@@ -214,7 +228,7 @@ export async function saveChunksAndFinalize(params: {
   summaryError: { code: string; message: string } | null;
   /** 原始文件的权威 SHA256:回填到 documents / document_files,供内容去重查找（§23.4）。 */
   checksumSha256?: string;
-}): Promise<boolean> {
+}): Promise<{ finalized: boolean; notification: CreatedNotification | null }> {
   return db.transaction(async (tx) => {
     const [doc] = await tx
       .select()
@@ -223,7 +237,7 @@ export async function saveChunksAndFinalize(params: {
       .for("update");
 
     if (!passesProcessingGuard(doc, params.processingVersion)) {
-      return false;
+      return { finalized: false, notification: null };
     }
 
     await tx
@@ -262,10 +276,12 @@ export async function saveChunksAndFinalize(params: {
       );
     }
 
+    const finalStatus = params.summaryError ? "partially_ready" : "ready";
+
     await tx
       .update(documents)
       .set({
-        status: params.summaryError ? "partially_ready" : "ready",
+        status: finalStatus,
         currentStage: "finalize",
         progress: 100,
         pageCount: params.pageCount,
@@ -305,7 +321,28 @@ export async function saveChunksAndFinalize(params: {
       })
       .where(eq(processingJobs.idempotencyKey, params.jobIdempotencyKey));
 
-    return true;
+    // 仅 ready 发通知(partially_ready 不发,v1 决策)。收件人为文档 owner。
+    // onConflictDoNothing:重放(同 processing_version 的重复投递)不产生重复通知。
+    let notification: CreatedNotification | null = null;
+    if (finalStatus === "ready") {
+      const [row] = await tx
+        .insert(notifications)
+        .values({
+          workspaceId: params.workspaceId,
+          userId: doc.ownerId,
+          type: NOTIFICATION_TYPE.documentReady,
+          title: `《${doc.title}》已就绪`,
+          body: "文档已完成解析,可以开始提问了。",
+          resourceType: NOTIFICATION_RESOURCE.document,
+          resourceId: params.documentId,
+          dedupeKey: `document:${params.documentId}:v${params.processingVersion}:ready`,
+        })
+        .onConflictDoNothing({ target: notifications.dedupeKey })
+        .returning({ id: notifications.id, userId: notifications.userId });
+      notification = row ?? null;
+    }
+
+    return { finalized: true, notification };
   });
 }
 
@@ -314,6 +351,9 @@ export async function saveChunksAndFinalize(params: {
  * 事务内 FOR UPDATE 复检版本守卫,并额外 block READY_STATUSES:at-least-once 重复投递下,
  * 一次投递已成功(ready/partially_ready)后,另一次投递末次尝试失败不得把成功覆盖成 failed
  * (架构体检 E)。守卫不通过则整体跳过——不改文档、也不把 processing_jobs 标失败。
+ *
+ * 落 failed 时在**同一事务**内写一条 document.failed 通知(收件人为文档 owner);返回给
+ * 处理器在提交后发脉冲。dedupe_key 冲突(重放)→ null,不重复通知。守卫跳过时也返回 null。
  */
 export async function markFailed(params: {
   documentId: string;
@@ -321,8 +361,8 @@ export async function markFailed(params: {
   jobIdempotencyKey: string;
   errorCode: string;
   errorMessage: string;
-}): Promise<void> {
-  await db.transaction(async (tx) => {
+}): Promise<CreatedNotification | null> {
+  return db.transaction(async (tx) => {
     const [doc] = await tx
       .select()
       .from(documents)
@@ -330,7 +370,7 @@ export async function markFailed(params: {
       .for("update");
 
     if (!passesProcessingGuard(doc, params.processingVersion, { blockStatuses: READY_STATUSES })) {
-      return;
+      return null;
     }
 
     await tx
@@ -352,5 +392,22 @@ export async function markFailed(params: {
         completedAt: new Date(),
       })
       .where(eq(processingJobs.idempotencyKey, params.jobIdempotencyKey));
+
+    const [row] = await tx
+      .insert(notifications)
+      .values({
+        workspaceId: doc.workspaceId,
+        userId: doc.ownerId,
+        type: NOTIFICATION_TYPE.documentFailed,
+        title: `《${doc.title}》处理失败`,
+        body: params.errorMessage.slice(0, 500),
+        resourceType: NOTIFICATION_RESOURCE.document,
+        resourceId: params.documentId,
+        metadata: { errorCode: params.errorCode },
+        dedupeKey: `document:${params.documentId}:v${params.processingVersion}:failed`,
+      })
+      .onConflictDoNothing({ target: notifications.dedupeKey })
+      .returning({ id: notifications.id, userId: notifications.userId });
+    return row ?? null;
   });
 }

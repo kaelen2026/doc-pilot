@@ -2,16 +2,15 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { HeaderActions } from "@/components/header-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { UserMenu } from "@/features/account/user-menu";
 import { failureReason } from "@/features/documents/failure-reason";
 import { validateFile } from "@/features/documents/upload";
 import { useDocuments } from "@/features/documents/use-documents";
 import { useUploadDocument } from "@/features/documents/use-upload-document";
-import { openCommandPalette } from "@/features/search/use-command-palette";
 import { authClient } from "../../lib/auth-client";
 
 const rise = "animate-[rise_0.5s_cubic-bezier(0.2,0,0,1)_both]";
@@ -93,14 +92,7 @@ export function DocumentsView() {
           <h1 className="font-display text-3xl font-medium tracking-[-0.018em]">我的文档</h1>
           <p className="text-sm text-ink-faint">就绪的文档可以直接问答,回答附原文引用</p>
         </div>
-        {session ? (
-          <div className="flex shrink-0 items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={openCommandPalette}>
-              搜索 <kbd className="ml-1.5 text-ink-faint text-xs">⌘K</kbd>
-            </Button>
-            <UserMenu />
-          </div>
-        ) : null}
+        <HeaderActions />
       </header>
 
       <section className={rise} style={{ animationDelay: "100ms" }}>
