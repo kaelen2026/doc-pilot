@@ -31,6 +31,34 @@
 }
 
 /*
+ * 深色模式:唯一杠杆。全站组件消费上面的墨水纸语义 token(bg-paper/text-ink/…)与
+ * 下面的 shadcn 桥接层,二者都是 var() 引用、在使用点求值,故只需在 [data-theme="dark"]
+ * 作用域重写这 9 个基础 token,所有页面/组件自动翻转,无需逐个加 dark: 变体。
+ * 明暗由 layout 的无闪烁内联脚本在首帧前落到 <html data-theme>;色相沿用暖调,
+ * 保持墨水纸气质——纸变暖黑、墨变暖白、印章朱红提亮以在暗底上够显。
+ * 抬升语义在深色里反转:raised 比 base 更亮、sunken 更暗(明度差 >= 4%)。
+ */
+:root {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-paper: oklch(20% 0.008 90);
+  --color-paper-raised: oklch(24.5% 0.009 90);
+  --color-paper-sunken: oklch(16.5% 0.007 90);
+  --color-hairline: oklch(32% 0.011 90);
+
+  --color-ink: oklch(91% 0.012 90);
+  --color-ink-soft: oklch(74% 0.012 90);
+  --color-ink-faint: oklch(56% 0.012 90);
+
+  --color-seal: oklch(64% 0.17 32);
+  --color-seal-deep: oklch(72% 0.16 32);
+}
+
+/*
  * shadcn/ui 语义 token → 全部指向上面的墨水纸感取值。
  * shadcn 组件只认 background/foreground/primary/border/ring… 这一层桥接让组件
  * 天然长成墨水纸的样子，而不是 shadcn 默认的中性灰。改视觉只需动上面的 @theme。
