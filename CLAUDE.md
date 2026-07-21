@@ -1,63 +1,50 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+本文件是给 Claude Code(claude.ai/code)的**编排入口**:只放每次任务都用得上、且临场(just-in-time)发现不了的规则;其余按下表**按需加载**。DocPilot 是 AI-native 的 PDF 文档工作台,Phase 1–7 已落地为可运行 monorepo。
 
 **回复前先输出，Wow, DocPilot**
 
-## Workflow
+## 按需加载
 
-read the relevant rule under `.claude/rules/`:
+改行为前先读对应文档——`docs/` 是行为契约的**权威参考**,schema / 接口 / SQL / API 形状以其为准,不是建议。文档用中文,编辑时保持中文。
 
-- [`workflow.md`](.claude/rules/workflow.md) — 分支/worktree/PR 流程(禁止直接在 main 提交)。
-- [`tdd.md`](.claude/rules/tdd.md) — 红-绿-重构:哪些层先写测试、跑法、Vitest 写法与不变量测试。
-- [`frontend.md`](.claude/rules/frontend.md) — 前端组件:怎么写对(三层分工、契约、墨水纸、a11y、effect)+ 长胖了怎么拆。
+| 要做的事 | 先读 |
+|---|---|
+| 产品目标 · 完整文档索引(ADR / 运维手册 / 路线图) | [`README.md`](README.md) |
+| 起分支 · worktree · PR(**禁止在 main 直接提交**) | [`.claude/rules/workflow.md`](.claude/rules/workflow.md) |
+| 写测试(红-绿-重构、哪层先测、Vitest 写法、不变量测试) | [`.claude/rules/tdd.md`](.claude/rules/tdd.md) |
+| 前端组件(三层分工、契约、墨水纸、a11y、effect;拆胖) | [`.claude/rules/frontend.md`](.claude/rules/frontend.md) |
+| 数据模型 · 存储 Schema · 枚举 | [`docs/architecture/data-model.md`](docs/architecture/data-model.md) |
+| 解析管线 · Transactional Outbox · 状态机 · 删除 | [`docs/architecture/pipeline.md`](docs/architecture/pipeline.md) |
+| RAG · 向量检索 · AI Gateway · 摘要 · 问答流 | [`docs/architecture/rag.md`](docs/architecture/rag.md) |
+| 权限 · 限流 · 配额 · 成本 · 可观测性 | [`docs/architecture/cross-cutting.md`](docs/architecture/cross-cutting.md) |
+| 部署 · 故障恢复 · 容量规划 | [`docs/runbooks/`](docs/runbooks/) |
 
-## Current state: Phase 1–7 implemented
-
-DocPilot (an AI-native PDF document workbench) is now a working monorepo, not just a spec. Phases 1–7 of [`.ai/plans/roadmap.md`](.ai/plans/roadmap.md) have landed: monorepo + Docker Compose + CI, auth/Workspace, file upload, parse pipeline, summary + AI Gateway, RAG Q&A, and go-live capabilities (rate limiting, quotas, observability, E2E, containerization + production compose).
-
-Layout:
+## Layout
 
 - **`apps/`** — three deployables: `@doc-pilot/api` (Hono), `@doc-pilot/web` (Next.js), `@doc-pilot/worker` (BullMQ).
 - **`packages/`** — shared libs: `ai` (AI Gateway), `auth`, `config`, `contracts`, `database` (Drizzle + pgvector), `eval`, `observability`, `queue`, `storage`.
-- **`e2e/`** — `@doc-pilot/e2e`, Playwright end-to-end tests (RAG Q&A full loop).
-- **`evals/`** — RAG evaluation datasets, driven by `@doc-pilot/eval`.
-
-**The design docs remain the authoritative spec.** When implementing or changing behavior, read the relevant `docs/` file first — the schemas, interfaces, SQL, and API shapes there are the contract, not suggestions. Docs are written in Chinese; keep that language when editing them.
-
-- Start at [`README.md`](README.md) for the doc index.
-- [`docs/architecture/`](docs/architecture/) — the system, split by concern (overview, data-model, pipeline, rag, cross-cutting, testing-and-eval).
-- [`docs/adr/`](docs/adr/) — 10 accepted architecture decisions with rationale.
-- [`docs/runbooks/`](docs/runbooks/) — operational guides (`deployment.md`, `failure-recovery.md`).
-- [`.ai/plans/roadmap.md`](.ai/plans/roadmap.md) — Phase 1–7 deliverables and acceptance criteria.
+- **`e2e/`** — `@doc-pilot/e2e`, Playwright E2E(RAG Q&A 全链路)。**`evals/`** — RAG 评测数据集,由 `@doc-pilot/eval` 驱动。
 
 ## Commands
 
-Root scripts (Turborepo fans these out across the workspace):
+完整脚本见根 `package.json`(Turbo 把 `build` / `dev` / `typecheck` / `test` 扇出到各 workspace)。非显然的几条:
 
-- `pnpm install` — install; runs `husky` via the `prepare` script to set up git hooks.
-- `pnpm dev` — run all `dev` tasks via Turbo. `pnpm dev:local` brings up Docker Compose first, then `dev`.
-- `pnpm build` / `pnpm typecheck` / `pnpm test` — `turbo run build|typecheck|test` across packages.
-- `pnpm test:e2e` — Playwright E2E (`@doc-pilot/e2e`).
-- `pnpm lint` — Biome check (lint + format check). `pnpm lint:fix` applies safe fixes; `pnpm format` formats only.
-- `pnpm compose:up` / `pnpm compose:down` — start/stop local infra (Postgres, Redis, MinIO) via `docker-compose.yml`.
-- `pnpm db:generate` / `pnpm db:migrate` — Drizzle migration generate/apply (delegates to `@doc-pilot/database`).
-- `pnpm commitlint` — validate a commit message.
-
-Production deploy uses `docker-compose.prod.yml` (three containerized services); see `docs/runbooks/deployment.md`.
+- `pnpm dev:local` 先起 Docker Compose 再 `dev`;`pnpm compose:up` / `compose:down` 单独起停本地基建(Postgres / Redis / MinIO)。
+- `pnpm test` 默认不碰 DB;DB 集成测试另跑 `pnpm --filter @doc-pilot/api test:integration`,E2E 跑 `pnpm test:e2e`。
+- `pnpm db:generate` / `pnpm db:migrate` 委托 `@doc-pilot/database`(Drizzle)。
+- 生产部署用 `docker-compose.prod.yml`,见 [`docs/runbooks/deployment.md`](docs/runbooks/deployment.md)。
 
 ## Toolchain conventions
 
-- **pnpm 10 + Node >= 24** (pnpm pinned via `packageManager`, node via `engines`). This is a pnpm workspace monorepo root; workspaces are `apps/*`, `packages/*`, and `e2e`.
-- **Turborepo** (`turbo.json`) orchestrates `build`, `dev`, `typecheck`, `test`. `build`/`typecheck`/`test` depend on `^build`; `dev` is persistent and uncached.
-- **Biome** is the single formatter + linter (config `biome.json`, schema pinned to 2.5.x). Style: double quotes, semicolons, 2-space indent, 100 col, trailing commas, import organizing on. Biome does **not** process Markdown, so doc edits are never auto-formatted.
-- **Git hooks (husky)**: `pre-commit` runs `lint-staged` (Biome `--write --no-errors-on-unmatched` on staged `*.{js,jsx,ts,tsx,mjs,cjs,json,jsonc}` only); `commit-msg` runs commitlint.
-- **Conventional commits are enforced** (`@commitlint/config-conventional`). Use `feat:`, `fix:`, `docs:`, `chore:`, etc. History uses a Chinese body after the conventional-English prefix (e.g. `feat: 落地自动对账(Reconciliation)恢复卡住的文档`).
-- **`AGENTS.md` is a symlink to this file** — edit `CLAUDE.md` only; both stay in sync.
+- **pnpm 10 + Node >= 24**,pnpm workspace monorepo(`apps/*` / `packages/*` / `e2e`),Turborepo 编排——细节见 `package.json` / `turbo.json` / `biome.json`。
+- **Biome** 是唯一 formatter + linter:双引号、分号、2 空格、100 列、trailing comma、import 自动整理。**Biome 不处理 Markdown**,故 doc 编辑不会被自动格式化。
+- **Conventional Commits 强制**(husky `commit-msg` + commitlint):英文类型前缀 + 中文正文(如 `feat: 落地自动对账(Reconciliation)恢复卡住的文档`)。
+- **`AGENTS.md` 是本文件的 symlink**——只改 `CLAUDE.md`,两者保持同步。
 
-## Architectural invariants (span multiple docs — apply when implementing)
+## Architectural invariants(跨多文档,实现时必守)
 
-These are the cross-cutting rules the design keeps returning to; violating them breaks the product's guarantees:
+违反其中任一条即破坏产品的核心保证;每条都注明了权威出处,深挖时按需读。
 
 - **Tenant isolation via `workspace_id`.** Every DB query and every vector search must filter by `workspace_id` in the query itself — including `document_chunks`, which carries `workspace_id` specifically for this. Never rely on a `workspaceId` request param; resolve it from the authenticated user's membership and push it through a **tenant-scoped repository** that injects the filter into every query (see `scopedConversationRepo`). MVP authorization *is* this tenant filter (resource not in your workspace → 404/403); a dedicated Policy layer is deferred until multi-role access exists (see ADR-008, `cross-cutting.md`).
 - **Transactional Outbox for all async handoff.** Never publish to BullMQ/Redis directly from request handling. Write the state change + `ProcessingJob` + `outbox_events` row in one DB transaction; a separate publisher drains the outbox (ADR-005, `pipeline.md`).
