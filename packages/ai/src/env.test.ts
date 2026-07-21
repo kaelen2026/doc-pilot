@@ -2,6 +2,15 @@ import { describe, expect, it } from "vitest";
 import { resolveProviderConfig } from "./env";
 
 describe("resolveProviderConfig", () => {
+  it("向 embedding adapter 传递集中配置的超时", () => {
+    const cfg = resolveProviderConfig({
+      OPENAI_BASE_URL: "http://ollama:11434/v1",
+      AI_EMBEDDING_TIMEOUT_MS: "300000",
+    });
+
+    expect(cfg.openai?.timeoutMs).toBe(300000);
+  });
+
   it("凭据全缺时两能力都回落 mock", () => {
     const cfg = resolveProviderConfig({});
     expect(cfg.hasAnthropic).toBe(false);

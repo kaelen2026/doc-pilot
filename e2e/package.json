@@ -5,11 +5,13 @@
   "type": "module",
   "scripts": {
     "test:e2e": "playwright test",
+    "test": "vitest run helpers/staging-report.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.0",
     "@types/node": "24.13.3",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^3.2.4"
   }
 }

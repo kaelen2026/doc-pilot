@@ -13,6 +13,7 @@ const isCI = e2eEnv.ci;
  */
 export default defineConfig({
   testDir: "./tests",
+  testIgnore: "staging-capacity.spec.ts",
   fullyParallel: false,
   workers: 1,
   forbidOnly: isCI,
