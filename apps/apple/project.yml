@@ -53,3 +53,5 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.docpilot.app.tests
         GENERATE_INFOPLIST_FILE: YES
         CODE_SIGNING_ALLOWED: NO
+        "TEST_HOST[sdk=macosx*]": $(BUILT_PRODUCTS_DIR)/DocPilot.app/Contents/MacOS/DocPilot
+        "BUNDLE_LOADER[sdk=macosx*]": $(TEST_HOST)
