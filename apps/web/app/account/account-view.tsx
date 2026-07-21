@@ -57,7 +57,8 @@ export function AccountView() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 py-16">
-      <header className={`flex items-start justify-between gap-4 ${rise}`}>
+      {/* relative z-30:头部含头像下拉菜单,须压过下方带 rise(永久 transform→独立堆叠上下文)的区块 */}
+      <header className={`relative z-30 flex items-start justify-between gap-4 ${rise}`}>
         <div className="space-y-2">
           <Link
             href="/documents"
