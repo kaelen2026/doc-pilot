@@ -86,7 +86,8 @@ export function DocumentsView() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-8 px-6 py-16">
-      <header className={`flex items-start justify-between gap-4 ${rise}`}>
+      {/* relative z-30:头部含头像下拉菜单,须压过下方带 rise(永久 transform→独立堆叠上下文)的区块 */}
+      <header className={`relative z-30 flex items-start justify-between gap-4 ${rise}`}>
         <div className="space-y-2">
           <h1 className="font-display text-3xl font-medium tracking-[-0.018em]">我的文档</h1>
           <p className="text-sm text-ink-faint">就绪的文档可以直接问答,回答附原文引用</p>

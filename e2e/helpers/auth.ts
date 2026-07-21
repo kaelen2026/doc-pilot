@@ -19,6 +19,7 @@ export async function loginViaOtp(page: Page, email: string): Promise<void> {
   await otpInput.fill(otp);
   await page.getByRole("button", { name: "登录" }).click();
 
-  // 登录成功软导航回首页,已登录态出现「退出登录」。
-  await expect(page.getByRole("button", { name: "退出登录" })).toBeVisible({ timeout: 15_000 });
+  // 登录成功软导航回首页,已登录态落到文档工作台。退出登录已收进头部头像菜单,
+  // 故以工作台标题「我的文档」作为登录完成的稳定信号。
+  await expect(page.getByRole("heading", { name: "我的文档" })).toBeVisible({ timeout: 15_000 });
 }

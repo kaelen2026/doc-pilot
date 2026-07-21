@@ -144,7 +144,8 @@ export function ChatView({ documentId }: { documentId: string }) {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col px-6 py-10">
-      <header className={`space-y-3 ${rise}`}>
+      {/* relative z-30:头部含账户下拉,须压过下方带 rise(独立堆叠上下文)的区块。 */}
+      <header className={`relative z-30 space-y-3 ${rise}`}>
         <div className="flex items-center justify-between gap-4">
           <Button asChild variant="link" size="sm" className="px-0">
             <Link href="/documents">← 我的文档</Link>

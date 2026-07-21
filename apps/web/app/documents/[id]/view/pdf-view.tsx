@@ -41,7 +41,8 @@ export function PdfView({ documentId, initialPage }: { documentId: string; initi
 
   return (
     <main className="mx-auto flex h-screen max-w-4xl flex-col px-6 py-6">
-      <header className={`flex items-center justify-between gap-4 pb-3 ${rise}`}>
+      {/* relative z-30:头部含账户下拉,须压过下方带 rise(独立堆叠上下文)的区块。 */}
+      <header className={`relative z-30 flex items-center justify-between gap-4 pb-3 ${rise}`}>
         <Button asChild variant="link" size="sm" className="px-0">
           <Link href={`/documents/${documentId}/chat`}>← 返回问答</Link>
         </Button>
