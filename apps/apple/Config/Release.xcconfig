@@ -1,0 +1,2 @@
+// CI 或 Archive 环境必须通过 API_BASE_URL 覆盖为生产 HTTPS 地址。
+API_BASE_URL = https:/$()/api.example.invalid

@@ -1,0 +1,6 @@
+{"event":"message.started","data":{"messageId":"message_fixture_stream"}}
+{"event":"retrieval.completed","data":{"sourceCount":1}}
+{"event":"message.delta","data":{"delta":"核心结论"}}
+{"event":"citation","data":{"sourceId":"source_fixture_01","documentId":"doc_fixture_ready","pageNumber":2,"quote":"核心结论示例"}}
+{"event":"usage","data":{"inputTokens":120,"outputTokens":16}}
+{"event":"message.completed","data":{"messageId":"message_fixture_stream"}}

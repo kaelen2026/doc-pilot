@@ -1,0 +1,30 @@
+name: Apple
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: apple-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Verify generated project
+        run: scripts/apple/check-project.sh
+      - name: Test iOS
+        run: >-
+          xcodebuild -project apps/apple/DocPilot.xcodeproj -scheme DocPilot
+          -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+          CODE_SIGNING_ALLOWED=NO test
+      - name: Build macOS
+        run: >-
+          xcodebuild -project apps/apple/DocPilot.xcodeproj -scheme DocPilot
+          -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build
