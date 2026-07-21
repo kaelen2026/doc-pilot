@@ -49,6 +49,9 @@ export function createApp(deps: { rateLimiter?: RateLimiter; readiness?: Readine
   // 受保护路由：未登录返回 401（满足「未登录无法访问文档」验收）。
   const guard = requireAuth({ getSession, loadMemberships });
   app.use("/me", guard);
+  // /me/* 子路由(如 /me/usage)同样受保护:Hono 的 use("/me") 只匹配精确路径,
+  // 漏了这条会让子路由绕过鉴权,且拿不到 memberships(activeWorkspaceId 会崩)。
+  app.use("/me/*", guard);
   app.use("/documents", guard);
   app.use("/documents/*", guard);
   app.use("/conversations", guard);
