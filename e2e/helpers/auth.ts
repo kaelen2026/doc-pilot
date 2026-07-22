@@ -17,7 +17,8 @@ export async function loginViaOtp(page: Page, email: string): Promise<void> {
 
   const otp = await fetchLatestOtp(email);
   await otpInput.fill(otp);
-  await page.getByRole("button", { name: "登录" }).click();
+  // exact:true:登录页新增「用密码登录」切换按钮(名字含「登录」),非精确匹配会命中两个(#102 起)。
+  await page.getByRole("button", { name: "登录", exact: true }).click();
 
   // 登录成功软导航回首页,已登录态落到文档工作台。退出登录已收进头部头像菜单,
   // 故以工作台标题「我的文档」作为登录完成的稳定信号。
