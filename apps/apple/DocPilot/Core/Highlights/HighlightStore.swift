@@ -12,4 +12,10 @@ struct HighlightStore {
 
     func add(_ highlight: Highlight) throws { context.insert(highlight); try context.save() }
     func delete(_ highlight: Highlight) throws { context.delete(highlight); try context.save() }
+
+    /// 本机高亮总条数(供设置页展示)。
+    func count() throws -> Int { try context.fetchCount(FetchDescriptor<Highlight>()) }
+
+    /// 清除本机全部高亮。
+    func deleteAll() throws { try context.delete(model: Highlight.self); try context.save() }
 }
