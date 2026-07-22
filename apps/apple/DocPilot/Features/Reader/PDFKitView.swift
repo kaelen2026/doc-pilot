@@ -1,7 +1,6 @@
 import PDFKit
 import SwiftUI
 
-#if os(iOS)
 struct PDFKitView: UIViewRepresentable {
     let url: URL
     @Binding var pageIndex: Int
@@ -16,22 +15,6 @@ struct PDFKitView: UIViewRepresentable {
         let view = PDFView(); context.coordinator.configure(view, url: url); return view
     }
 }
-#else
-struct PDFKitView: NSViewRepresentable {
-    let url: URL
-    @Binding var pageIndex: Int
-    let highlights: [Highlight]
-    let onSelection: (Int, CGRect, String) -> Void
-
-    func makeNSView(context: Context) -> PDFView { configuredView(context: context) }
-    func updateNSView(_ view: PDFView, context: Context) { context.coordinator.update(view, pageIndex: pageIndex, highlights: highlights) }
-    func makeCoordinator() -> Coordinator { Coordinator(pageIndex: $pageIndex, onSelection: onSelection) }
-
-    private func configuredView(context: Context) -> PDFView {
-        let view = PDFView(); context.coordinator.configure(view, url: url); return view
-    }
-}
-#endif
 
 extension PDFKitView {
     @MainActor

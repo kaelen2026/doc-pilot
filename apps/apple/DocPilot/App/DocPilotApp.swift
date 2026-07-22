@@ -5,10 +5,12 @@ import SwiftData
 struct DocPilotApp: App {
     private let environment = AppEnvironment.live
 
+    init() { AppAppearance.apply() }
+
     var body: some Scene {
         WindowGroup {
             RootView(environment: environment)
-                .tint(DesignTokens.accent)
+                .tint(DesignTokens.seal)
         }
         .modelContainer(for: Highlight.self)
     }
