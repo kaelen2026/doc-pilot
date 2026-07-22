@@ -29,6 +29,8 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>用于扫描二维码,登录 DocPilot 网页版。</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 </dict>
