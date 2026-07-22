@@ -14,3 +14,4 @@
 | [ADR-008](ADR-008-workspace-tenant.md) | Workspace 作为租户边界 | Accepted |
 | [ADR-009](ADR-009-sse-over-websocket.md) | SSE 而不是 WebSocket | Accepted |
 | [ADR-010](ADR-010-soft-delete-async-purge.md) | 软删除加异步物理清理 | Accepted |
+| [ADR-011](ADR-011-scan-login-device-authorization.md) | 扫码登录采用设备授权流程(RFC 8628) | Accepted |
