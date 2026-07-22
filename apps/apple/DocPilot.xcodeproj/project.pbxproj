@@ -25,6 +25,7 @@
 		400E3AABF1146F8E75504F87 /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA27C35D7C25A3E8D3C80B2E /* APIError.swift */; };
 		545E7FD1A4F90392B6617A3C /* Chat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5261C20EDD63A2127A47EACA /* Chat.swift */; };
 		571A356EC2358EE8A6584D17 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD9270FF1534656C565A201C /* AppEnvironment.swift */; };
+		57729ED37A2483A2DADCE0E0 /* SettingsNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59FD8E8838D218BACDD3B4B4 /* SettingsNavigationTests.swift */; };
 		5A483D86A33253D3FF472BEA /* DocumentsContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3003B57F523A591844B0036 /* DocumentsContractTests.swift */; };
 		601620B12EF4853C888B664B /* NotificationsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00B7384B35176C48E10865A /* NotificationsModel.swift */; };
 		65FE0F0697D5F097ECC855C4 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F81CEA71A7E940861A89271 /* APIClient.swift */; };
@@ -96,6 +97,7 @@
 		4B0F034B7D279EBB2535CB41 /* LoginModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginModel.swift; sourceTree = "<group>"; };
 		4F1E1A2D9E5D39F027AA8B1C /* UploadState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadState.swift; sourceTree = "<group>"; };
 		5261C20EDD63A2127A47EACA /* Chat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chat.swift; sourceTree = "<group>"; };
+		59FD8E8838D218BACDD3B4B4 /* SettingsNavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsNavigationTests.swift; sourceTree = "<group>"; };
 		5D01C85F9471BFD4692A56E8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		5DDA713E214E3EA55AD50558 /* PDFValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFValidator.swift; sourceTree = "<group>"; };
 		5EBB055A3125F7AB6E7DEB13 /* UploadStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadStateTests.swift; sourceTree = "<group>"; };
@@ -267,6 +269,7 @@
 			children = (
 				BAA628AA8F9020A4CEA2270D /* LiveSmokeTests.swift */,
 				B18D4F06D8A8250F657F3900 /* ScreenshotTests.swift */,
+				59FD8E8838D218BACDD3B4B4 /* SettingsNavigationTests.swift */,
 			);
 			path = DocPilotUITests;
 			sourceTree = "<group>";
@@ -579,6 +582,7 @@
 			files = (
 				31A6AE00D68A14AA4F8F47E5 /* LiveSmokeTests.swift in Sources */,
 				AB1E843C8E1FF1BDA896B64F /* ScreenshotTests.swift in Sources */,
+				57729ED37A2483A2DADCE0E0 /* SettingsNavigationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
