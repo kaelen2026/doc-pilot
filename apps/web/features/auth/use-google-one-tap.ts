@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { authClient } from "@/lib/auth-client";
 import { GOOGLE_CLIENT_ID } from "@/lib/env";
 
@@ -8,10 +8,16 @@ import { GOOGLE_CLIENT_ID } from "@/lib/env";
  * Google One Tap(Chrome「一步登录」):进入登录页即用 GSI 弹出账号,点一下直接登录。
  * 仅在配了公开 GOOGLE_CLIENT_ID 时触发;登录成功由 better-auth 的响应钩子按 callbackURL
  * 自动跳工作台。用户关闭提示 / 无可用账号 / 脚本加载失败都静默降级到验证码/密码/按钮。
+ *
+ * started 守卫:dev 的 React Strict Mode 会把 effect 跑两遍,第二次 oneTap() 会 abort
+ * 掉第一次挂起的 FedCM get(),GSI logger 直接打出 "AbortError: signal is aborted"。
+ * oneTap() 不暴露取消句柄,故用「只发起一次」的 ref 守卫顶掉重复触发(生产本就单挂载,行为不变)。
  */
 export function useGoogleOneTap() {
+  const started = useRef(false);
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return;
+    if (!GOOGLE_CLIENT_ID || started.current) return;
+    started.current = true;
 
     authClient
       .oneTap({
