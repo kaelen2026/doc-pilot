@@ -14,4 +14,9 @@ export const authEnv = {
     port: Number(process.env.SMTP_PORT ?? 1025),
     from: process.env.MAIL_FROM ?? "DocPilot <no-reply@docpilot.local>",
   },
+  // Google OAuth 凭据;缺省空串表示未配置——resolveSocialProviders 会据此跳过注册。
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID ?? "",
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+  },
 } as const;
