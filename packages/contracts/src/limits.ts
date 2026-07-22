@@ -46,4 +46,6 @@ export const RATE_LIMITS = {
   ask: { capacity: 10, refillTokens: 10, intervalMs: MINUTE_MS },
   /** 全局搜索:每次触发一次查询 embedding,30 次 / 分钟 / 用户 */
   search: { capacity: 30, refillTokens: 30, intervalMs: MINUTE_MS },
+  /** 扫码登录取码:未认证端点,按来源 IP 限流,10 次 / 分钟 */
+  scanLoginCode: { capacity: 10, refillTokens: 10, intervalMs: MINUTE_MS },
 } as const satisfies Record<string, RateLimitRule>;

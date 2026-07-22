@@ -1,7 +1,7 @@
 import type { RateLimitRule } from "@doc-pilot/contracts";
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
-import { InMemoryRateLimiter, rateLimit } from "./rate-limit";
+import { deviceCodeRateLimit, InMemoryRateLimiter, rateLimit } from "./rate-limit";
 import type { AppEnv } from "./types";
 
 const RULE: RateLimitRule = { capacity: 2, refillTokens: 2, intervalMs: 60_000 };
@@ -67,6 +67,59 @@ describe("rateLimit 中间件", () => {
 
     for (let i = 0; i < 5; i++) {
       const res = await app.request("/ask", { method: "POST" });
+      expect(res.status).toBe(200);
+    }
+  });
+});
+
+describe("deviceCodeRateLimit 中间件", () => {
+  function appWith(limiter: InMemoryRateLimiter) {
+    const app = new Hono<AppEnv>();
+    app.use("/api/auth/*", deviceCodeRateLimit(limiter));
+    app.post("/api/auth/device/code", (c) => c.json({ ok: true }));
+    app.post("/api/auth/sign-in/email-otp", (c) => c.json({ ok: true }));
+    return app;
+  }
+
+  const codeReq = (ip: string): RequestInit => ({
+    method: "POST",
+    headers: { "x-forwarded-for": ip },
+  });
+
+  it("按 IP 限流:取码 10 次/分钟,超出 429", async () => {
+    const app = appWith(new InMemoryRateLimiter(() => 1_000_000));
+    for (let i = 0; i < 10; i++) {
+      const res = await app.request("/api/auth/device/code", codeReq("203.0.113.7"));
+      expect(res.status).toBe(200);
+    }
+    const blocked = await app.request("/api/auth/device/code", codeReq("203.0.113.7"));
+    expect(blocked.status).toBe(429);
+    const body = (await blocked.json()) as { error: string };
+    expect(body.error).toBe("rate_limited");
+  });
+
+  it("不同 IP 各自独立计数", async () => {
+    const app = appWith(new InMemoryRateLimiter(() => 1_000_000));
+    for (let i = 0; i < 10; i++) {
+      await app.request("/api/auth/device/code", codeReq("198.51.100.1"));
+    }
+    const other = await app.request("/api/auth/device/code", codeReq("198.51.100.2"));
+    expect(other.status).toBe(200);
+  });
+
+  it("取第一跳 IP:同一 x-forwarded-for 链共用一个桶", async () => {
+    const app = appWith(new InMemoryRateLimiter(() => 1_000_000));
+    for (let i = 0; i < 10; i++) {
+      await app.request("/api/auth/device/code", codeReq("203.0.113.9, 10.0.0.1"));
+    }
+    const blocked = await app.request("/api/auth/device/code", codeReq("203.0.113.9, 10.0.0.2"));
+    expect(blocked.status).toBe(429);
+  });
+
+  it("放行同 /api/auth/* 下的其它端点(不拦截发码)", async () => {
+    const app = appWith(new InMemoryRateLimiter(() => 1_000_000));
+    for (let i = 0; i < 30; i++) {
+      const res = await app.request("/api/auth/sign-in/email-otp", codeReq("203.0.113.7"));
       expect(res.status).toBe(200);
     }
   });

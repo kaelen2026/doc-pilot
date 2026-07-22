@@ -29,9 +29,10 @@ tools: Read, Edit, Write, Bash, Grep, Glob
 
 - 工程文件由 **xcodegen** 生成:改了 `project.yml` 后
   `xcodegen generate --spec apps/ios/project.yml` 再构建。
-- 门禁 = 本地 xcodebuild 跑绿(scheme `docpilot` 含单元测试 `DocPilotTests`;UI 冒烟用
-  scheme `DocPilotLiveSmoke`。`apps/ios/DocPilot.xcodeproj`,iOS 26 模拟器 destination)。
-  改完必须构建/跑测试,把命令与结果**贴出来**,绿了才算完成。
+- 门禁 = 本地 xcodebuild 跑绿(主 scheme `docpilot` 含单元测试 `DocPilotTests`;UI 冒烟用
+  scheme `DocPilotLiveSmoke`。工程 target 仍名 `DocPilot`,工程文件 `apps/ios/DocPilot.xcodeproj`,
+  bundle id `dev.w3ctech.docpilot`,iOS 26 模拟器 destination)。改完必须构建/跑测试,
+  把命令与结果**贴出来**,绿了才算完成。
 
 ## 铁律
 

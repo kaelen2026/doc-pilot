@@ -140,6 +140,34 @@ export function rateLimit(deps: {
   };
 }
 
+/** 从代理头解析来源 IP,取第一跳;都缺失时回退 "unknown"(共享桶,仍能限制聚合滥用)。 */
+function clientIp(c: Context<AppEnv>): string {
+  const fwd = c.req.header("x-forwarded-for");
+  if (fwd) {
+    const first = fwd.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  return c.req.header("x-real-ip")?.trim() || "unknown";
+}
+
+/** Better Auth 设备授权取码端点后缀(basePath 为 /api/auth)。 */
+const DEVICE_CODE_PATH = "/device/code";
+
+/**
+ * 扫码登录取码限流:未认证端点,按来源 IP 限流,防止有人狂刷 device_code 撑爆表。
+ * 仅拦截 POST /api/auth/device/code,其余 /api/auth/* 放行。必须挂在 auth.handler 之前。
+ */
+export function deviceCodeRateLimit(limiter: RateLimiter): MiddlewareHandler<AppEnv> {
+  return async (c, next) => {
+    if (c.req.method !== "POST" || !c.req.path.endsWith(DEVICE_CODE_PATH)) return next();
+
+    const result = await limiter.consume(`rl:scan-code:${clientIp(c)}`, RATE_LIMITS.scanLoginCode);
+    applyHeaders(c, result);
+    if (!result.allowed) return c.json(TOO_MANY, 429);
+    return next();
+  };
+}
+
 /** Better Auth 发送验证码端点后缀(basePath 为 /api/auth)。 */
 const OTP_SEND_PATH = "/email-otp/send-verification-otp";
 

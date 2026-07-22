@@ -2,6 +2,7 @@ export * from "./ai-generation";
 export * from "./auth";
 export * from "./chunk";
 export * from "./conversation";
+export * from "./device-code";
 export * from "./document";
 export * from "./notification";
 export * from "./workspace";
