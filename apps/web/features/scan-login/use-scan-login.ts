@@ -12,6 +12,20 @@ import { authClient } from "@/lib/auth-client";
 import { classifyPollResult, type PollOutcome, type RawPollResult } from "./poll";
 import type { DeviceCodeData } from "./types";
 
+/**
+ * 把 /device/token 返回的 bearer access_token 换成 web 的 HttpOnly cookie 会话。
+ * device-authorization 的 token 端点只回 bearer、不种 cookie,而 web 是 cookie 认证,
+ * 故批准后必须调 /scan-login/adopt 才能真正登录(见 ADR-011 / scan-login-cookie.ts)。
+ * 走 authClient.$fetch(而非裸 fetch),复用其 baseURL/basePath、credentials 与错误形状。
+ */
+async function adoptSession(token: string): Promise<boolean> {
+  const { error } = await authClient.$fetch("/scan-login/adopt", {
+    method: "POST",
+    body: { token },
+  });
+  return !error;
+}
+
 /** 页面级状态:取码中 + poll 的五种语义结果。 */
 export type ScanStatus = "loading" | PollOutcome;
 
@@ -84,13 +98,19 @@ export function useScanLogin() {
         device_code: deviceCode as string,
         client_id: SCAN_LOGIN_CLIENT_ID,
       });
-      return classifyPollResult(res);
+      const outcome = classifyPollResult(res);
+      // 批准后拿到 bearer token,还需换成 cookie 会话(token 端点不种 cookie)。
+      if (outcome === "approved") {
+        const token = (res.data as { access_token?: string } | undefined)?.access_token;
+        if (!token || !(await adoptSession(token))) return "error";
+      }
+      return outcome;
     },
   });
 
   const outcome = tokenQuery.data;
 
-  // 批准后:/device/token 已下发会话 cookie,刷新 better-auth 会话态后进入工作台。
+  // 批准并领取 cookie 后:刷新 better-auth 会话态后进入工作台。
   useEffect(() => {
     if (outcome !== "approved") return;
     let cancelled = false;
