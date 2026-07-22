@@ -28,7 +28,8 @@ final class LiveSmokeTests: XCTestCase {
         XCTAssertTrue(submit.isEnabled)
         submit.tap()
 
-        let otpField = app.secureTextFields["login.otp"]
+        // OTP 页为分格 Input OTP:普通 textField 承接输入,输满 6 位自动验证,无需再点提交。
+        let otpField = app.textFields["login.otp"]
         guard otpField.waitForExistence(timeout: 10) else {
             XCTFail("OTP 输入框未出现：\(app.debugDescription)")
             return
@@ -36,8 +37,6 @@ final class LiveSmokeTests: XCTestCase {
         let otp = try await latestOTP(timeout: 10)
         otpField.tap()
         otpField.typeText(otp)
-        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).tap()
-        submit.tap()
 
         guard emailField.waitForNonExistence(timeout: 15) else {
             XCTFail("登录后仍停留在登录页：\(app.debugDescription)")

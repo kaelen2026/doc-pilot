@@ -4,6 +4,23 @@ struct LoginView: View {
     @Bindable var model: LoginModel
 
     var body: some View {
+        NavigationStack {
+            emailStep
+                .navigationDestination(isPresented: otpPresented) {
+                    OtpView(model: model)
+                }
+        }
+    }
+
+    /// step 即导航状态:进入 .otp 推 OTP 页;从 OTP 页返回则退回邮箱步。
+    private var otpPresented: Binding<Bool> {
+        Binding(
+            get: { model.step == .otp },
+            set: { presented in if !presented { model.backToEmail() } }
+        )
+    }
+
+    private var emailStep: some View {
         VStack(spacing: DesignTokens.spacingLg) {
             VStack(spacing: 6) {
                 Text("DocPilot")
@@ -16,28 +33,19 @@ struct LoginView: View {
             .padding(.top, 56)
 
             VStack(spacing: DesignTokens.spacing) {
-                VStack(alignment: .leading, spacing: 10) {
-                    TextField("邮箱", text: $model.email)
-#if os(iOS)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.emailAddress)
-#endif
-                        .textContentType(.emailAddress)
-                        .disabled(model.step == .otp)
-                        .accessibilityIdentifier("login.email")
-                    if model.step == .otp {
-                        Divider().overlay(DesignTokens.hairline)
-                        SecureField("验证码", text: $model.otp)
-                            .textContentType(.oneTimeCode)
-                            .accessibilityIdentifier("login.otp")
-                    }
-                }
-                .padding(16)
-                .background(DesignTokens.paperRaised, in: RoundedRectangle(cornerRadius: DesignTokens.radiusLg, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: DesignTokens.radiusLg, style: .continuous)
-                        .stroke(DesignTokens.hairline, lineWidth: 1)
-                )
+                TextField("邮箱", text: $model.email)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.emailAddress)
+                    .textContentType(.emailAddress)
+                    .submitLabel(.next)
+                    .onSubmit { if model.canSubmit { Task { await model.submit() } } }
+                    .accessibilityIdentifier("login.email")
+                    .padding(16)
+                    .background(DesignTokens.paperRaised, in: RoundedRectangle(cornerRadius: DesignTokens.radiusLg, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DesignTokens.radiusLg, style: .continuous)
+                            .stroke(DesignTokens.hairline, lineWidth: 1)
+                    )
 
                 if let errorMessage = model.errorMessage {
                     Text(errorMessage)
@@ -49,7 +57,7 @@ struct LoginView: View {
                 Button {
                     Task { await model.submit() }
                 } label: {
-                    Text(model.step == .email ? "发送验证码" : "登录")
+                    Text("发送验证码")
                         .font(.body.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 6)

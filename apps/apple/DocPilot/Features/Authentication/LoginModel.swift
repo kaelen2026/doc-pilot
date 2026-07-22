@@ -13,10 +13,38 @@ final class LoginModel {
     private(set) var session: AuthSession?
     private let authClient: AuthClient
 
-    init(authClient: AuthClient) { self.authClient = authClient }
+    init(authClient: AuthClient) {
+        self.authClient = authClient
+        // 截图/联调用:-previewOtp 直达验证码页并预填数位以展示分格态(生产无副作用)。
+        if ProcessInfo.processInfo.arguments.contains("-previewOtp") {
+            email = "you@example.com"
+            otp = "935"
+            step = .otp
+        }
+    }
+
+    /// OTP 位数,输满即自动验证。
+    static let otpLength = 6
 
     var canSubmit: Bool {
-        !isSubmitting && (step == .email ? email.contains("@") : otp.count >= 6)
+        !isSubmitting && (step == .email ? email.contains("@") : otp.count >= Self.otpLength)
+    }
+
+    /// 从 OTP 页退回邮箱页:清空验证码与错误,重新输入邮箱。
+    func backToEmail() {
+        step = .email
+        otp = ""
+        errorMessage = nil
+    }
+
+    /// 在 OTP 页重新发送验证码。
+    func resendOTP() async {
+        guard step == .otp, !isSubmitting else { return }
+        isSubmitting = true
+        errorMessage = nil
+        otp = ""
+        defer { isSubmitting = false }
+        do { try await authClient.sendOTP(email: email) } catch { errorMessage = "发送失败,请稍后重试。" }
     }
 
     func restore() async {
@@ -40,6 +68,7 @@ final class LoginModel {
             }
         } catch {
             errorMessage = "请求失败，请稍后重试。"
+            if step == .otp { otp = "" }  // 验证失败清空,格子复位便于重输
         }
     }
 

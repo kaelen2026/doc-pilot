@@ -52,6 +52,11 @@ private struct RootView: View {
                 )
             }
         }
-        .task { await loginModel.restore() }
+        .task {
+            // 截图/联调用:-forceLoggedOut 跳过会话恢复以展示登录流(生产无副作用)。
+            if !ProcessInfo.processInfo.arguments.contains("-forceLoggedOut") {
+                await loginModel.restore()
+            }
+        }
     }
 }
