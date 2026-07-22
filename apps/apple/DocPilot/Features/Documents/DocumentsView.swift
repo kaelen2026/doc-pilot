@@ -1,51 +1,47 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct DocumentsView: View {
     @Bindable var model: DocumentsModel
-    @State private var importing = false
+    @Bindable var searchModel: SearchModel
+    @Bindable var notificationsModel: NotificationsModel
+    let openDocument: (String) -> Void
+    @AppStorage(SettingsKeys.liveNotifications) private var liveNotifications = true
+    @State private var showNotifications = false
+
+    // 顶部搜索走后端全文检索;达 2 字符阈值(与 SearchModel 口径一致)即以结果区替换文档列表。
+    private var isSearching: Bool {
+        searchModel.query.trimmingCharacters(in: .whitespacesAndNewlines).count >= 2
+    }
 
     var body: some View {
         Group {
-            switch model.state {
-            case .idle where model.documents.isEmpty,
-                 .loading where model.documents.isEmpty:
-                ProgressView("正在加载文档…")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(DesignTokens.paper)
-            case .failed where model.documents.isEmpty:
-                ContentUnavailableView {
-                    Label("无法加载文档", systemImage: "wifi.exclamationmark")
-                } actions: {
-                    Button("重试") { Task { await model.load() } }
-                        .buttonStyle(.glass)
-                }
-                .background(DesignTokens.paper)
-            default:
-                if model.documents.isEmpty {
-                    ContentUnavailableView("还没有文档", systemImage: "doc.badge.plus", description: Text("上传 PDF 开始阅读和问答。"))
-                        .background(DesignTokens.paper)
-                } else {
-                    List(model.documents, selection: $model.selectedDocumentID) { document in
-                        DocumentRow(document: document)
-                            .tag(document.id)
-                            .listRowBackground(DesignTokens.paper)
-                            .listRowSeparatorTint(DesignTokens.hairline)
-                    }
-                    .listStyle(.plain)
-                    .paperBackground()
-                    .refreshable { await model.load() }
-                }
+            if isSearching {
+                SearchResultsView(model: searchModel, openDocument: openDocument)
+            } else {
+                documentList
             }
         }
         .navigationTitle("文档")
+        .searchable(text: $searchModel.query, prompt: "搜索文档内容")
         .toolbar {
-            Button { importing = true } label: { Label("上传 PDF", systemImage: "plus") }
-                .accessibilityIdentifier("documents.upload")
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { showNotifications = true } label: {
+                    Image(systemName: notificationsModel.unreadCount > 0 ? "bell.badge" : "bell")
+                }
+                .accessibilityIdentifier("documents.notifications")
+                .accessibilityLabel(
+                    notificationsModel.unreadCount > 0
+                        ? "通知,\(notificationsModel.unreadCount) 条未读" : "通知"
+                )
+            }
         }
-        .fileImporter(isPresented: $importing, allowedContentTypes: [.pdf]) { result in
-            if case .success(let url) = result { Task { await model.upload(url) } }
+        .navigationDestination(isPresented: $showNotifications) {
+            NotificationsView(model: notificationsModel) { id in
+                showNotifications = false
+                openDocument(id)
+            }
         }
+        .task(id: searchModel.query) { await searchModel.search() }
         .task {
             await model.load()
             // 截图/联调用:-openFirstDocument 载入后自动打开首个文档(受启动参数保护,生产无副作用)。
@@ -55,6 +51,43 @@ struct DocumentsView: View {
             }
         }
         .task(id: model.shouldPoll) { if model.shouldPoll { await model.pollWhileNeeded() } }
+        // 铃铛徽标需在文档页也保持最新:实时开则挂 SSE 长连接,关闭则进页拉取一次。
+        .task(id: liveNotifications) {
+            if liveNotifications { await notificationsModel.run() } else { await notificationsModel.load() }
+        }
+    }
+
+    @ViewBuilder private var documentList: some View {
+        switch model.state {
+        case .idle where model.documents.isEmpty,
+             .loading where model.documents.isEmpty:
+            ProgressView("正在加载文档…")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(DesignTokens.paper)
+        case .failed where model.documents.isEmpty:
+            ContentUnavailableView {
+                Label("无法加载文档", systemImage: "wifi.exclamationmark")
+            } actions: {
+                Button("重试") { Task { await model.load() } }
+                    .buttonStyle(.glass)
+            }
+            .background(DesignTokens.paper)
+        default:
+            if model.documents.isEmpty {
+                ContentUnavailableView("还没有文档", systemImage: "doc.badge.plus", description: Text("点底部「上传」选择 PDF,开始阅读和问答。"))
+                    .background(DesignTokens.paper)
+            } else {
+                List(model.documents, selection: $model.selectedDocumentID) { document in
+                    DocumentRow(document: document)
+                        .tag(document.id)
+                        .listRowBackground(DesignTokens.paper)
+                        .listRowSeparatorTint(DesignTokens.hairline)
+                }
+                .listStyle(.plain)
+                .paperBackground()
+                .refreshable { await model.load() }
+            }
+        }
     }
 }
 

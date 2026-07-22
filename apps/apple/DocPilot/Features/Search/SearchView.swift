@@ -1,15 +1,14 @@
 import SwiftUI
 
-struct SearchView: View {
+/// 文档页顶部搜索的结果区:后端全文检索命中(段落)。自身不带 `.searchable`/标题,
+/// 由宿主(`DocumentsView`)在 query 达阈值时渲染;`query < 2` 的空态由宿主兜。
+struct SearchResultsView: View {
     @Bindable var model: SearchModel
     let openDocument: (String) -> Void
 
     var body: some View {
         Group {
-            if model.query.trimmingCharacters(in: .whitespaces).count < 2 {
-                ContentUnavailableView("搜索文档", systemImage: "magnifyingglass", description: Text("输入至少两个字符。"))
-                    .background(DesignTokens.paper)
-            } else if model.isLoading && model.results.isEmpty {
+            if model.isLoading && model.results.isEmpty {
                 ProgressView("正在搜索…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(DesignTokens.paper)
@@ -41,9 +40,6 @@ struct SearchView: View {
                 .paperBackground()
             }
         }
-        .navigationTitle("搜索")
-        .searchable(text: $model.query, prompt: "搜索文档内容")
-        .task(id: model.query) { await model.search() }
         .overlay(alignment: .top) {
             if let message = model.errorMessage {
                 Text(message).font(.callout).foregroundStyle(DesignTokens.seal)
