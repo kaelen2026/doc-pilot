@@ -89,9 +89,14 @@ export function LoginForm() {
         </p>
       )}
 
-      <Button asChild variant="link" size="sm" className="w-fit self-start px-0">
-        <Link href="/">返回首页</Link>
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button asChild variant="link" size="sm" className="w-fit px-0">
+          <Link href="/login/scan">用手机扫码登录</Link>
+        </Button>
+        <Button asChild variant="link" size="sm" className="w-fit px-0">
+          <Link href="/">返回首页</Link>
+        </Button>
+      </div>
     </main>
   );
 }
