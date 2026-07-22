@@ -4,11 +4,14 @@ import Link from "next/link";
 import { SealMark } from "@/components/seal-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useGoogleOneTap } from "@/features/auth/use-google-one-tap";
 import { useLogin } from "@/features/auth/use-login";
 import { GOOGLE_ENABLED } from "@/lib/env";
 
 export function LoginForm() {
   const login = useLogin();
+  // 进入登录页即尝试 Google One Tap(Chrome 一步登录);未配 clientId 时是 no-op。
+  useGoogleOneTap();
 
   // 验证码 / 密码是互斥的输入状态,用守卫式渲染各出一段表单;两者共用同一个 email 输入。
   function renderFields() {
