@@ -3,6 +3,7 @@ import SwiftUI
 struct AccountView: View {
     @Bindable var model: AccountModel
     @State private var showSettings = false
+    @State private var showScanLogin = false
 
     var body: some View {
         ScrollView {
@@ -47,6 +48,28 @@ struct AccountView: View {
                     }
                 }
 
+                VStack(alignment: .leading, spacing: DesignTokens.spacingSm) {
+                    sectionHeader("网页版")
+                    Button { showScanLogin = true } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "qrcode.viewfinder")
+                                .font(.title3).foregroundStyle(DesignTokens.seal)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("扫码登录网页版").font(.body).foregroundStyle(DesignTokens.ink)
+                                Text("扫描电脑上的二维码,在手机确认登录")
+                                    .font(.caption).foregroundStyle(DesignTokens.inkSoft)
+                            }
+                            Spacer(minLength: 8)
+                            Image(systemName: "chevron.right")
+                                .font(.footnote).foregroundStyle(DesignTokens.inkFaint)
+                        }
+                        .padding(.vertical, 12).padding(.horizontal, 16)
+                    }
+                    .buttonStyle(.plain)
+                    .cardSurface()
+                    .accessibilityIdentifier("account.scanLogin")
+                }
+
                 Button(role: .destructive) {
                     Task { await model.signOut() }
                 } label: {
@@ -72,6 +95,7 @@ struct AccountView: View {
             }
         }
         .navigationDestination(isPresented: $showSettings) { SettingsView() }
+        .sheet(isPresented: $showScanLogin) { ScanLoginView(client: model.scanLogin) }
         .task { await model.load() }
     }
 

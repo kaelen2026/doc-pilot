@@ -29,6 +29,8 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.productivity
         API_BASE_URL: $(API_BASE_URL)
+        # 扫码登录网页版需相机扫描二维码(账户页「扫码登录网页版」)。
+        NSCameraUsageDescription: 用于扫描二维码,登录 DocPilot 网页版。
         # 无此键 iOS 会以兼容 letterbox 缩放运行(黑边+顶部大片留白),故必须声明以启用原生全屏。
         UILaunchScreen: {}
         NSAppTransportSecurity:

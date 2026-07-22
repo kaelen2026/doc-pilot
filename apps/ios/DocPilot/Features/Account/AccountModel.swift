@@ -14,6 +14,9 @@ final class AccountModel {
         signOutAction = signOut
     }
 
+    /// 扫码登录 client(复用已带 bearer 的 api),供账户页拉起扫码授权。
+    var scanLogin: ScanLoginClient { ScanLoginClient(api: api) }
+
     func load() async {
         do {
             async let meRequest: MeResponse = api.send("/me")
