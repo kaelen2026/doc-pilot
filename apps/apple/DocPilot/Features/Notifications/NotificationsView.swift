@@ -3,6 +3,7 @@ import SwiftUI
 struct NotificationsView: View {
     @Bindable var model: NotificationsModel
     let openDocument: (String) -> Void
+    @AppStorage(SettingsKeys.liveNotifications) private var liveNotifications = true
 
     var body: some View {
         Group {
@@ -39,7 +40,10 @@ struct NotificationsView: View {
         }
         .navigationTitle("通知")
         .toolbar { if model.unreadCount > 0 { Button("全部已读") { Task { await model.markAllRead() } } } }
-        .task { await model.run() }
+        // 实时通知开关(设置页)决定是否保持 SSE 长连接;关闭则仅进页时拉取一次。
+        .task(id: liveNotifications) {
+            if liveNotifications { await model.run() } else { await model.load() }
+        }
         .refreshable { await model.load() }
     }
 }

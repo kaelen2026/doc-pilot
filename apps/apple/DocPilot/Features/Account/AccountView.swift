@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AccountView: View {
     @Bindable var model: AccountModel
+    @State private var showSettings = false
 
     var body: some View {
         ScrollView {
@@ -62,7 +63,20 @@ struct AccountView: View {
         }
         .background(DesignTokens.paper)
         .navigationTitle("账户")
-        .task { await model.load() }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { showSettings = true } label: {
+                    Image(systemName: "gearshape").accessibilityLabel("设置")
+                }
+                .accessibilityIdentifier("account.settings")
+            }
+        }
+        .navigationDestination(isPresented: $showSettings) { SettingsView() }
+        .task {
+            await model.load()
+            // 截图/联调用:-openSettings 自动进入设置页(生产无副作用)。
+            if ProcessInfo.processInfo.arguments.contains("-openSettings") { showSettings = true }
+        }
     }
 
     private func profileCard(name: String, email: String) -> some View {

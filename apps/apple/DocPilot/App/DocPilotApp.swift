@@ -4,6 +4,7 @@ import SwiftData
 @main
 struct DocPilotApp: App {
     private let environment = AppEnvironment.live
+    @AppStorage(SettingsKeys.appearance) private var appearanceRaw = AppearancePreference.system.rawValue
 
     init() { AppAppearance.apply() }
 
@@ -11,6 +12,7 @@ struct DocPilotApp: App {
         WindowGroup {
             RootView(environment: environment)
                 .tint(DesignTokens.seal)
+                .preferredColorScheme(AppearancePreference.from(appearanceRaw).colorScheme)
         }
         .modelContainer(for: Highlight.self)
     }
