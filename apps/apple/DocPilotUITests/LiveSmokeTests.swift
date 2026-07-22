@@ -43,12 +43,16 @@ final class LiveSmokeTests: XCTestCase {
             return
         }
 
-        for tab in ["文档", "搜索", "通知", "账户"] {
-            let button = app.tabBars.buttons[tab]
-            XCTAssertTrue(button.waitForExistence(timeout: 15), "缺少主导航：\(tab)")
-            button.tap()
-            XCTAssertTrue(app.navigationBars[tab].waitForExistence(timeout: 10), "未进入页面：\(tab)")
-        }
+        // 主导航仅剩 文档 / 账户;搜索移至文档页顶部搜索框,通知移至文档页顶部铃铛。
+        XCTAssertTrue(app.tabBars.buttons["文档"].waitForExistence(timeout: 15), "缺少主导航：文档")
+        app.tabBars.buttons["文档"].tap()
+        XCTAssertTrue(app.navigationBars["文档"].waitForExistence(timeout: 10), "未进入页面：文档")
+        XCTAssertTrue(app.buttons["documents.notifications"].waitForExistence(timeout: 10), "文档页缺少通知入口")
+
+        XCTAssertTrue(app.tabBars.buttons["账户"].waitForExistence(timeout: 15), "缺少主导航：账户")
+        app.tabBars.buttons["账户"].tap()
+        XCTAssertTrue(app.navigationBars["账户"].waitForExistence(timeout: 10), "未进入页面：账户")
+
         let emailText = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", email)).firstMatch
         XCTAssertTrue(emailText.waitForExistence(timeout: 10), "账户资料未加载")
     }

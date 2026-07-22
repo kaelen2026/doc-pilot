@@ -14,12 +14,17 @@ final class ScreenshotTests: XCTestCase {
 
         capture(app, "01-documents")
 
-        for (tab, name) in [("搜索", "02-search"), ("通知", "03-notifications"), ("账户", "04-account")] {
-            app.tabBars.buttons[tab].tap()
-            _ = app.navigationBars[tab].waitForExistence(timeout: 10)
-            Thread.sleep(forTimeInterval: 0.8)
-            capture(app, name)
-        }
+        // 通知不再是 tab:从文档页顶部铃铛进入,截图后返回。
+        app.buttons["documents.notifications"].tap()
+        _ = app.navigationBars["通知"].waitForExistence(timeout: 10)
+        Thread.sleep(forTimeInterval: 0.8)
+        capture(app, "02-notifications")
+        app.navigationBars["通知"].buttons.element(boundBy: 0).tap()
+
+        app.tabBars.buttons["账户"].tap()
+        _ = app.navigationBars["账户"].waitForExistence(timeout: 10)
+        Thread.sleep(forTimeInterval: 0.8)
+        capture(app, "03-account")
     }
 
     private func capture(_ app: XCUIApplication, _ name: String) {
