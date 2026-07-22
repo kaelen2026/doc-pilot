@@ -39,8 +39,23 @@ struct SettingsView: View {
                 LabeledContent("文档缓存", value: model.cacheText)
                 Button("清除文档缓存") { confirmClearCache = true }
                     .disabled(model.cacheBytes == 0 || model.isClearingCache)
+                    // iOS 26 的 confirmationDialog 以来源视图为锚呈现;挂在具体按钮上,
+                    // 否则挂在整张 Form 上会锚到左上角(退化成错位的浮层)。
+                    .confirmationDialog("清除文档缓存?", isPresented: $confirmClearCache, titleVisibility: .visible) {
+                        Button("清除 \(model.cacheText)", role: .destructive) { Task { await model.clearCache() } }
+                    } message: {
+                        Text("已下载的 PDF 将从本机删除,下次打开时重新下载。")
+                    }
                 Button("清除全部高亮", role: .destructive) { confirmClearHighlights = true }
                     .disabled(highlightCount == 0)
+                    .confirmationDialog("清除全部高亮?", isPresented: $confirmClearHighlights, titleVisibility: .visible) {
+                        Button("清除 \(highlightCount) 条高亮", role: .destructive) {
+                            try? HighlightStore(context: modelContext).deleteAll()
+                            highlightCount = 0
+                        }
+                    } message: {
+                        Text("本机所有文档的高亮将被删除,且不可恢复。")
+                    }
             } header: {
                 Text("存储")
             } footer: {
@@ -59,19 +74,6 @@ struct SettingsView: View {
         .task {
             await model.refreshCacheSize()
             highlightCount = (try? HighlightStore(context: modelContext).count()) ?? 0
-        }
-        .confirmationDialog("清除文档缓存?", isPresented: $confirmClearCache, titleVisibility: .visible) {
-            Button("清除 \(model.cacheText)", role: .destructive) { Task { await model.clearCache() } }
-        } message: {
-            Text("已下载的 PDF 将从本机删除,下次打开时重新下载。")
-        }
-        .confirmationDialog("清除全部高亮?", isPresented: $confirmClearHighlights, titleVisibility: .visible) {
-            Button("清除 \(highlightCount) 条高亮", role: .destructive) {
-                try? HighlightStore(context: modelContext).deleteAll()
-                highlightCount = 0
-            }
-        } message: {
-            Text("本机所有文档的高亮将被删除,且不可恢复。")
         }
     }
 }

@@ -72,11 +72,7 @@ struct AccountView: View {
             }
         }
         .navigationDestination(isPresented: $showSettings) { SettingsView() }
-        .task {
-            await model.load()
-            // 截图/联调用:-openSettings 自动进入设置页(生产无副作用)。
-            if ProcessInfo.processInfo.arguments.contains("-openSettings") { showSettings = true }
-        }
+        .task { await model.load() }
     }
 
     private func profileCard(name: String, email: String) -> some View {
