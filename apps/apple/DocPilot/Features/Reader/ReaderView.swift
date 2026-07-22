@@ -20,19 +20,29 @@ struct ReaderView: View {
     var body: some View {
         Group {
             switch model.state {
-            case .idle, .loading: ProgressView("正在准备 PDF…")
+            case .idle, .loading:
+                ProgressView("正在准备 PDF…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(DesignTokens.paper)
             case .failed:
                 ContentUnavailableView { Label("无法打开 PDF", systemImage: "doc.badge.ellipsis") }
-                actions: { Button("重试") { Task { await model.load() } } }
+                actions: { Button("重试") { Task { await model.load() } }.buttonStyle(.glass) }
+                    .background(DesignTokens.paper)
             case .loaded(let url):
                 PDFKitView(url: url, pageIndex: $model.pageIndex, highlights: highlights) {
                     selection = (page: $0, bounds: $1, text: $2)
                 }
+                .background(DesignTokens.paperSunken)
             }
         }
         .toolbar {
-            Text("第 \(model.pageIndex + 1) 页").monospacedDigit()
-            Button("高亮") { addHighlight() }.disabled(selection == nil)
+            Text("第 \(model.pageIndex + 1) 页")
+                .monospacedDigit()
+                .font(.footnote)
+                .foregroundStyle(DesignTokens.inkSoft)
+            Button("高亮") { addHighlight() }
+                .buttonStyle(.glass)
+                .disabled(selection == nil)
                 .accessibilityIdentifier("reader.highlight")
         }
         .task {

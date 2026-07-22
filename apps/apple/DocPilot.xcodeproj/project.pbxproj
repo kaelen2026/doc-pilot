@@ -14,6 +14,7 @@
 		20E024C0F77AC6BC4E8F2CB9 /* Highlight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 753DF3C18224D9A39313EB8C /* Highlight.swift */; };
 		22407A18EC56C00D0EDCD23A /* AccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C244492A10A61EF83ADA477B /* AccountView.swift */; };
 		25409AA130E25600F94F19E4 /* ChatModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FDDA58A3EA274F338834B08 /* ChatModel.swift */; };
+		27928EAAAB59649B06ECE4CF /* DocumentWorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAB5F65777610E6BA40AC695 /* DocumentWorkspaceView.swift */; };
 		2B0AAB4324679FE8A775947C /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B7CD75FCB6F35080BCFF75E /* KeychainStore.swift */; };
 		31A6AE00D68A14AA4F8F47E5 /* LiveSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAA628AA8F9020A4CEA2270D /* LiveSmokeTests.swift */; };
 		34E2C7AA8140DB31FC43DC03 /* PDFValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DDA713E214E3EA55AD50558 /* PDFValidator.swift */; };
@@ -35,6 +36,7 @@
 		9A2652EA2055A81F54C18988 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C105BF75D5D0061F4D73EC4 /* LoginView.swift */; };
 		A9C952DF15B8CA984D2984F1 /* UploadState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F1E1A2D9E5D39F027AA8B1C /* UploadState.swift */; };
 		AA5735D251488E6F7D467C24 /* AuthClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EDC63DACD2ED46D258775ED /* AuthClient.swift */; };
+		AB1E843C8E1FF1BDA896B64F /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B18D4F06D8A8250F657F3900 /* ScreenshotTests.swift */; };
 		AE4E23F01A3FF68A7660395B /* DiscoveryContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC235BDF137951C714BD0E26 /* DiscoveryContractTests.swift */; };
 		B175CD7FCC6B9FB7B5ED148A /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05900E7AA9C677E807DBCF43 /* NotificationsView.swift */; };
 		BB43AAF078518207C8778548 /* DocumentsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E74EA3A79E5DF6CEBA4FF65C /* DocumentsModel.swift */; };
@@ -47,8 +49,8 @@
 		CDCFE69B3DEEDA3E3291BE59 /* LoginModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B0F034B7D279EBB2535CB41 /* LoginModel.swift */; };
 		D4C61FC46221CB98D0956C8E /* ReaderModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27534D826B04A3CDE878A5FB /* ReaderModel.swift */; };
 		D835273A1249E16F38D950F0 /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCAB735E1EDC4EA1D6215D53 /* SmokeTests.swift */; };
+		E1A00B6902A8E1C3C15A4668 /* AppAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF8712123802519DAAF5FDB5 /* AppAppearance.swift */; };
 		EA5314CCC37DCB70FAA4D632 /* APIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5681CBFD4A96BF92D038664 /* APIClientTests.swift */; };
-		EC788A3869B3B3966DB8A91B /* ReaderChatSplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEE5C7A75B70B613CA2A2A6B /* ReaderChatSplitView.swift */; };
 		EFAA63570C69FD00509853C5 /* SSEParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2197504EA720D4FF475D5702 /* SSEParser.swift */; };
 		F0C0FCBA22DC6D4DEF44A040 /* SSEParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3356DD4FAE2D004B13C7CCED /* SSEParserTests.swift */; };
 		F156A0D02F2DE32C76050C3F /* NotificationsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82B5BB5A3D2B3279C2790F83 /* NotificationsClient.swift */; };
@@ -107,7 +109,8 @@
 		8BB4B4C64ABF97AD5D819D27 /* HTTPTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPTransport.swift; sourceTree = "<group>"; };
 		9CC0DB4EE976ADB891DD2454 /* DocPilotTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = DocPilotTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A00B7384B35176C48E10865A /* NotificationsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsModel.swift; sourceTree = "<group>"; };
-		AEE5C7A75B70B613CA2A2A6B /* ReaderChatSplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderChatSplitView.swift; sourceTree = "<group>"; };
+		AAB5F65777610E6BA40AC695 /* DocumentWorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentWorkspaceView.swift; sourceTree = "<group>"; };
+		B18D4F06D8A8250F657F3900 /* ScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
 		B38A401F33D10F5A0CC58709 /* DocumentCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentCache.swift; sourceTree = "<group>"; };
 		BAA628AA8F9020A4CEA2270D /* LiveSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSmokeTests.swift; sourceTree = "<group>"; };
 		C244492A10A61EF83ADA477B /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
@@ -122,6 +125,7 @@
 		E5A50DCD355219AAC9491313 /* HighlightStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighlightStore.swift; sourceTree = "<group>"; };
 		E74EA3A79E5DF6CEBA4FF65C /* DocumentsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentsModel.swift; sourceTree = "<group>"; };
 		EA7032394235D7C27F335A9F /* UploadClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadClient.swift; sourceTree = "<group>"; };
+		EF8712123802519DAAF5FDB5 /* AppAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAppearance.swift; sourceTree = "<group>"; };
 		F5681CBFD4A96BF92D038664 /* APIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClientTests.swift; sourceTree = "<group>"; };
 		FB042CCF4AB1FF4ADFE1B619 /* PDFKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFKitView.swift; sourceTree = "<group>"; };
 		FBCD6408EBDC7B646F745A4D /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
@@ -196,7 +200,7 @@
 			children = (
 				FD9270FF1534656C565A201C /* AppEnvironment.swift */,
 				6FDD3C36B19A91F128A3804E /* DocPilotApp.swift */,
-				AEE5C7A75B70B613CA2A2A6B /* ReaderChatSplitView.swift */,
+				AAB5F65777610E6BA40AC695 /* DocumentWorkspaceView.swift */,
 				7D13F8F5C1E9CCD0DA855096 /* WorkspaceShell.swift */,
 			);
 			path = App;
@@ -241,6 +245,7 @@
 			isa = PBXGroup;
 			children = (
 				BAA628AA8F9020A4CEA2270D /* LiveSmokeTests.swift */,
+				B18D4F06D8A8250F657F3900 /* ScreenshotTests.swift */,
 			);
 			path = DocPilotUITests;
 			sourceTree = "<group>";
@@ -269,6 +274,7 @@
 		7A3F6EE763B5CE6309D1AC0B /* SharedUI */ = {
 			isa = PBXGroup;
 			children = (
+				EF8712123802519DAAF5FDB5 /* AppAppearance.swift */,
 				7B9EB69440ABFC79D7E60B31 /* DesignTokens.swift */,
 			);
 			path = SharedUI;
@@ -537,6 +543,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				31A6AE00D68A14AA4F8F47E5 /* LiveSmokeTests.swift in Sources */,
+				AB1E843C8E1FF1BDA896B64F /* ScreenshotTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -548,6 +555,7 @@
 				400E3AABF1146F8E75504F87 /* APIError.swift in Sources */,
 				C68A8CD6D32B4A91EDF17C62 /* AccountModel.swift in Sources */,
 				22407A18EC56C00D0EDCD23A /* AccountView.swift in Sources */,
+				E1A00B6902A8E1C3C15A4668 /* AppAppearance.swift in Sources */,
 				571A356EC2358EE8A6584D17 /* AppEnvironment.swift in Sources */,
 				AA5735D251488E6F7D467C24 /* AuthClient.swift in Sources */,
 				545E7FD1A4F90392B6617A3C /* Chat.swift in Sources */,
@@ -558,6 +566,7 @@
 				93F45B956588861384F6A1ED /* Discovery.swift in Sources */,
 				F23A55540D3A30235894EFCE /* DocPilotApp.swift in Sources */,
 				77CB0A4EEF4909AC79B6834B /* DocumentCache.swift in Sources */,
+				27928EAAAB59649B06ECE4CF /* DocumentWorkspaceView.swift in Sources */,
 				FA2B285544E0771051A160A2 /* Documents.swift in Sources */,
 				C10422B93CB9C76DF6F87341 /* DocumentsClient.swift in Sources */,
 				BB43AAF078518207C8778548 /* DocumentsModel.swift in Sources */,
@@ -573,7 +582,6 @@
 				B175CD7FCC6B9FB7B5ED148A /* NotificationsView.swift in Sources */,
 				1E0EC3ECE631B2CCEEA52B59 /* PDFKitView.swift in Sources */,
 				34E2C7AA8140DB31FC43DC03 /* PDFValidator.swift in Sources */,
-				EC788A3869B3B3966DB8A91B /* ReaderChatSplitView.swift in Sources */,
 				D4C61FC46221CB98D0956C8E /* ReaderModel.swift in Sources */,
 				C821E025EDB169DE31E3A9CF /* ReaderView.swift in Sources */,
 				EFAA63570C69FD00509853C5 /* SSEParser.swift in Sources */,
@@ -606,7 +614,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -623,7 +631,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				"BUNDLE_LOADER[sdk=macosx*]" = "$(TEST_HOST)";
 				CODE_SIGNING_ALLOWED = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -633,13 +640,12 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.docpilot.app.tests;
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DocPilot.app/DocPilot";
-				"TEST_HOST[sdk=macosx*]" = "$(BUILT_PRODUCTS_DIR)/DocPilot.app/Contents/MacOS/DocPilot";
 			};
 			name = Release;
 		};
@@ -648,7 +654,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -714,8 +720,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -741,9 +746,9 @@
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.docpilot.app;
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -753,7 +758,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				"BUNDLE_LOADER[sdk=macosx*]" = "$(TEST_HOST)";
 				CODE_SIGNING_ALLOWED = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -763,13 +767,12 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.docpilot.app.tests;
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/DocPilot.app/DocPilot";
-				"TEST_HOST[sdk=macosx*]" = "$(BUILT_PRODUCTS_DIR)/DocPilot.app/Contents/MacOS/DocPilot";
 			};
 			name = Debug;
 		};
@@ -820,8 +823,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -846,9 +848,9 @@
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.docpilot.app;
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

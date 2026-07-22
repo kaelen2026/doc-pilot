@@ -2,8 +2,7 @@ name: DocPilot
 options:
   bundleIdPrefix: com.docpilot
   deploymentTarget:
-    iOS: "17.0"
-    macOS: "14.0"
+    iOS: "26.0"
   xcodeVersion: "26.0"
 settings:
   base:
@@ -16,7 +15,7 @@ configs:
 targets:
   DocPilot:
     type: application
-    supportedDestinations: [iOS, macOS]
+    supportedDestinations: [iOS]
     sources:
       - path: DocPilot
     configFiles:
@@ -30,6 +29,8 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.productivity
         API_BASE_URL: $(API_BASE_URL)
+        # 无此键 iOS 会以兼容 letterbox 缩放运行(黑边+顶部大片留白),故必须声明以启用原生全屏。
+        UILaunchScreen: {}
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
     settings:
@@ -42,7 +43,7 @@ targets:
         - DocPilotTests
   DocPilotTests:
     type: bundle.unit-test
-    supportedDestinations: [iOS, macOS]
+    supportedDestinations: [iOS]
     sources:
       - path: DocPilotTests
     dependencies:
@@ -52,12 +53,10 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.docpilot.app.tests
         GENERATE_INFOPLIST_FILE: YES
         CODE_SIGNING_ALLOWED: NO
-        "TEST_HOST[sdk=macosx*]": $(BUILT_PRODUCTS_DIR)/DocPilot.app/Contents/MacOS/DocPilot
-        "BUNDLE_LOADER[sdk=macosx*]": $(TEST_HOST)
   DocPilotUITests:
     type: bundle.ui-testing
     platform: iOS
-    deploymentTarget: "17.0"
+    deploymentTarget: "26.0"
     sources:
       - path: DocPilotUITests
     dependencies:
