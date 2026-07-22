@@ -1,0 +1,29 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DocPilot">
+  <defs>
+    <!-- 手钤质感：低频位移咬出边缘细微残缺(石章按压感)+ 稀薄留白斑驳(蘸印泥不匀)，
+         裁到红面之内；滤镜不支持时优雅退回干净几何。 -->
+    <filter id="ink" x="-6%" y="-6%" width="112%" height="112%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.055" numOctaves="2" seed="7" result="warp"/>
+      <feDisplacementMap in="SourceGraphic" in2="warp" scale="5"
+                         xChannelSelector="R" yChannelSelector="G" result="edged"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.32" numOctaves="2" seed="11" result="grain"/>
+      <feColorMatrix in="grain" type="matrix"
+                     values="0 0 0 0 0.972  0 0 0 0 0.965  0 0 0 0 0.949  0 0 0 0.3 -0.14"
+                     result="speckle"/>
+      <feComposite in="speckle" in2="edged" operator="in" result="clip"/>
+      <feMerge><feMergeNode in="edged"/><feMergeNode in="clip"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- 纸底：满幅暖白，iOS 自行圆角遮罩 -->
+  <rect width="512" height="512" fill="#F8F6F2"/>
+
+  <!-- 朱红印章：细方框 + 篆意宋体「档」，整体过手钤滤镜 -->
+  <g filter="url(#ink)">
+    <rect x="62" y="62" width="388" height="388" rx="12"
+          fill="none" stroke="#C3321A" stroke-width="26"/>
+    <text x="256" y="268" text-anchor="middle" dominant-baseline="central"
+          font-family="'Songti SC','STSong','Noto Serif CJK SC','SimSun',serif"
+          font-size="264" font-weight="600" fill="#C3321A">档</text>
+  </g>
+</svg>
