@@ -13,9 +13,9 @@ tools: Read, Edit, Write, Bash, Grep, Glob
 
 ## 先读上界(临场发现不了的约定)
 
-- **平台范围**:iOS-only,已删 macOS/iPad,Liquid Glass + iOS 26(`project.yml`
-  `deploymentTarget: "26.0"`)。注意 `apps/apple/README.md` 里"iOS 17 / macOS 14"
-  的说法**已过时**,以 `project.yml` 为准。
+- **平台范围**:iOS-only,已删 macOS/iPad,Liquid Glass + iOS 26。平台/版本以
+  `apps/apple/project.yml` 为权威(`deploymentTarget: "26.0"`、Swift 6.0、
+  `supportedDestinations: [iOS]`),不要凭其它文档里的旧版本号推断。
 - **iOS 26 SwiftUI 已知坑**:`.task` 在 pop 后会重跑——自动导航要一次性 guard;
   `confirmationDialog` 挂在具体按钮上,不挂 `Form`。
 - **品牌资源**:AppIcon 用朱印「档」,落点与再生成方式见项目品牌资源约定。
