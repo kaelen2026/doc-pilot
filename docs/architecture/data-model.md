@@ -52,6 +52,29 @@ cancelled
 
 > ⚠️ 重要：Better Auth 的 `user.id` 是 **TEXT**（非 UUID）。因此所有引用用户的外键（如后文 `documents.owner_id`、`memberships.user_id`、`workspaces.owner_id`）在实现中应为 **TEXT** 引用 `user(id)`，即便后续表格的 SQL 示例写作 `UUID`——以本条为准。
 
+**device_code**（扫码登录:OAuth 2.0 设备授权流程 RFC 8628,见 ADR-011）
+
+由 Better Auth 的 `deviceAuthorization` 插件读写,经 `/api/auth/device/*` 挂载。字段名（JS 属性）必须与插件声明的 field 名逐字一致（drizzle 适配器按属性名匹配），列名 snake_case。短生命周期（默认 2 分钟即过期），不承载持久业务事实。
+
+```sql
+CREATE TABLE device_code (
+  id TEXT PRIMARY KEY,
+  device_code TEXT NOT NULL UNIQUE,      -- 轮询密钥(高熵),web 用它换会话
+  user_code TEXT NOT NULL,               -- 展示/编入二维码的短码,iOS 据此批准
+  user_id TEXT REFERENCES "user"(id) ON DELETE CASCADE,  -- 批准前为空
+  expires_at TIMESTAMPTZ NOT NULL,
+  status TEXT NOT NULL,                  -- pending / approved / denied(VARCHAR + 应用层判定)
+  last_polled_at TIMESTAMPTZ,
+  polling_interval INTEGER,              -- 毫秒,插件据此触发 slow_down
+  client_id TEXT,
+  scope TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX device_code_user_code_idx ON device_code(user_code);
+```
+
+批准时插件内部 `createSession(user.id)` 为 web 建**独立**会话(可独立吊销),不与手机共享 session——这是选设备授权流程而非 `oneTimeToken` 的决定性理由(见 ADR-011)。
+
 **workspaces**（租户边界，见 ADR-008）
 
 ```sql

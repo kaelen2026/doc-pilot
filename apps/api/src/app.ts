@@ -16,7 +16,13 @@ import { createNotificationRoutes } from "./modules/notifications/notification.r
 import { createSearchRoutes } from "./modules/search/search.routes";
 import { getSession, loadMemberships } from "./shared/auth-context";
 import { DomainError } from "./shared/errors";
-import { NoopRateLimiter, otpRateLimit, type RateLimiter, rateLimit } from "./shared/rate-limit";
+import {
+  deviceCodeRateLimit,
+  NoopRateLimiter,
+  otpRateLimit,
+  type RateLimiter,
+  rateLimit,
+} from "./shared/rate-limit";
 import type { AppEnv } from "./shared/types";
 
 /** 仅对指定 HTTP 方法运行内层中间件,其余方法放行(app.use 不区分方法)。 */
@@ -50,7 +56,9 @@ export function createApp(
 
   // 登录验证码限流(5 次/小时/邮箱),必须在 auth.handler 之前。
   app.use("/api/auth/*", otpRateLimit(limiter));
-  // Better Auth 处理器（登录 / 验证码 / 会话），不经鉴权门禁。
+  // 扫码登录取码限流(按 IP,10 次/分钟),同样必须在 auth.handler 之前。
+  app.use("/api/auth/*", deviceCodeRateLimit(limiter));
+  // Better Auth 处理器（登录 / 验证码 / 会话 / 设备授权），不经鉴权门禁。
   app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
   // 公开路由
