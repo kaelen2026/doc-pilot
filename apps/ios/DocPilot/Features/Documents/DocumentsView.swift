@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct DocumentsView: View {
     @Bindable var model: DocumentsModel
@@ -7,6 +8,7 @@ struct DocumentsView: View {
     let openDocument: (String) -> Void
     @AppStorage(SettingsKeys.liveNotifications) private var liveNotifications = true
     @State private var showNotifications = false
+    @State private var importing = false
 
     // 顶部搜索走后端全文检索;达 2 字符阈值(与 SearchModel 口径一致)即以结果区替换文档列表。
     private var isSearching: Bool {
@@ -24,6 +26,14 @@ struct DocumentsView: View {
         .navigationTitle("文档")
         .searchable(text: $searchModel.query, prompt: "搜索文档内容")
         .toolbar {
+            // 上传移出 tab bar,置于左上角,与右上角通知铃铛左右对齐。
+            ToolbarItem(placement: .topBarLeading) {
+                Button { importing = true } label: {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                .accessibilityIdentifier("documents.upload")
+                .accessibilityLabel("上传")
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button { showNotifications = true } label: {
                     Image(systemName: notificationsModel.unreadCount > 0 ? "bell.badge" : "bell")
@@ -34,6 +44,9 @@ struct DocumentsView: View {
                         ? "通知,\(notificationsModel.unreadCount) 条未读" : "通知"
                 )
             }
+        }
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.pdf]) { result in
+            if case .success(let url) = result { Task { await model.upload(url) } }
         }
         .navigationDestination(isPresented: $showNotifications) {
             NotificationsView(model: notificationsModel) { id in
@@ -74,7 +87,7 @@ struct DocumentsView: View {
             .background(DesignTokens.paper)
         default:
             if model.documents.isEmpty {
-                ContentUnavailableView("还没有文档", systemImage: "doc.badge.plus", description: Text("点底部「上传」选择 PDF,开始阅读和问答。"))
+                ContentUnavailableView("还没有文档", systemImage: "doc.badge.plus", description: Text("点左上角上传按钮选择 PDF,开始阅读和问答。"))
                     .background(DesignTokens.paper)
             } else {
                 List(model.documents, selection: $model.selectedDocumentID) { document in
