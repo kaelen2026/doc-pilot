@@ -11,8 +11,10 @@ open apps/apple/DocPilot.xcodeproj
 
 Scheme：
 
-- `DocPilot` —— 主 app,含单元测试(`DocPilotTests`)。
+- `docpilot` —— 主 app,含单元测试(`DocPilotTests`)。
 - `DocPilotLiveSmoke` —— UI 冒烟(`DocPilotUITests`)。
+
+Bundle id `dev.w3ctech.docpilot`(工程 target 仍名 `DocPilot`,工程文件仍是 `DocPilot.xcodeproj`)。
 
 Debug 默认连接 `http://127.0.0.1:3001`(`NSAllowsLocalNetworking` 已开)。Release 构建必须
 通过 xcconfig(`Config/Release.xcconfig`)覆盖 `API_BASE_URL` 为生产 HTTPS 地址；项目不提交

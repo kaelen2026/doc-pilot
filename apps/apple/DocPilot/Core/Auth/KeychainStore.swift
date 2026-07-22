@@ -8,7 +8,7 @@ protocol SecureTokenStore: Sendable {
 }
 
 struct KeychainStore: SecureTokenStore {
-    private let service = "com.docpilot.app"
+    private let service = "dev.w3ctech.docpilot"
     private let account = "better-auth-bearer"
 
     func loadToken() throws -> String? {
