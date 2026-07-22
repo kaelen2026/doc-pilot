@@ -6,7 +6,6 @@ import {
   SCAN_LOGIN_POLL_INTERVAL_SEC,
 } from "@doc-pilot/contracts";
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { classifyPollResult, type PollOutcome, type RawPollResult } from "./poll";
@@ -53,7 +52,6 @@ const device = authClient.device as {
  * 批准后刷新会话并跳转 /documents。对外暴露状态值 + 动词化操作,不泄漏内部 setter/query。
  */
 export function useScanLogin() {
-  const router = useRouter();
   // 递增以强制重取设备码(过期后「重新生成」)。
   const [generation, setGeneration] = useState(0);
 
@@ -110,17 +108,13 @@ export function useScanLogin() {
 
   const outcome = tokenQuery.data;
 
-  // 批准并领取 cookie 后:刷新 better-auth 会话态后进入工作台。
+  // 批准并领取 cookie 后进入工作台。用整页跳转而非 router.push:cookie 是经自定义端点
+  // 带外种下的,不会像 signIn 那样刷新 useSession 的响应式 store,软导航后工作台仍读到旧的
+  // 未登录态(需手动刷新才对)。整页加载让工作台按新 cookie 重新拉会话,等效于用户手刷。
   useEffect(() => {
     if (outcome !== "approved") return;
-    let cancelled = false;
-    void authClient.getSession().finally(() => {
-      if (!cancelled) router.push("/documents");
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [outcome, router]);
+    window.location.assign("/documents");
+  }, [outcome]);
 
   const regenerate = useCallback(() => setGeneration((g) => g + 1), []);
 
