@@ -4,13 +4,15 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { createAuthPlugins } from "./auth-plugins";
 import { authEnv } from "./env";
 import { sendOtpEmail } from "./mailer";
+import { resolveSocialProviders } from "./social";
 import { createPersonalWorkspace } from "./workspace";
 
 /**
  * Better Auth 服务端实例（ADR：认证使用 Better Auth）。
- * - 邮箱验证码登录（emailOTP）；未注册邮箱首次登录即注册。
+ * - 三种入口并存：邮箱验证码（emailOTP，未注册即注册）、邮箱+密码、Google 社交登录。
+ * - 密码登录写 account 表（credential provider）；社交登录写 account（google provider）；
+ *   OTP 仅建 user/session，不写 account。三者都经 user.create.after 建个人 workspace。
  * - Drizzle(postgres.js) 适配器，表名用默认单数：user/session/account/verification。
- * - user.create.after 钩子自动创建个人 workspace（见最终验收 #2）。
  */
 export const auth = betterAuth({
   baseURL: authEnv.baseURL,
@@ -18,6 +20,10 @@ export const auth = betterAuth({
   secret: authEnv.secret,
   trustedOrigins: authEnv.trustedOrigins,
   database: drizzleAdapter(db, { provider: "pg", schema }),
+  // 邮箱+密码登录；不强制邮箱验证（首注册即登录），与 OTP 首登即注册的体验对齐。
+  emailAndPassword: { enabled: true },
+  // 仅当 Google 凭据齐备时才注册该 provider（见 social.ts）。
+  socialProviders: resolveSocialProviders(authEnv),
   plugins: createAuthPlugins({ sendOtpEmail }),
   databaseHooks: {
     user: {

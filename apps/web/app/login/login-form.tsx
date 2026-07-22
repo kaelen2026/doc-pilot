@@ -1,52 +1,81 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { SealMark } from "@/components/seal-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { authClient } from "../../lib/auth-client";
-
-type Step = "email" | "otp";
+import { useLogin } from "@/features/auth/use-login";
+import { GOOGLE_ENABLED } from "@/lib/env";
 
 export function LoginForm() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
-  const [step, setStep] = useState<Step>("email");
-  const [message, setMessage] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const login = useLogin();
 
-  async function sendCode() {
-    setBusy(true);
-    setMessage("发送中…");
-    const { error } = await authClient.emailOtp.sendVerificationOtp({ email, type: "sign-in" });
-    setBusy(false);
-    if (error) {
-      setMessage(`发送失败：${error.message ?? "未知错误"}`);
-      return;
+  // 验证码 / 密码是互斥的输入状态,用守卫式渲染各出一段表单;两者共用同一个 email 输入。
+  function renderFields() {
+    if (login.mode === "otp") {
+      const onSubmit = login.otpStep === "email" ? login.sendCode : login.verifyCode;
+      return (
+        <div className="flex flex-col gap-3">
+          <Input
+            type="email"
+            value={login.email}
+            onChange={(e) => login.setEmail(e.target.value)}
+            placeholder="you@example.com"
+            disabled={login.otpStep === "code"}
+          />
+          {login.otpStep === "code" && (
+            <Input
+              type="text"
+              inputMode="numeric"
+              value={login.otp}
+              onChange={(e) => login.setOtp(e.target.value)}
+              placeholder="邮箱验证码"
+              className="tabular-nums"
+            />
+          )}
+          <Button
+            onClick={onSubmit}
+            disabled={login.busy || (login.otpStep === "email" ? !login.email : !login.otp)}
+          >
+            {login.otpStep === "email" ? "发送验证码" : "登录"}
+          </Button>
+        </div>
+      );
     }
-    setStep("otp");
-    setMessage(
-      "验证码已发送。本地可在 Mailpit（http://localhost:8025）查看，或看 API 控制台日志。",
+
+    const signingIn = login.passwordAction === "sign-in";
+    return (
+      <div className="flex flex-col gap-3">
+        <Input
+          type="email"
+          value={login.email}
+          onChange={(e) => login.setEmail(e.target.value)}
+          placeholder="you@example.com"
+        />
+        <Input
+          type="password"
+          value={login.password}
+          onChange={(e) => login.setPassword(e.target.value)}
+          placeholder="密码"
+          autoComplete={signingIn ? "current-password" : "new-password"}
+        />
+        <Button
+          onClick={login.submitPassword}
+          disabled={login.busy || !login.email || !login.password}
+        >
+          {signingIn ? "登录" : "注册"}
+        </Button>
+        <Button
+          variant="link"
+          size="sm"
+          className="w-fit self-start px-0"
+          onClick={login.togglePasswordAction}
+        >
+          {signingIn ? "没有账号？注册" : "已有账号？登录"}
+        </Button>
+      </div>
     );
   }
-
-  async function verify() {
-    setBusy(true);
-    setMessage("验证中…");
-    const { error } = await authClient.signIn.emailOtp({ email, otp });
-    setBusy(false);
-    if (error) {
-      setMessage(`登录失败：${error.message ?? "未知错误"}`);
-      return;
-    }
-    // 登录成功后进入工作台;better-auth 已在 signIn 后更新会话,/documents 的 useSession 直接是登录态。
-    router.push("/documents");
-  }
-
-  const failed = message?.includes("失败");
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-7 px-6">
@@ -55,37 +84,37 @@ export function LoginForm() {
         <h1 className="font-display text-3xl font-medium">登录 DocPilot</h1>
       </header>
 
-      <div className="flex flex-col gap-3">
-        <Input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-          disabled={step === "otp"}
-        />
+      {renderFields()}
 
-        {step === "otp" && (
-          <Input
-            type="text"
-            inputMode="numeric"
-            value={otp}
-            onChange={(e) => setOtp(e.target.value)}
-            placeholder="邮箱验证码"
-            className="tabular-nums"
-          />
-        )}
+      <Button
+        variant="link"
+        size="sm"
+        className="w-fit self-start px-0"
+        onClick={() => login.switchMode(login.mode === "otp" ? "password" : "otp")}
+      >
+        {login.mode === "otp" ? "用密码登录" : "用验证码登录"}
+      </Button>
 
-        <Button
-          onClick={step === "email" ? sendCode : verify}
-          disabled={busy || (step === "email" ? !email : !otp)}
+      {GOOGLE_ENABLED && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-3 text-xs text-ink-faint">
+            <span className="h-px flex-1 bg-hairline" />
+            或
+            <span className="h-px flex-1 bg-hairline" />
+          </div>
+          <Button variant="outline" onClick={login.signInWithGoogle} disabled={login.busy}>
+            <GoogleGlyph />
+            使用 Google 登录
+          </Button>
+        </div>
+      )}
+
+      {login.message && (
+        <p
+          aria-live="polite"
+          className={`text-sm leading-[1.7] ${login.failed ? "text-seal" : "text-ink-soft"}`}
         >
-          {step === "email" ? "发送验证码" : "登录"}
-        </Button>
-      </div>
-
-      {message && (
-        <p className={`text-sm leading-[1.7] ${failed ? "text-seal" : "text-ink-soft"}`}>
-          {message}
+          {login.message}
         </p>
       )}
 
@@ -93,5 +122,29 @@ export function LoginForm() {
         <Link href="/">返回首页</Link>
       </Button>
     </main>
+  );
+}
+
+/** Google 品牌四色 G;仅作按钮图标,aria-hidden 交给按钮文案表意。 */
+function GoogleGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4">
+      <path
+        fill="#4285F4"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.26 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06L5.84 9.9C6.71 7.31 9.14 5.38 12 5.38Z"
+      />
+    </svg>
   );
 }
