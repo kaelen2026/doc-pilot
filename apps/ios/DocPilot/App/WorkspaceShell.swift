@@ -1,15 +1,13 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct WorkspaceShell: View {
-    enum Section: Hashable { case documents, upload, account }
+    enum Section: Hashable { case documents, account }
 
     @Bindable var documentsModel: DocumentsModel
     @State private var searchModel: SearchModel
     @State private var notificationsModel: NotificationsModel
     @State private var accountModel: AccountModel
     @State private var selection: Section
-    @State private var importing = false
     let userID: String
     let api: APIClient
 
@@ -25,6 +23,7 @@ struct WorkspaceShell: View {
     }
 
     var body: some View {
+        // 上传已从 tab bar 移到文档页左上角(见 DocumentsView 工具栏),故这里只剩文档 / 账户两个 tab。
         TabView(selection: $selection) {
             NavigationStack {
                 DocumentsView(model: documentsModel, searchModel: searchModel,
@@ -35,21 +34,8 @@ struct WorkspaceShell: View {
             }
             .tabItem { Label("文档", systemImage: "doc.text") }.tag(Section.documents)
 
-            // 中间「上传」是动作而非导航目标:选中即拉起 fileImporter 并弹回原页(见 onChange)。
-            Color.clear
-                .tabItem { Label("上传", systemImage: "plus.circle.fill") }.tag(Section.upload)
-
             NavigationStack { AccountView(model: accountModel) }
                 .tabItem { Label("账户", systemImage: "person.crop.circle") }.tag(Section.account)
-        }
-        .onChange(of: selection) { previous, current in
-            if current == .upload {
-                selection = previous
-                importing = true
-            }
-        }
-        .fileImporter(isPresented: $importing, allowedContentTypes: [.pdf]) { result in
-            if case .success(let url) = result { Task { await documentsModel.upload(url) } }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
     }

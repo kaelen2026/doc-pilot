@@ -1,10 +1,12 @@
 import SwiftUI
 import VisionKit
 
-/// 扫码登录网页版:相机取景扫 QR → 底部卡片确认 → 批准/取消。以 sheet 从账户页拉起。
+/// 扫码登录网页版:小取景框扫 QR(带扫描动画)或手动输入配对码 → 确认 → 批准/取消。
+/// 以 sheet 从账户页拉起。
 struct ScanLoginView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: ScanLoginModel
+    @State private var manualCode = ""
 
     init(client: ScanLoginClient) {
         _model = State(initialValue: ScanLoginModel(client: client))
@@ -16,85 +18,132 @@ struct ScanLoginView: View {
 
     var body: some View {
         NavigationStack {
-            content
-                .navigationTitle("扫码登录网页版")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("关闭") { dismiss() }.tint(DesignTokens.seal)
-                    }
+            ScrollView {
+                VStack(spacing: DesignTokens.spacingLg) {
+                    Text("用已登录的 DocPilot 扫描网页上的二维码,确认后即可在电脑登录。")
+                        .font(.subheadline)
+                        .foregroundStyle(DesignTokens.inkSoft)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    body(for: model.phase)
                 }
-        }
-    }
-
-    @ViewBuilder private var content: some View {
-        if cameraReady {
-            ZStack {
-                CodeScannerView(isScanning: model.phase == .scanning, onScan: model.handleScan)
-                    .ignoresSafeArea()
-                overlay
+                .padding(DesignTokens.spacing)
             }
-        } else {
-            VStack(spacing: DesignTokens.spacing) {
-                Image(systemName: "camera.metering.unknown")
-                    .font(.largeTitle).foregroundStyle(DesignTokens.inkFaint)
-                Text("此设备不支持相机扫码。")
-                    .font(.body).foregroundStyle(DesignTokens.inkSoft)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(DesignTokens.paper)
-        }
-    }
-
-    // 相机之上按状态叠加提示 / 确认卡片 / 结果卡片。
-    @ViewBuilder private var overlay: some View {
-        switch model.phase {
-        case .scanning:
-            Text("将网页上的二维码放入取景框")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 16).padding(.vertical, 10)
-                .background(.black.opacity(0.55), in: Capsule())
-                .frame(maxHeight: .infinity, alignment: .bottom)
-                .padding(.bottom, 40)
-        case .confirming:
-            bottomCard {
-                cardText(title: "在网页版登录 DocPilot?", detail: "确认是你本人正在电脑上登录。")
-                HStack(spacing: 12) {
-                    Button("取消") { Task { await model.cancel() } }
-                        .buttonStyle(.bordered).frame(maxWidth: .infinity)
-                    Button("批准登录") { Task { await model.approve() } }
-                        .buttonStyle(.glass).tint(DesignTokens.seal).frame(maxWidth: .infinity)
+            .navigationTitle("扫码登录网页版")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("关闭") { dismiss() }.tint(DesignTokens.seal)
                 }
             }
-        case .working:
-            ProgressView().controlSize(.large).tint(.white)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(.black.opacity(0.4))
-        case .approved:
-            resultCard(icon: "checkmark.seal.fill", title: "网页版已登录",
-                       detail: "回到电脑即可继续使用。",
-                       action: ("完成", { dismiss() }))
-        case .denied:
-            resultCard(icon: "xmark.circle", title: "已取消登录", detail: nil,
-                       action: ("重新扫码", { model.rescan() }))
-        case .failed:
-            resultCard(icon: "exclamationmark.triangle", title: "操作失败", detail: "请重试。",
-                       action: ("重新扫码", { model.rescan() }))
         }
     }
 
-    private func resultCard(
-        icon: String, title: String, detail: String?, action: (label: String, run: () -> Void)
-    ) -> some View {
-        bottomCard {
+    // 守卫式早返回的 SwiftUI 版:每个 phase 一段,平铺(见 frontend.md 状态渲染)。
+    @ViewBuilder private func body(for phase: ScanLoginModel.Phase) -> some View {
+        switch phase {
+        case .scanning:
+            if cameraReady {
+                ScannerViewfinder(onScan: model.handleScan)
+            } else {
+                cameraUnavailableNote
+            }
+            manualEntry
+        case .working:
+            statusCard(icon: nil, title: "校验中…", detail: nil, action: nil)
+        case .confirming:
+            confirmCard
+        case .approved:
+            statusCard(icon: "checkmark.seal.fill", title: "网页版已登录",
+                       detail: "回到电脑即可继续使用。", action: ("完成", { dismiss() }))
+        case .denied:
+            statusCard(icon: "xmark.circle", title: "已取消登录", detail: nil,
+                       action: ("重新扫码", resetToScan))
+        case .failed:
+            statusCard(icon: "exclamationmark.triangle", title: "配对失败",
+                       detail: "配对码无效或已过期,请在网页刷新二维码后重试。",
+                       action: ("重新扫码", resetToScan))
+        }
+    }
+
+    private func resetToScan() {
+        manualCode = ""
+        model.rescan()
+    }
+
+    private var manualEntry: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.spacingSm) {
+            Text("扫不动?手动输入配对码")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(DesignTokens.inkFaint)
             HStack(spacing: 10) {
-                Image(systemName: icon).font(.title2).foregroundStyle(DesignTokens.seal)
+                TextField("如 JRSD2623", text: $manualCode)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .font(.body.monospaced())
+                    .padding(.horizontal, 12).padding(.vertical, 10)
+                    .background(
+                        DesignTokens.paperRaised,
+                        in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous)
+                            .stroke(DesignTokens.hairline, lineWidth: 1)
+                    )
+                Button("提交") { model.submitManual(manualCode) }
+                    .buttonStyle(.glass).tint(DesignTokens.seal)
+                    .disabled(manualCode.trimmingCharacters(in: .whitespaces).count < 4)
+            }
+        }
+    }
+
+    private var cameraUnavailableNote: some View {
+        VStack(spacing: DesignTokens.spacingSm) {
+            Image(systemName: "camera.metering.unknown")
+                .font(.largeTitle).foregroundStyle(DesignTokens.inkFaint)
+            Text("此设备不支持相机扫码,请手动输入配对码。")
+                .font(.subheadline).foregroundStyle(DesignTokens.inkSoft)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, DesignTokens.spacingLg)
+    }
+
+    private var confirmCard: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.spacing) {
+            cardText(title: "在网页版登录 DocPilot?", detail: "确认是你本人正在电脑上登录。")
+            HStack(spacing: 12) {
+                Button("取消") { Task { await model.cancel() } }
+                    .buttonStyle(.bordered).frame(maxWidth: .infinity)
+                Button("批准登录") { Task { await model.approve() } }
+                    .buttonStyle(.glass).tint(DesignTokens.seal).frame(maxWidth: .infinity)
+            }
+        }
+        .padding(DesignTokens.spacing)
+        .frame(maxWidth: .infinity)
+        .cardSurface()
+    }
+
+    private func statusCard(
+        icon: String?, title: String, detail: String?, action: (label: String, run: () -> Void)?
+    ) -> some View {
+        VStack(alignment: .leading, spacing: DesignTokens.spacing) {
+            HStack(spacing: 10) {
+                if let icon {
+                    Image(systemName: icon).font(.title2).foregroundStyle(DesignTokens.seal)
+                } else {
+                    ProgressView().tint(DesignTokens.seal)
+                }
                 cardText(title: title, detail: detail)
             }
-            Button(action.label, action: action.run)
-                .buttonStyle(.glass).tint(DesignTokens.seal).frame(maxWidth: .infinity)
+            if let action {
+                Button(action.label, action: action.run)
+                    .buttonStyle(.glass).tint(DesignTokens.seal).frame(maxWidth: .infinity)
+            }
         }
+        .padding(DesignTokens.spacing)
+        .frame(maxWidth: .infinity)
+        .cardSurface()
     }
 
     private func cardText(title: String, detail: String?) -> some View {
@@ -106,15 +155,37 @@ struct ScanLoginView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+}
 
-    private func bottomCard(@ViewBuilder _ content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: DesignTokens.spacing) {
-            content()
+/// 小取景框 + 扫描线动画。仅在扫描态出现;移出即销毁,相机随之停。
+private struct ScannerViewfinder: View {
+    let onScan: @MainActor (String) -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var sweepDown = false
+
+    private let side: CGFloat = 240
+
+    var body: some View {
+        ZStack {
+            CodeScannerView(isScanning: true, onScan: onScan)
+            RoundedRectangle(cornerRadius: DesignTokens.radiusLg, style: .continuous)
+                .strokeBorder(.white.opacity(0.7), lineWidth: 2)
+            if !reduceMotion {
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [.clear, DesignTokens.seal, .clear],
+                            startPoint: .leading, endPoint: .trailing
+                        )
+                    )
+                    .frame(height: 2)
+                    .offset(y: sweepDown ? side / 2 - 14 : -(side / 2 - 14))
+                    .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true), value: sweepDown)
+            }
         }
-        .padding(DesignTokens.spacing)
+        .frame(width: side, height: side)
+        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.radiusLg, style: .continuous))
         .frame(maxWidth: .infinity)
-        .cardSurface()
-        .padding(DesignTokens.spacing)
-        .frame(maxHeight: .infinity, alignment: .bottom)
+        .onAppear { sweepDown = true }
     }
 }

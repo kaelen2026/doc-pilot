@@ -23,10 +23,21 @@ enum ScanLogin {
     }
 }
 
-/// 设备授权的批准/拒绝(已登录 iOS 端调用,带 bearer)。
-/// 端点经 Better Auth 挂在 /api/auth/device/*;body 为 { userCode },成功返回 { success: true }。
+/// 设备授权的认领/批准/拒绝(已登录 iOS 端调用,带 bearer)。
+/// 端点经 Better Auth 挂在 /api/auth/device/*(RFC 8628)。
 struct ScanLoginClient: Sendable {
     let api: APIClient
+
+    /// 认领设备码:GET /device?user_code= 会把 userId 绑到该设备码。
+    /// **必须在 approve/deny 之前调用**——否则后端以 DEVICE_CODE_NOT_CLAIMED 拒绝(见 ADR-011)。
+    /// 返回设备码当前状态(pending 表示可继续确认)。
+    @discardableResult
+    func claim(userCode: String) async throws -> String {
+        let encoded =
+            userCode.addingPercentEncoding(withAllowedCharacters: .urlQueryValueAllowed) ?? userCode
+        let res: DeviceVerifyResponse = try await api.send("/api/auth/device?user_code=\(encoded)")
+        return res.status
+    }
 
     func approve(userCode: String) async throws {
         try await post("/api/auth/device/approve", userCode: userCode)
@@ -43,5 +54,15 @@ struct ScanLoginClient: Sendable {
     }
 }
 
+private struct DeviceVerifyResponse: Decodable, Sendable { let status: String }
 private struct DeviceActionBody: Encodable, Sendable { let userCode: String }
 private struct DeviceActionResponse: Decodable, Sendable { let success: Bool }
+
+private extension CharacterSet {
+    /// query 值允许的字符(排除 & = ? # + 等分隔符),用于安全拼接 user_code。
+    static let urlQueryValueAllowed: CharacterSet = {
+        var set = CharacterSet.urlQueryAllowed
+        set.remove(charactersIn: "&=?#+")
+        return set
+    }()
+}
