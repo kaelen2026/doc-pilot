@@ -1,6 +1,6 @@
 name: DocPilot
 options:
-  bundleIdPrefix: com.docpilot
+  bundleIdPrefix: dev.w3ctech
   deploymentTarget:
     iOS: "26.0"
   xcodeVersion: "26.0"
@@ -35,12 +35,9 @@ targets:
           NSAllowsLocalNetworking: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.docpilot.app
+        PRODUCT_BUNDLE_IDENTIFIER: dev.w3ctech.docpilot
         MARKETING_VERSION: 0.1.0
         CURRENT_PROJECT_VERSION: 1
-    scheme:
-      testTargets:
-        - DocPilotTests
   DocPilotTests:
     type: bundle.unit-test
     supportedDestinations: [iOS]
@@ -50,7 +47,7 @@ targets:
       - target: DocPilot
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.docpilot.app.tests
+        PRODUCT_BUNDLE_IDENTIFIER: dev.w3ctech.docpilot.tests
         GENERATE_INFOPLIST_FILE: YES
         CODE_SIGNING_ALLOWED: NO
   DocPilotUITests:
@@ -63,10 +60,18 @@ targets:
       - target: DocPilot
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.docpilot.app.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: dev.w3ctech.docpilot.uitests
         GENERATE_INFOPLIST_FILE: YES
 
 schemes:
+  # 主 scheme 命名为 docpilot(此前由 DocPilot target 自动生成的同名 scheme 迁到此处显式声明)。
+  docpilot:
+    build:
+      targets:
+        DocPilot: all
+    test:
+      targets:
+        - name: DocPilotTests
   DocPilotLiveSmoke:
     build:
       targets:
