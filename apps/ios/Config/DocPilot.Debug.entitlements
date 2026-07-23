@@ -5,5 +5,10 @@
 	<!-- Debug 走 APNS 沙盒;须与 RegisterDeviceRequest.environment=sandbox 一致。 -->
 	<key>aps-environment</key>
 	<string>development</string>
+	<!-- Sign in with Apple。原 Config/DocPilot.entitlements 已并入本 per-config 文件,统一单一来源。 -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
 </dict>
 </plist>
