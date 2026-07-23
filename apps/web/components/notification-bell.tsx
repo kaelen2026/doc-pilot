@@ -119,9 +119,9 @@ function NotificationPanel({
       const a = anchor.getBoundingClientRect();
       const pw = el.offsetWidth;
       const margin = 8;
-      // 铃铛下方、右对齐;左侧夹在视口内。
+      // 铃铛在左侧栏顶部,故左对齐铃铛、向右展开;右溢出时整体左移夹回视口内。
       const top = a.bottom + margin;
-      const left = Math.max(margin, Math.min(a.right - pw, window.innerWidth - pw - margin));
+      const left = Math.max(margin, Math.min(a.left, window.innerWidth - pw - margin));
       setPos({ top, left });
     }
     place();
