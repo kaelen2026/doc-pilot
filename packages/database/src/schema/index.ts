@@ -7,4 +7,5 @@ export * from "./document";
 export * from "./notification";
 export * from "./object-deletion";
 export * from "./profile";
+export * from "./push-device";
 export * from "./workspace";

@@ -1,6 +1,21 @@
+import { apiApnsClient } from "../../push/apns";
+import { NotFoundError } from "../../shared/errors";
+import type { DisplaySendResult } from "../push/push.send";
+import * as pushService from "../push/push.service";
 import * as repo from "./admin.repository";
 import { buildUsageReport, type UsageReport } from "./admin.rollup";
-import type { PageQuery, UsageQuery } from "./admin.schema";
+import type { PageQuery, TestPushInput, UsageQuery } from "./admin.schema";
+
+/** 测试推送对外结果:含收件邮箱与计数,逐设备结果的令牌已脱敏;不回传完整/失效令牌。 */
+export interface TestPushReport {
+  email: string;
+  requested: number;
+  sent: number;
+  failed: number;
+  /** 因失效(410/BadDeviceToken)而被清除的令牌数。 */
+  invalidPruned: number;
+  results: DisplaySendResult[];
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -24,4 +39,24 @@ export function listWorkspaces(page: PageQuery) {
 /** 全量用户列表(分页)。 */
 export function listUsers(page: PageQuery) {
   return repo.listUsers(page);
+}
+
+/**
+ * 给指定邮箱用户发一条测试推送(平台 admin 专用)。
+ * 跨租户按邮箱定位收件人(admin repo),再调 push 模块的 service 发到其全部设备。
+ * 收件人不存在 → 404;APNS 未配置 → push 模块抛 503(PushNotConfiguredError)。
+ */
+export async function sendTestPush(input: TestPushInput): Promise<TestPushReport> {
+  const target = await repo.findUserByEmail(input.email);
+  if (!target) {
+    throw new NotFoundError("该邮箱没有对应用户");
+  }
+  const { invalidTokens, ...summary } = await pushService.sendTestPushToUser({
+    userId: target.id,
+    title: input.title,
+    body: input.body,
+    apns: apiApnsClient(),
+  });
+  // 只回传失效令牌的**数量**,完整令牌(即便已删)不出 API。
+  return { email: target.email, invalidPruned: invalidTokens.length, ...summary };
 }

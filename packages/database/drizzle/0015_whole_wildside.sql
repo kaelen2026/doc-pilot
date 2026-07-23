@@ -1,1 +1,0 @@
-CREATE INDEX "user_deletion_scheduled_idx" ON "user" USING btree ("deletion_scheduled_at") WHERE "user"."deletion_scheduled_at" is not null;

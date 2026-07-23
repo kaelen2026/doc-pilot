@@ -1,7 +1,9 @@
+import AuthenticationServices
 import SwiftUI
 
 struct LoginView: View {
     @Bindable var model: LoginModel
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         NavigationStack {
@@ -66,6 +68,21 @@ struct LoginView: View {
                 .tint(DesignTokens.seal)
                 .disabled(!model.canSubmit)
                 .accessibilityIdentifier("login.submit")
+
+                orDivider
+
+                SignInWithAppleButton(.signIn) { request in
+                    model.configureAppleRequest(request)
+                } onCompletion: { result in
+                    Task { await model.completeAppleSignIn(result) }
+                }
+                // 系统按钮随明暗切换(墨底/纸底皆有足够对比),圆角对齐邮箱输入框。
+                .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+                .frame(height: 50)
+                .clipShape(RoundedRectangle(cornerRadius: DesignTokens.radiusLg, style: .continuous))
+                .disabled(model.isSubmitting)
+                .accessibilityLabel("通过 Apple 登录")
+                .accessibilityIdentifier("login.apple")
             }
             Spacer()
         }
@@ -73,5 +90,17 @@ struct LoginView: View {
         .frame(maxWidth: 480)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DesignTokens.paper)
+    }
+
+    /// 「或」分隔:两侧发丝线,区隔邮箱登录与第三方登录。
+    private var orDivider: some View {
+        HStack(spacing: DesignTokens.spacingSm) {
+            Rectangle().fill(DesignTokens.hairline).frame(height: 1)
+            Text("或")
+                .font(.footnote)
+                .foregroundStyle(DesignTokens.inkFaint)
+            Rectangle().fill(DesignTokens.hairline).frame(height: 1)
+        }
+        .padding(.vertical, 4)
     }
 }

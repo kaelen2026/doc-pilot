@@ -111,6 +111,25 @@ CREATE INDEX device_code_user_code_idx ON device_code(user_code);
 
 批准时插件内部 `createSession(user.id)` 为 web 建**独立**会话(可独立吊销),不与手机共享 session——这是选设备授权流程而非 `oneTimeToken` 的决定性理由(见 ADR-011)。
 
+**push_devices**（APNS 设备令牌注册表，移动端推送）
+
+按**用户身份**键控,**不做 workspace 作用域**——设备属于一个登录用户而非某工作区(与 `device_code` / session 同源:身份级数据不进租户隔离,见 ADR-008)。注册时 `user_id` 一律取自认证用户;平台 admin 发测试推送时按用户查其令牌(经 admin 的跨租户查询路径)。`token` 唯一 → 重复注册走 upsert(幂等),换绑用户即迁移到新 `user_id`。`platform` / `environment` 用 VARCHAR + 应用层校验(合法值见 `@doc-pilot/contracts`,不用 PG ENUM);`environment` 必须与 App 的 `aps-environment` entitlement 一致,否则 APNS 直接 `BadDeviceToken`。APNS 判定失效(410 / `Unregistered` / `BadDeviceToken`)的令牌在发送后即删除。
+
+```sql
+CREATE TABLE push_devices (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE,            -- APNS 设备令牌(十六进制)
+  platform VARCHAR(20) NOT NULL,         -- 'ios'(VARCHAR + 应用层校验)
+  environment VARCHAR(20) NOT NULL,      -- 'sandbox' / 'production'
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT now()  -- 每次注册刷新,便于清理不活跃令牌
+);
+CREATE INDEX push_devices_user_idx ON push_devices(user_id);
+```
+
+APNS 投递走 token-based JWT(ES256,`.p8`)经 `@doc-pilot/push` 的 HTTP/2 客户端;凭据集中在 `apps/api` 的 `env.ts`(`APNS_*`),未配置则 `/admin/push-test` 返回 503。v1 只有平台 admin 手动测试(`POST /admin/push-test`);文档终态通知扇出到推送是后续工作。
+
 **workspaces**（租户边界，见 ADR-008）
 
 ```sql

@@ -60,6 +60,7 @@ TEST_RUNNER_LIVE_SMOKE=1 xcodebuild -project apps/ios/DocPilot.xcodeproj \
 - [故障恢复](docs/runbooks/failure-recovery.md) — Reconciliation Job、超时任务、租约机制
 - [万级 DAU 资源规划](docs/runbooks/capacity-planning.md) — 负载模型、逐组件资源、连接预算、配置旋钮、成本与上线清单
 - [本机隔离准生产验收与容量基准](docs/runbooks/local-staging-capacity.md) — 真实文本模型、真实 Embedding、10/100/500 页基准与故障恢复验收
+- [Apple 登录凭据获取与配置](docs/runbooks/apple-signin-credentials.md) — Team ID / Key ID / .p8 申请、client secret 生成、iOS 签名与环境变量落点
 
 ### 实施计划
 - [分阶段路线图](.ai/plans/roadmap.md) — Phase 1–7 的产出与验收标准

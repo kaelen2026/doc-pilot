@@ -1,3 +1,4 @@
+import AuthenticationServices
 import Foundation
 import Observation
 
@@ -12,6 +13,8 @@ final class LoginModel {
     private(set) var errorMessage: String?
     private(set) var session: AuthSession?
     private let authClient: AuthClient
+    /// 本次 Apple 请求的 raw nonce:onRequest 生成、onCompletion 回传给后端(见 AppleSignIn 的防重放约定)。
+    private var pendingAppleNonce: String?
 
     init(authClient: AuthClient) {
         self.authClient = authClient
@@ -69,6 +72,44 @@ final class LoginModel {
         } catch {
             errorMessage = "请求失败，请稍后重试。"
             if step == .otp { otp = "" }  // 验证失败清空,格子复位便于重输
+        }
+    }
+
+    /// SignInWithAppleButton 的 onRequest:生成 raw nonce,下发其 SHA-256 给 Apple,并索要邮箱/姓名。
+    func configureAppleRequest(_ request: ASAuthorizationAppleIDRequest) {
+        let raw = AppleSignIn.randomNonce()
+        pendingAppleNonce = raw
+        request.requestedScopes = [.fullName, .email]
+        request.nonce = AppleSignIn.sha256Hex(raw)
+    }
+
+    /// SignInWithAppleButton 的 onCompletion:取消静默,拿到 idToken 后走与 OTP 一致的登录态切换。
+    func completeAppleSignIn(_ result: Result<ASAuthorization, any Error>) async {
+        switch result {
+        case let .failure(error):
+            // 用户主动取消不算错误,静默返回。
+            if let authError = error as? ASAuthorizationError, authError.code == .canceled { return }
+            errorMessage = "登录失败，请稍后重试。"
+        case let .success(authorization):
+            guard
+                let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                let tokenData = credential.identityToken,
+                let identityToken = String(data: tokenData, encoding: .utf8)
+            else {
+                errorMessage = "登录失败，请稍后重试。"
+                return
+            }
+            isSubmitting = true
+            errorMessage = nil
+            defer { isSubmitting = false }
+            do {
+                session = try await authClient.signInWithApple(
+                    identityToken: identityToken, nonce: pendingAppleNonce
+                )
+            } catch {
+                errorMessage = "登录失败，请稍后重试。"
+            }
+            pendingAppleNonce = nil
         }
     }
 

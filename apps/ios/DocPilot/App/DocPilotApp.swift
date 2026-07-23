@@ -3,6 +3,8 @@ import SwiftData
 
 @main
 struct DocPilotApp: App {
+    // 挂 AppDelegate 仅为接收 APNS 系统回调(device token / 前台展示),App 仍是纯 SwiftUI 生命周期。
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let environment = AppEnvironment.live
     @AppStorage(SettingsKeys.appearance) private var appearanceRaw = AppearancePreference.system.rawValue
 
@@ -10,7 +12,7 @@ struct DocPilotApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(environment: environment)
+            RootView(environment: environment, pushRegistration: appDelegate.pushRegistration)
                 .tint(DesignTokens.seal)
                 .preferredColorScheme(AppearancePreference.from(appearanceRaw).colorScheme)
         }
@@ -20,12 +22,14 @@ struct DocPilotApp: App {
 
 private struct RootView: View {
     let environment: AppEnvironment
+    let pushRegistration: PushRegistrationModel
     @State private var loginModel: LoginModel
     @State private var documentsModel: DocumentsModel
     private let api: APIClient
 
-    init(environment: AppEnvironment) {
+    init(environment: AppEnvironment, pushRegistration: PushRegistrationModel) {
         self.environment = environment
+        self.pushRegistration = pushRegistration
         let tokenStore = KeychainStore()
         let api = APIClient(
             baseURL: environment.apiBaseURL,
@@ -50,7 +54,12 @@ private struct RootView: View {
                     documentsModel: documentsModel,
                     userID: loginModel.session?.user.id ?? "",
                     api: api,
-                    signOut: { await loginModel.signOut() }
+                    pushRegistration: pushRegistration,
+                    // 退出登录前 best-effort 注销本机 token,再清会话。
+                    signOut: {
+                        await pushRegistration.deactivate()
+                        await loginModel.signOut()
+                    }
                 )
             }
         }

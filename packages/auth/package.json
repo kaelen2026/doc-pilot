@@ -15,6 +15,7 @@
     "@doc-pilot/database": "workspace:*",
     "better-auth": "^1.6.23",
     "drizzle-orm": "^0.45.2",
+    "jose": "^6.2.3",
     "nodemailer": "^9.0.3",
     "zod": "^4.4.3"
   },

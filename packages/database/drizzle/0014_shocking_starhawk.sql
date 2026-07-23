@@ -1,1 +1,0 @@
-ALTER TABLE "user" ADD COLUMN "deletion_scheduled_at" timestamp;

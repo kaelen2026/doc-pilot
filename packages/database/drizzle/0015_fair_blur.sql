@@ -10,4 +10,6 @@ CREATE TABLE "pending_object_deletions" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE INDEX "pending_object_deletions_scan_idx" ON "pending_object_deletions" USING btree ("attempts","created_at");
+ALTER TABLE "user" ADD COLUMN "deletion_scheduled_at" timestamp;--> statement-breakpoint
+CREATE INDEX "pending_object_deletions_scan_idx" ON "pending_object_deletions" USING btree ("attempts","created_at");--> statement-breakpoint
+CREATE INDEX "user_deletion_scheduled_idx" ON "user" USING btree ("deletion_scheduled_at") WHERE "user"."deletion_scheduled_at" is not null;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parsePageQuery, parseUsageQuery } from "./admin.schema";
+import { parsePageQuery, parseTestPush, parseUsageQuery } from "./admin.schema";
 
 describe("parseUsageQuery", () => {
   it("缺省 days 回退 30", () => {
@@ -34,6 +34,41 @@ describe("parsePageQuery", () => {
 
   it("负数 offset 抛 validation_error", () => {
     expect(() => parsePageQuery({ offset: "-1" })).toThrow(
+      expect.objectContaining({ code: "validation_error" }),
+    );
+  });
+});
+
+describe("parseTestPush", () => {
+  it("缺省 title/body 用默认文案,email 去空白", () => {
+    const out = parseTestPush({ email: "  a@b.com " });
+    expect(out.email).toBe("a@b.com");
+    expect(out.title).toBeTruthy();
+    expect(out.body).toBeTruthy();
+  });
+
+  it("接受自定义 title/body 并去空白", () => {
+    expect(parseTestPush({ email: "a@b.com", title: " 你好 ", body: " 世界 " })).toEqual({
+      email: "a@b.com",
+      title: "你好",
+      body: "世界",
+    });
+  });
+
+  it.each([undefined, "", "no-at-sign", 123])("非法 email=%s 抛 validation_error", (email) => {
+    expect(() => parseTestPush({ email })).toThrow(
+      expect.objectContaining({ code: "validation_error" }),
+    );
+  });
+
+  it("超长 title 抛 validation_error", () => {
+    expect(() => parseTestPush({ email: "a@b.com", title: "x".repeat(200) })).toThrow(
+      expect.objectContaining({ code: "validation_error" }),
+    );
+  });
+
+  it("非对象请求体抛 validation_error", () => {
+    expect(() => parseTestPush(null)).toThrow(
       expect.objectContaining({ code: "validation_error" }),
     );
   });
