@@ -19,7 +19,11 @@ import { workerEnv } from "./env";
 import { startOutboxPublisher } from "./outbox/publisher";
 import { createDocumentProcessor } from "./processors/document.processor";
 import { createPurgeAccountProcessor } from "./purge-account/purge-account.processor";
+import { workerApnsClient } from "./push/apns";
+import { sendBadgePush } from "./push/badge";
 import { createReconcileProcessor } from "./reconcile/reconcile.processor";
+import { type CreatedNotification, countUnread } from "./repository/document.repository";
+import { deleteInvalidTokens, listDevicesByUserId } from "./repository/push.repository";
 
 // Metrics:配置 METRICS_PORT 时暴露 Prometheus /metrics;未配置则 no-op。
 startMetrics({ serviceName: "doc-pilot-worker" });
@@ -39,9 +43,24 @@ const notificationBus = new RedisNotificationBus({
   createSubscriber: createRedisConnection,
 });
 
+// 离线角标推送:APNS 已配置才接线,否则整条通路为 undefined(处理器据此跳过,不影响处理)。
+const apnsClient = workerApnsClient();
+const pushBadge = apnsClient
+  ? (notification: CreatedNotification, workspaceId: string) =>
+      sendBadgePush(
+        { client: apnsClient, listDevices: listDevicesByUserId, countUnread, deleteInvalidTokens },
+        {
+          workspaceId,
+          userId: notification.userId,
+          title: notification.title,
+          body: notification.body,
+        },
+      )
+  : undefined;
+
 const worker = new Worker(
   QUEUE_NAMES.documentProcessing,
-  createDocumentProcessor({ notificationBus }),
+  createDocumentProcessor({ notificationBus, pushBadge }),
   {
     connection: workerConnection,
     concurrency: workerEnv.concurrency,

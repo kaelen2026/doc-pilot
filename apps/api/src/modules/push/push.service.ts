@@ -1,8 +1,8 @@
 import type { ApnsClient, ApnsEnvironment } from "@doc-pilot/push";
-import { buildAlertPayload } from "@doc-pilot/push";
+import { buildAlertPayload, sendToDevices } from "@doc-pilot/push";
 import * as repo from "./push.repository";
 import type { RegisterDeviceInput } from "./push.schema";
-import { type DeviceSendOutcome, summarizeTestSend, type TestSendSummary } from "./push.send";
+import { summarizeTestSend, type TestSendSummary } from "./push.send";
 
 /** 注册/刷新当前用户的设备令牌(幂等)。 */
 export function registerDevice(input: RegisterDeviceInput & { userId: string }): Promise<void> {
@@ -23,24 +23,26 @@ export async function sendTestPushToUser(input: {
   userId: string;
   title: string;
   body?: string;
+  /** 角标数 = 收件人真实未读数(由调用方算好);与"角标恒等于未读数"模型一致。0 会显式清除红点。 */
+  badge?: number;
   apns: ApnsClient;
 }): Promise<TestSendSummary> {
   const devices = await repo.listByUserId(input.userId);
   const payload = buildAlertPayload({
     title: input.title,
     body: input.body,
+    badge: input.badge,
     data: { type: "admin.test" },
   });
-  const outcomes: DeviceSendOutcome[] = [];
-  for (const d of devices) {
-    const response = await input.apns.send({
-      deviceToken: d.token,
-      // 库内值受注册时的枚举校验保护,只会是 sandbox / production。
+  const { outcomes } = await sendToDevices({
+    client: input.apns,
+    // 库内 environment 受注册时的枚举校验保护,只会是 sandbox / production。
+    devices: devices.map((d) => ({
+      token: d.token,
       environment: d.environment as ApnsEnvironment,
-      payload,
-    });
-    outcomes.push({ token: d.token, response });
-  }
+    })),
+    payload,
+  });
   const summary = summarizeTestSend(outcomes);
   await repo.deleteByTokens(summary.invalidTokens);
   return summary;

@@ -40,8 +40,13 @@ interface DocumentJobData {
  * - 终态(ready / failed)在收尾事务内已写好通知行;此处仅在提交后发实时脉冲(best-effort)。
  *
  * notificationBus 依赖注入(与 reconcile 处理器同范式),便于 index.ts 接线、测试替身。
+ * pushBadge 同为注入:给收件人发离线角标推送(APNS)。缺 APNS 配置时 index.ts 传 undefined,
+ * 整条推送通路不接;发送失败也 best-effort 吞掉,绝不影响任务成败。
  */
-export function createDocumentProcessor(deps: { notificationBus: NotificationBus }) {
+export function createDocumentProcessor(deps: {
+  notificationBus: NotificationBus;
+  pushBadge?: (notification: CreatedNotification, workspaceId: string) => Promise<void>;
+}) {
   return async function processDocumentJob(job: Job<DocumentJobData>): Promise<{
     status: "done" | "skipped";
     chunkCount?: number;
@@ -50,8 +55,9 @@ export function createDocumentProcessor(deps: { notificationBus: NotificationBus
     const jobIdempotencyKey = buildParseJobId(documentId, processingVersion);
     const log = logger.child({ documentId, processingVersion, jobId: job.id });
 
-    // 通知行是持久事实源;脉冲只为让在线的 SSE 连接立刻刷新,失败不影响任务成败。
-    const publishPulse = async (notification: CreatedNotification | null): Promise<void> => {
+    // 通知行是持久事实源。产出通知后向收件人做两件 best-effort 的事,彼此独立、互不拖累:
+    // ① 发 SSE 脉冲让**在线**连接立刻刷新;② 发 APNS 角标推送让**离线/后台**设备更新红点。
+    const notifyRecipient = async (notification: CreatedNotification | null): Promise<void> => {
       if (!notification) {
         return;
       }
@@ -59,6 +65,13 @@ export function createDocumentProcessor(deps: { notificationBus: NotificationBus
         await deps.notificationBus.publish(workspaceId, notification);
       } catch (err) {
         log.warn("notification.pulse_failed", errToLog(err));
+      }
+      if (deps.pushBadge) {
+        try {
+          await deps.pushBadge(notification, workspaceId);
+        } catch (err) {
+          log.warn("notification.push_failed", errToLog(err));
+        }
       }
     };
 
@@ -118,7 +131,7 @@ export function createDocumentProcessor(deps: { notificationBus: NotificationBus
             log.info("document.skip", { reason: "guard_failed_mid_run" });
             return { status: "skipped" };
           }
-          await publishPulse(result.notification);
+          await notifyRecipient(result.notification);
           log.info("document.deduped", {
             canonicalId: canonical.id,
             chunkCount: content.chunks.length,
@@ -212,7 +225,7 @@ export function createDocumentProcessor(deps: { notificationBus: NotificationBus
         return { status: "skipped" };
       }
 
-      await publishPulse(result.notification);
+      await notifyRecipient(result.notification);
       log.info("document.done", { chunkCount: chunks.length });
       return { status: "done", chunkCount: chunks.length };
     } catch (err) {
@@ -230,7 +243,7 @@ export function createDocumentProcessor(deps: { notificationBus: NotificationBus
             errorCode,
             errorMessage: message,
           });
-          await publishPulse(notification);
+          await notifyRecipient(notification);
         }
         throw err;
       }
@@ -243,7 +256,7 @@ export function createDocumentProcessor(deps: { notificationBus: NotificationBus
         errorCode,
         errorMessage: message,
       });
-      await publishPulse(notification);
+      await notifyRecipient(notification);
       throw new UnrecoverableError(`${errorCode}: ${message}`);
     } finally {
       await rm(workDir, { recursive: true, force: true }).catch(() => {});
