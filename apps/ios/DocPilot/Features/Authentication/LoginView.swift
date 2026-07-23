@@ -90,6 +90,8 @@ struct LoginView: View {
                 .disabled(model.isSubmitting)
                 .accessibilityLabel("通过 Apple 登录")
                 .accessibilityIdentifier("login.apple")
+
+                googleButton
             }
             Spacer()
         }
@@ -136,6 +138,33 @@ struct LoginView: View {
         case .password:
             Task { await model.signInWithPassword() }
         }
+    }
+
+    /// Google 登录按钮:中性纸面 + 发丝描边(与邮箱输入框同一视觉语言),
+    /// 仅品牌「G」着 Google 蓝,整体与墨水纸风协调。高度/圆角对齐 Apple 按钮。
+    private var googleButton: some View {
+        Button {
+            Task { await model.signInWithGoogle() }
+        } label: {
+            HStack(spacing: DesignTokens.spacingSm) {
+                Text("G")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(Color(red: 66 / 255, green: 133 / 255, blue: 244 / 255))
+                Text("使用 Google 登录")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(DesignTokens.ink)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+        }
+        .background(DesignTokens.paperRaised, in: RoundedRectangle(cornerRadius: DesignTokens.radiusLg, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.radiusLg, style: .continuous)
+                .stroke(DesignTokens.hairline, lineWidth: 1)
+        )
+        .disabled(model.isSubmitting)
+        .accessibilityLabel("通过 Google 登录")
+        .accessibilityIdentifier("login.google")
     }
 
     /// 「或」分隔:两侧发丝线,区隔邮箱登录与第三方登录。

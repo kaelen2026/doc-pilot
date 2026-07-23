@@ -16,9 +16,13 @@ export const authEnv = {
     from: process.env.MAIL_FROM ?? "DocPilot <no-reply@docpilot.local>",
   },
   // Google OAuth 凭据;缺省空串表示未配置——resolveSocialProviders 会据此跳过注册。
+  // clientId/secret 是 Web 类型 client(web One Tap / OAuth 用);iosClientId 是「iOS 类型」
+  // OAuth client,原生 iOS 登录签发的 idToken 其 aud 是这个 iOS client id 而非 web 的,
+  // 故作为额外 audience 加进 better-auth google 的 clientId 数组(见 social.ts)。
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID ?? "",
     clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+    iosClientId: process.env.GOOGLE_IOS_CLIENT_ID ?? "",
   },
   // Apple「Sign in with Apple」凭据;缺省空串表示未配置——resolveSocialProviders 会据此跳过注册。
   // client secret 不直接配,而是由 teamId/keyId/privateKey 用 jose 动态生成 ES256 JWT

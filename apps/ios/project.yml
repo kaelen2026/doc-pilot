@@ -15,6 +15,11 @@ settings:
 configs:
   Debug: debug
   Release: release
+packages:
+  # 原生 Google 登录:GoogleSignIn-iOS(SPM)。产品名 GoogleSignIn。
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS
+    from: "9.2.0"
 targets:
   DocPilot:
     type: application
@@ -24,6 +29,9 @@ targets:
     configFiles:
       Debug: Config/Debug.xcconfig
       Release: Config/Release.xcconfig
+    dependencies:
+      - package: GoogleSignIn
+        product: GoogleSignIn
     info:
       path: Config/Info.plist
       properties:
@@ -32,6 +40,12 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.productivity
         API_BASE_URL: $(API_BASE_URL)
+        # 原生 Google 登录:iOS 类型 OAuth client id(GIDSignIn 据此自动配置,无需 GoogleService-Info.plist)。
+        GIDClientID: 186506785937-28panmdpubo6puvtgguadfmdnuaac8tk.apps.googleusercontent.com
+        # Google 回调 URL scheme = 反转 client id;GIDSignIn.handle(url) 消费此回调。
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - com.googleusercontent.apps.186506785937-28panmdpubo6puvtgguadfmdnuaac8tk
         # 扫码登录网页版需相机扫描二维码(账户页「扫码登录网页版」)。
         NSCameraUsageDescription: 用于扫描二维码,登录 DocPilot 网页版。
         # 无此键 iOS 会以兼容 letterbox 缩放运行(黑边+顶部大片留白),故必须声明以启用原生全屏。

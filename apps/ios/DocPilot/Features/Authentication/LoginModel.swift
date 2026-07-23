@@ -1,6 +1,8 @@
 import AuthenticationServices
 import Foundation
+import GoogleSignIn
 import Observation
+import UIKit
 
 @MainActor @Observable
 final class LoginModel {
@@ -143,6 +145,32 @@ final class LoginModel {
                 errorMessage = "登录失败，请稍后重试。"
             }
             pendingAppleNonce = nil
+        }
+    }
+
+    /// 原生 Google 登录:GIDSignIn 拉起授权 → 取 idToken → 走与 OTP 一致的登录态切换。
+    /// presenting VC 由 Model 自行从前台 scene 取(见 PresentationContext),故 View 只需发回调。
+    /// GIDSignIn.signIn 幂等地复用 Info.plist 的 GIDClientID 自动配置;用户取消不算错误。
+    func signInWithGoogle() async {
+        guard !isSubmitting else { return }
+        guard let presenting = PresentationContext.rootViewController() else {
+            errorMessage = "登录失败，请稍后重试。"
+            return
+        }
+        isSubmitting = true
+        errorMessage = nil
+        defer { isSubmitting = false }
+        do {
+            let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: presenting)
+            guard let idToken = result.user.idToken?.tokenString else {
+                errorMessage = "登录失败，请稍后重试。"
+                return
+            }
+            session = try await authClient.signInWithGoogle(idToken: idToken)
+        } catch {
+            // 用户主动取消不算错误,静默返回;其余给出中文提示。
+            if let gidError = error as? GIDSignInError, gidError.code == .canceled { return }
+            errorMessage = "登录失败，请稍后重试。"
         }
     }
 
