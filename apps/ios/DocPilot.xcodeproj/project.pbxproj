@@ -52,6 +52,7 @@
 		AB1E843C8E1FF1BDA896B64F /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B18D4F06D8A8250F657F3900 /* ScreenshotTests.swift */; };
 		AE4E23F01A3FF68A7660395B /* DiscoveryContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC235BDF137951C714BD0E26 /* DiscoveryContractTests.swift */; };
 		B175CD7FCC6B9FB7B5ED148A /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05900E7AA9C677E807DBCF43 /* NotificationsView.swift */; };
+		B4DD6828FEB60E75C929E1A7 /* AccountDeletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10D101571D459DF49C4E63C1 /* AccountDeletion.swift */; };
 		B7C1225429B7C8D4C4E3CE4B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52EA158CCF1F57DFA8FD1FF6 /* AppDelegate.swift */; };
 		BB43AAF078518207C8778548 /* DocumentsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E74EA3A79E5DF6CEBA4FF65C /* DocumentsModel.swift */; };
 		BF52260017510E912F26ADF3 /* PDFValidatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC3A69C12838E7B9A024349D /* PDFValidatorTests.swift */; };
@@ -67,6 +68,7 @@
 		D835273A1249E16F38D950F0 /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCAB735E1EDC4EA1D6215D53 /* SmokeTests.swift */; };
 		E1A00B6902A8E1C3C15A4668 /* AppAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF8712123802519DAAF5FDB5 /* AppAppearance.swift */; };
 		E502C57C60FA0D11D6FF5433 /* ScanLoginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE613D636E0FC1BC3CABCEF0 /* ScanLoginTests.swift */; };
+		E5986C97A96653195146893E /* AccountDeletionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67F6C1EC3EF9CF63F40ECD0C /* AccountDeletionTests.swift */; };
 		EA5314CCC37DCB70FAA4D632 /* APIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5681CBFD4A96BF92D038664 /* APIClientTests.swift */; };
 		EFAA63570C69FD00509853C5 /* SSEParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2197504EA720D4FF475D5702 /* SSEParser.swift */; };
 		F0C0FCBA22DC6D4DEF44A040 /* SSEParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3356DD4FAE2D004B13C7CCED /* SSEParserTests.swift */; };
@@ -100,6 +102,7 @@
 		05900E7AA9C677E807DBCF43 /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
 		0C58C0B76487E3B0A6F46A46 /* OtpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OtpView.swift; sourceTree = "<group>"; };
 		0EDC63DACD2ED46D258775ED /* AuthClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthClient.swift; sourceTree = "<group>"; };
+		10D101571D459DF49C4E63C1 /* AccountDeletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountDeletion.swift; sourceTree = "<group>"; };
 		2197504EA720D4FF475D5702 /* SSEParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSEParser.swift; sourceTree = "<group>"; };
 		27534D826B04A3CDE878A5FB /* ReaderModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderModel.swift; sourceTree = "<group>"; };
 		2B0CF5F2AD049CBC9B60B3B1 /* DocumentCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentCacheTests.swift; sourceTree = "<group>"; };
@@ -121,6 +124,7 @@
 		6329F631C808CC6D60723B16 /* Documents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Documents.swift; sourceTree = "<group>"; };
 		64EB1DCF03C6C5DEC9D53129 /* DocumentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentsView.swift; sourceTree = "<group>"; };
 		679F1F137DCFA93E71A4ECC1 /* ReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderView.swift; sourceTree = "<group>"; };
+		67F6C1EC3EF9CF63F40ECD0C /* AccountDeletionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountDeletionTests.swift; sourceTree = "<group>"; };
 		6B7CD75FCB6F35080BCFF75E /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		6F44B8D2CDFE6EB22B62343F /* SearchModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchModel.swift; sourceTree = "<group>"; };
 		6FDD3C36B19A91F128A3804E /* DocPilotApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocPilotApp.swift; sourceTree = "<group>"; };
@@ -238,6 +242,7 @@
 		349733F9A3DA31941BD0A609 /* Account */ = {
 			isa = PBXGroup;
 			children = (
+				10D101571D459DF49C4E63C1 /* AccountDeletion.swift */,
 				CEE4F9DF50A52BF8877A6B0D /* AccountModel.swift */,
 				C244492A10A61EF83ADA477B /* AccountView.swift */,
 			);
@@ -341,6 +346,14 @@
 			path = Reader;
 			sourceTree = "<group>";
 		};
+		7834F063625F1A9F38AE91AF /* Account */ = {
+			isa = PBXGroup;
+			children = (
+				67F6C1EC3EF9CF63F40ECD0C /* AccountDeletionTests.swift */,
+			);
+			path = Account;
+			sourceTree = "<group>";
+		};
 		7A3F6EE763B5CE6309D1AC0B /* SharedUI */ = {
 			isa = PBXGroup;
 			children = (
@@ -385,6 +398,7 @@
 			isa = PBXGroup;
 			children = (
 				DCAB735E1EDC4EA1D6215D53 /* SmokeTests.swift */,
+				7834F063625F1A9F38AE91AF /* Account */,
 				5D7B77DB760AAF9FB1D82556 /* Auth */,
 				C2008F5DABD6BD905C9FD32B /* Chat */,
 				FD67F7FB9C2C060B8293E63C /* Contracts */,
@@ -617,6 +631,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				EA5314CCC37DCB70FAA4D632 /* APIClientTests.swift in Sources */,
+				E5986C97A96653195146893E /* AccountDeletionTests.swift in Sources */,
 				AAED20FD5E5F25157FE6C7FE /* AppleSignInTests.swift in Sources */,
 				AE4E23F01A3FF68A7660395B /* DiscoveryContractTests.swift in Sources */,
 				3A99B83888B98B7FF7707F18 /* DocumentCacheTests.swift in Sources */,
@@ -647,6 +662,7 @@
 			files = (
 				65FE0F0697D5F097ECC855C4 /* APIClient.swift in Sources */,
 				400E3AABF1146F8E75504F87 /* APIError.swift in Sources */,
+				B4DD6828FEB60E75C929E1A7 /* AccountDeletion.swift in Sources */,
 				C68A8CD6D32B4A91EDF17C62 /* AccountModel.swift in Sources */,
 				22407A18EC56C00D0EDCD23A /* AccountView.swift in Sources */,
 				E1A00B6902A8E1C3C15A4668 /* AppAppearance.swift in Sources */,
