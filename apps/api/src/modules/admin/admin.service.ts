@@ -55,8 +55,11 @@ export async function sendTestPush(input: TestPushInput): Promise<TestPushReport
     userId: target.id,
     title: input.title,
     body: input.body,
-    // 角标 = 收件人真实未读数(而非硬编码);与 Worker 通知推送、iOS 前台重同步同一口径。
-    badge: await repo.countUnreadByUserId(target.id),
+    // 角标下限取 1:测试推送不落库,收件人真实未读数常为 0,而 aps.badge:0 会清除红点——
+    // 那样"发测试推送"反倒把角标抹掉,与验证意图相悖。故取 max(未读数, 1),测试恒有可见红点;
+    // 该值只是瞬时高报,下次开 App 的 SSE 快照/load 会用真实未读数覆盖校正(见 NotificationsModel)。
+    // (Worker 真实通知先落库,未读数已≥1,不受此影响,仍是"角标=未读数"口径。)
+    badge: Math.max(await repo.countUnreadByUserId(target.id), 1),
     apns: apiApnsClient(),
   });
   // 只回传失效令牌的**数量**,完整令牌(即便已删)不出 API。
