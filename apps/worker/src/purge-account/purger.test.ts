@@ -8,64 +8,39 @@ function deps(overrides: Partial<PurgeDeps> = {}): PurgeDeps {
   return {
     nowMs: () => 1_000_000,
     listDue: vi.fn(async () => []),
-    collectStorageKeys: vi.fn(async () => []),
-    deleteStorageObject: vi.fn(async () => {}),
-    purge: vi.fn(async () => true),
+    purgeAndEnqueue: vi.fn(async () => true),
     ...overrides,
   };
 }
 
 describe("runPurge", () => {
-  it("到期账户:先删库成功,再清其对象存储", async () => {
+  it("到期账户:守卫删库并登记待删对象,计入 purged", async () => {
     const d = deps({
-      listDue: vi.fn(async () => [{ userId: "u1" }]),
-      collectStorageKeys: vi.fn(async () => ["k1", "k2"]),
-      purge: vi.fn(async () => true),
+      listDue: vi.fn(async () => [{ userId: "u1" }, { userId: "u2" }]),
+      purgeAndEnqueue: vi.fn(async () => true),
     });
 
     const summary = await runPurge(d, CFG);
 
-    expect(summary).toMatchObject({ scanned: 1, purged: 1, skipped: 0 });
-    expect(d.deleteStorageObject).toHaveBeenCalledTimes(2);
-    expect(d.deleteStorageObject).toHaveBeenCalledWith("k1");
-    expect(d.deleteStorageObject).toHaveBeenCalledWith("k2");
+    expect(summary).toMatchObject({ scanned: 2, purged: 2, skipped: 0 });
+    expect(d.purgeAndEnqueue).toHaveBeenCalledTimes(2);
   });
 
-  it("期间被撤销注销(守卫未命中):不删库也绝不动其对象存储", async () => {
+  it("期间被撤销注销(守卫未命中):计入 skipped,不算 purged", async () => {
     const d = deps({
       listDue: vi.fn(async () => [{ userId: "u1" }]),
-      collectStorageKeys: vi.fn(async () => ["k1"]),
-      purge: vi.fn(async () => false), // 撤销后原子 WHERE 命中 0 行
+      purgeAndEnqueue: vi.fn(async () => false), // 撤销后原子 WHERE 命中 0 行
     });
 
     const summary = await runPurge(d, CFG);
 
     expect(summary).toMatchObject({ scanned: 1, purged: 0, skipped: 1 });
-    expect(d.deleteStorageObject).not.toHaveBeenCalled();
   });
 
-  it("对象存储单个删除失败不中断整批", async () => {
-    const deleteStorageObject = vi
-      .fn<PurgeDeps["deleteStorageObject"]>()
-      .mockRejectedValueOnce(new Error("s3 down"))
-      .mockResolvedValue(undefined);
-    const d = deps({
-      listDue: vi.fn(async () => [{ userId: "u1" }]),
-      collectStorageKeys: vi.fn(async () => ["k1", "k2"]),
-      deleteStorageObject,
-    });
-
-    const summary = await runPurge(d, CFG);
-
-    expect(summary).toMatchObject({ purged: 1 });
-    expect(deleteStorageObject).toHaveBeenCalledTimes(2); // k1 失败后仍尝试 k2
-  });
-
-  it("空批:不做任何删除", async () => {
+  it("空批:不调用 purgeAndEnqueue", async () => {
     const d = deps();
     const summary = await runPurge(d, CFG);
     expect(summary).toEqual({ scanned: 0, purged: 0, skipped: 0 });
-    expect(d.purge).not.toHaveBeenCalled();
-    expect(d.deleteStorageObject).not.toHaveBeenCalled();
+    expect(d.purgeAndEnqueue).not.toHaveBeenCalled();
   });
 });

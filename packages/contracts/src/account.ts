@@ -17,3 +17,14 @@ export const ACCOUNT_PURGE = {
   /** 单轮处理的到期账户上限。 */
   batchSize: 100,
 } as const;
+
+/**
+ * 对象存储清理(死信 drain):删 user 后待删的 S3 对象由 pending_object_deletions 持久记录,
+ * worker 周期 drain。attempts 达 maxAttempts 的行不再重试,留作死信供运维排查。
+ */
+export const OBJECT_PURGE = {
+  /** 单轮 drain 的对象上限。 */
+  batchSize: 500,
+  /** 单个对象的最大重试次数;超过则停手(死信),不再刷屏。 */
+  maxAttempts: 10,
+} as const;
