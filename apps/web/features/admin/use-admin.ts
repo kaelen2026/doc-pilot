@@ -1,8 +1,14 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiFetch, errorMessage } from "@/lib/api-client";
-import type { AdminOverview, AdminUsageReport, AdminUser, AdminWorkspace } from "./types";
+import type {
+  AdminOverview,
+  AdminUsageReport,
+  AdminUser,
+  AdminWorkspace,
+  TestPushReport,
+} from "./types";
 
 async function get<T>(path: string): Promise<T> {
   const r = await apiFetch(path);
@@ -45,5 +51,24 @@ export function useAdminUsers(enabled: boolean) {
     queryKey: ["admin", "users"],
     queryFn: () => get<{ users: AdminUser[] }>("/admin/users"),
     enabled,
+  });
+}
+
+export interface SendTestPushInput {
+  email: string;
+  title?: string;
+  body?: string;
+}
+
+/** 发送测试推送(POST /admin/push-test)。真实投递,不缓存,故用 mutation。 */
+export function useSendTestPush() {
+  return useMutation({
+    mutationFn: async (input: SendTestPushInput): Promise<TestPushReport> => {
+      const r = await apiFetch("/admin/push-test", { method: "POST", json: input });
+      if (!r.ok) {
+        throw new Error(await errorMessage(r));
+      }
+      return (await r.json()) as TestPushReport;
+    },
   });
 }

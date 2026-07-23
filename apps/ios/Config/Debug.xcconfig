@@ -1,1 +1,6 @@
 API_BASE_URL = http:/$()/127.0.0.1:3001
+
+// APNS 沙盒 entitlement(aps-environment=development)。路径相对 SRCROOT(apps/ios)。
+// 真机联调推送需在本地把 DEVELOPMENT_TEAM 设为自己的团队,否则此受限 entitlement 无法签发描述文件;
+// 模拟器构建不校验,故 CI/本地 xcodebuild 仍可绿。
+CODE_SIGN_ENTITLEMENTS = Config/DocPilot.Debug.entitlements

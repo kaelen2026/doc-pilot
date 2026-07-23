@@ -7,6 +7,9 @@ options:
 settings:
   base:
     SWIFT_VERSION: "6.0"
+    # 故意留空:不硬编码团队。推送(aps-environment)真机联调时需本地覆盖为自己的
+    # DEVELOPMENT_TEAM 才能签发带 push 能力的描述文件;模拟器构建不校验此受限 entitlement。
+    # 每配置的 CODE_SIGN_ENTITLEMENTS 见 Config/Debug.xcconfig / Config/Release.xcconfig。
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
 configs:

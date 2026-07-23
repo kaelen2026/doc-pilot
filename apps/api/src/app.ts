@@ -17,6 +17,7 @@ import { createMeRoutes } from "./modules/me/me.routes";
 import { createNotificationRoutes } from "./modules/notifications/notification.routes";
 import { createProfileRoutes, createPublicProfileRoutes } from "./modules/profiles/profile.routes";
 import { createPublicDocumentRoutes } from "./modules/public-documents/public-document.routes";
+import { createPushRoutes } from "./modules/push/push.routes";
 import { createSearchRoutes } from "./modules/search/search.routes";
 import { isAdminEmail } from "./shared/admin";
 import { getSession, loadMemberships } from "./shared/auth-context";
@@ -84,6 +85,8 @@ export function createApp(
   app.use("/search", guard);
   app.use("/notifications", guard);
   app.use("/notifications/*", guard);
+  app.use("/push", guard);
+  app.use("/push/*", guard);
   app.use("/users/*", guard);
   // 平台管理后台:先过登录门禁(拿到 user),再过 requireAdmin(邮箱白名单)。两条链路
   // 都要覆盖精确路径与子路径(与 /me 同理)。requireAdmin 是所有跨租户查询的唯一闸门。
@@ -128,6 +131,7 @@ export function createApp(
   app.route("/conversations", createConversationRoutes());
   app.route("/search", createSearchRoutes());
   app.route("/notifications", createNotificationRoutes({ bus: notificationBus }));
+  app.route("/push", createPushRoutes());
   app.route("/admin", createAdminRoutes());
   app.route("/", createProfileRoutes());
 

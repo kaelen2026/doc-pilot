@@ -54,3 +54,20 @@ export interface AdminUser {
   createdAt: string;
   workspaceCount: number;
 }
+
+/** 逐设备投递结果(令牌已脱敏)。 */
+export interface PushSendResult {
+  token: string;
+  status: number;
+  reason?: string;
+}
+
+/** `POST /admin/push-test` 的响应。 */
+export interface TestPushReport {
+  email: string;
+  requested: number;
+  sent: number;
+  failed: number;
+  invalidPruned: number;
+  results: PushSendResult[];
+}

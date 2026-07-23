@@ -188,3 +188,15 @@ export async function listUsers(page: { limit: number; offset: number }): Promis
     workspaceCount: num(r.workspaceCount),
   }));
 }
+
+/** 按邮箱找用户(跨租户,大小写不敏感)。admin 发测试推送时据此定位收件人。 */
+export async function findUserByEmail(
+  email: string,
+): Promise<{ id: string; email: string } | null> {
+  const [row] = await db
+    .select({ id: user.id, email: user.email })
+    .from(user)
+    .where(sql`lower(${user.email}) = ${email.trim().toLowerCase()}`)
+    .limit(1);
+  return row ?? null;
+}
