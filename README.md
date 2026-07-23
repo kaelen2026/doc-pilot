@@ -52,7 +52,7 @@ TEST_RUNNER_LIVE_SMOKE=1 xcodebuild -project apps/ios/DocPilot.xcodeproj \
 - [测试与 Evaluation](docs/architecture/testing-and-eval.md) — 测试策略、Evaluation 体系
 
 ### 决策记录
-- [ADR 索引](docs/adr/README.md) — 10 条关键架构决策
+- [ADR 索引](docs/adr/README.md) — 12 条关键架构决策
 - [决策日志](DECISIONS.md) — 超轻量 ADR：日常开发/重构中「选了什么、否了什么及原因、何时重审」的留痕
 
 ### 运维手册
