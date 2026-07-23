@@ -29,7 +29,7 @@ export function PublicPdfView({ documentId }: { documentId: string }) {
   if (document.isError || file.isError || !document.data || !file.data)
     return <main className="p-8 text-seal">公开文档不存在或已取消公开</main>;
   return (
-    <main className="mx-auto flex h-screen max-w-4xl flex-col px-6 py-6">
+    <main className="mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col px-6 py-6">
       <header className="flex items-center justify-between gap-4 pb-3">
         <div>
           <h1 className="truncate text-sm text-ink">{document.data.title}</h1>

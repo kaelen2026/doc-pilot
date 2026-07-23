@@ -24,7 +24,7 @@ export function ProfileView({ username }: { username: string }) {
   const p = profile.data;
   const own = me.data?.profile?.username === username;
   return (
-    <main className="mx-auto min-h-screen max-w-3xl space-y-8 px-6 py-14">
+    <main className="mx-auto max-w-3xl space-y-8 px-6 py-14">
       <header className="flex flex-wrap items-start justify-between gap-5 border-hairline border-b pb-8">
         <div className="flex gap-4">
           <div className="flex size-16 items-center justify-center overflow-hidden rounded-full bg-paper-sunken font-display text-2xl text-ink-soft">
