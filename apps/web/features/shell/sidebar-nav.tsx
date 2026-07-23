@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, Settings } from "lucide-react";
+import { FileText, Settings, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
@@ -29,16 +29,25 @@ const ITEMS: NavItem[] = [
   },
 ];
 
+// 仅平台管理员可见的入口,附加在主导航末尾(是否加入由调用方传入的 isAdmin 决定)。
+const ADMIN_ITEM: NavItem = {
+  href: "/admin",
+  label: "管理后台",
+  Icon: ShieldCheck,
+  match: (p) => p === "/admin" || p.startsWith("/admin/"),
+};
+
 /**
- * 侧栏主导航。展示组件:只读 collapsed,自己读 pathname 做高亮(pathname 是路由信号非业务态)。
- * 折叠时收成居中图标,label 转 title/aria-label 保留可达性。
+ * 侧栏主导航。展示组件:只读 collapsed/isAdmin,自己读 pathname 做高亮(pathname 是路由
+ * 信号非业务态)。折叠时收成居中图标,label 转 title/aria-label 保留可达性。
  */
-export function SidebarNav({ collapsed }: { collapsed: boolean }) {
+export function SidebarNav({ collapsed, isAdmin }: { collapsed: boolean; isAdmin: boolean }) {
   const pathname = usePathname();
+  const items = isAdmin ? [...ITEMS, ADMIN_ITEM] : ITEMS;
 
   return (
     <nav className="flex flex-col gap-0.5 px-2" aria-label="主导航">
-      {ITEMS.map(({ href, label, Icon, match }) => {
+      {items.map(({ href, label, Icon, match }) => {
         const active = match(pathname);
         return (
           <Link

@@ -28,6 +28,8 @@ export interface Me {
     socialLinks: Record<string, string>;
   } | null;
   workspaces: WorkspaceMembership[];
+  /** 是否平台管理员(邮箱白名单)。用于前端门禁 /admin 与侧栏入口。 */
+  isAdmin: boolean;
 }
 
 /** 单个配额维度的用量与上限。 */

@@ -32,6 +32,15 @@ resolve workspaceId (from membership, 不信任请求参数)
 
 **引入 Policy 层的触发条件**:出现多角色(如 viewer/editor)、跨 workspace 共享、或字段级/操作级细粒度权限时——那时授权不再等价于租户归属,`DocumentPolicy`(canRead/canUpload/canDelete/canAsk)才成为一个有深度的 seam,按 `load resource → policy.assertCanX → service` 接入 Controller/Service 入口。
 
+### 25.3 平台管理员(跨租户只读后台)
+
+`/admin` 后台是上述触发条件的第一个落地场景:它要看**所有** workspace 的汇总,授权不再等价于租户归属。它引入的是一个**跨租户的平台级角色**,与 `membership.role`(workspace 内角色,MVP 仍仅 `owner`)是**两个不同维度**——故不落在 `memberships` 表,也不改动 Better Auth 托管的 `user` 表。
+
+- **谁是管理员**:邮箱白名单,集中在 `apiEnv.adminEmails`(env `ADMIN_EMAILS`,逗号分隔,大小写不敏感)。判定的单一事实源是 `shared/admin.ts` 的 `isAdminEmail()`,`requireAdmin` 中间件与 `/me` 的 `isAdmin` 标志都调它。留空即无人可访问 `/admin`。
+- **授权闸门**:`middleware/admin.middleware.ts` 的 `requireAdmin` 挂在 `requireAuth` 之后(先拿到已认证 user,再比对白名单),非白名单返回 403。这是 `/admin` 一切跨租户查询的**唯一**入口;前端的 `/admin` 门禁与侧栏入口只是 UX,真正拦截在此(「永不信任前端」不变量)。
+- **数据访问例外**:`modules/admin/admin.repository.ts` 是全仓库**唯一刻意不带 `workspace_id` 过滤**的数据访问层——平台 admin 的语义正是跨租户聚合。它是被本节触发条件认可的例外,而非在 scoped repo 上打补丁的疏漏;业务/租户代码不得 import 它。其跨租户可见性由 `admin.repository.integration.test.ts` 用两个 workspace 钉住(与租户隔离集成测试互为反面)。
+- **范围**:第一版为**只读**——总览计数、按天/按模型的用量与成本聚合(口径见 §28)、workspace 与用户目录。任何跨租户**写操作**(如管理员删他人文档)会进一步抬高授权要求,届时应正式落 `DocumentPolicy` seam,而非扩展本白名单。
+
 ## 26. 安全方案
 
 ### 26.0 客户端会话接线

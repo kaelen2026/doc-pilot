@@ -3,6 +3,7 @@
 import { PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import { NotificationBell } from "@/components/notification-bell";
 import { SealMark } from "@/components/seal-mark";
+import { useMe } from "@/features/account/use-me";
 import { openCommandPalette } from "@/features/search/use-command-palette";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,8 @@ import { SidebarNav } from "./sidebar-nav";
 export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const { data: session } = authClient.useSession();
   const enabled = !!session;
+  // 平台管理员标志(GET /me,react-query 缓存,与设置页共用 ["me"] 查询)决定是否显示后台入口。
+  const { data: me } = useMe(enabled);
 
   return (
     <div
@@ -71,7 +74,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
         </div>
       ) : null}
 
-      <SidebarNav collapsed={collapsed} />
+      <SidebarNav collapsed={collapsed} isAdmin={me?.isAdmin ?? false} />
 
       <SidebarDocs collapsed={collapsed} enabled={enabled} />
 
