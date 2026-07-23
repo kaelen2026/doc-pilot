@@ -1,13 +1,13 @@
 # 运维手册:获取并配置 Apple 登录凭据
 
-对应设计 [Apple 原生客户端设计](../superpowers/specs/2026-07-21-apple-native-client-design.md) 与
-[ADR-011 扫码登录](../adr/ADR-011-scan-login-device-authorization.md)。本手册手把手带你在 Apple
-Developer 后台申请「Sign in with Apple」所需的四样真实凭据,并说明它们分别喂给谁。
+对应决策 [ADR-012 原生 Sign in with Apple](../adr/ADR-012-apple-native-signin.md)(设计取舍与代码落点)。
+本手册手把手带你在 Apple Developer 后台申请「Sign in with Apple」所需的真实凭据,并说明它们分别喂给谁。
 
-- **iOS 签名**用 `DEVELOPMENT_TEAM`(= Team ID),落点 `apps/ios/project.yml`。
-- **服务端** better-auth 的 Apple provider 需要一段 **client secret(JWT)**,由 `Team ID + Key ID + .p8`
-  三者签出;`clientId` 用 Bundle ID(原生)或 Service ID(web)。落点 `packages/auth/src/env.ts` →
-  `resolveSocialProviders`(现仅接了 Google,需照其写法补 Apple 分支)。
+- **iOS 签名**用 `DEVELOPMENT_TEAM`(= Team ID)。约定:repo 里**留空**,真机联调时本地覆盖(见 ⑤)。
+- **服务端** better-auth 的 Apple provider 需要一段 **client secret(ES256 JWT)**——但**不用你手动生成**:
+  `social.ts` 的 `resolveSocialProviders` 已接 Apple 分支,用 `jose` 从 `Team ID + Key ID + .p8`
+  **运行时动态签发**(免手动轮换)。你只需把这三样 + `clientId`(原生用 Bundle ID)喂进
+  `packages/auth/src/env.ts` 读的环境变量(见 ⑦)。
 
 > 本地跑模拟器、跑 CI 门禁**不需要**这些;只有真机调试 + Sign in with Apple 真流程才需要。
 
@@ -16,9 +16,10 @@ Developer 后台申请「Sign in with Apple」所需的四样真实凭据,并说
 | 项 | 当前值 | 说明 |
 |---|---|---|
 | Bundle ID | `dev.w3ctech.docpilot` | `apps/ios/project.yml`(`bundleIdPrefix: dev.w3ctech`) |
-| `DEVELOPMENT_TEAM` | 空 | `project.yml` / `pbxproj` 均留空,本地自动签名 |
-| server Apple provider | 未接线 | `social.ts` 目前只处理 Google |
-| iOS 登录代码 | 未实现 | Swift 侧尚无 `ASAuthorization` |
+| `DEVELOPMENT_TEAM` | 空(刻意) | `project.yml` / `pbxproj` 均留空,真机联调本地覆盖(见 ⑤) |
+| server Apple provider | 已接线 | `social.ts` 凭据齐备即注册,`jose` 动态签发 client secret(ADR-012) |
+| iOS 登录代码 | 已实现 | `AppleSignIn` + `AuthClient.signInWithApple` + 登录页按钮 |
+| App ID「Sign in with Apple」能力 | 需你在后台开启 | 见 ②;不开则自动签名签不出含该 entitlement 的描述文件 |
 
 ## 前提:付费 Apple Developer Program 会员
 
@@ -83,62 +84,46 @@ D-U-N-S,可能等 1–2 天)。
 
 > ⚠️ **`.p8` 只能下载一次**,关掉页面即再也下不了(只能作废重建)。下载后妥善保存,**绝不进 git**。
 
-## ⑤ 把 Team ID 填进 iOS 签名
+## ⑤ 提供 Team ID 给 iOS 签名(约定:本地覆盖,不写进仓库)
 
-改 `apps/ios/project.yml`(xcodegen 的源,`pbxproj` 由它生成):
+`DEVELOPMENT_TEAM` 在 repo 里**刻意留空**:受限 entitlement(Sign in with Apple / APNS)真机联调才需要
+团队,模拟器构建与 CI 不校验,留空可让门禁保持绿(见 ADR-012)。真机构建时**本地覆盖**,二选一:
 
-```yaml
-# apps/ios/project.yml
-settings:
-  DEVELOPMENT_TEAM: "A1BCD23EFG"   # 换成你的 Team ID
-```
+- **命令行**:`xcodebuild ... DEVELOPMENT_TEAM=A1BCD23EFG -allowProvisioningUpdates`(换成你的 Team ID)。
+- **Xcode**:打开 `apps/ios/DocPilot.xcodeproj` → 选 target → **Signing & Capabilities** → 勾
+  *Automatically manage signing* + 选 Team,并确保 Xcode **Settings → Accounts** 已登录该团队的 Apple ID,
+  然后选真机 ⌘R。
 
-然后 `cd apps/ios && xcodegen generate` 重新生成工程。不想把 Team ID 写进仓库,可留空并在 Xcode
-**Signing & Capabilities** 勾 *Automatically manage signing* + 选 Team,由本地注入;CI 侧走 xcconfig
-本地覆盖,不提交明文。
+> ⚠️ 前置:必须先在 Apple 后台给 App ID 开启 Sign in with Apple 能力(②),否则自动签名签不出含
+> `com.apple.developer.applesignin` 的描述文件。**不要**为图省事把 Team ID 提交进 `project.yml`/`pbxproj`。
 
-## ⑥ 用 Team ID + Key ID + .p8 生成 client secret(JWT)
+## ⑥ 配置环境变量(client secret 由服务端动态签发,无需手填)
 
-better-auth 的 Apple provider `clientSecret` 是一段 **ES256 签名 JWT**,Apple 规定**最长约 6 个月**过期,
-到期需重签。用下面脚本生成(`jose` 仓库已有;缺就 `pnpm add -w jose`):
+**不用手动生成 client secret JWT。** `social.ts` 的 `resolveSocialProviders` 已用 `jose` 从
+`APPLE_TEAM_ID + APPLE_KEY_ID + APPLE_PRIVATE_KEY` **运行时动态签发** ES256 client secret(iss=Team ID、
+sub=clientId、aud=`https://appleid.apple.com`、180 天),因此**没有 `APPLE_CLIENT_SECRET` 这个变量**,
+也免去到期手动重签。你只需把凭据喂进 `packages/auth/src/env.ts` 读取的环境变量。
 
-```js
-// gen-apple-secret.mjs  —  node gen-apple-secret.mjs
-import { readFileSync } from "node:fs";
-import { SignJWT, importPKCS8 } from "jose";
-
-const TEAM_ID = "A1BCD23EFG"; // ① Team ID
-const KEY_ID = "2ABCD3EFGH"; // ④ Key ID
-const CLIENT_ID = "dev.w3ctech.docpilot"; // 原生用 Bundle ID;web 流程用 Service ID
-const P8_PATH = "./AuthKey_2ABCD3EFGH.p8"; // ④ 下载的私钥
-
-const key = await importPKCS8(readFileSync(P8_PATH, "utf8"), "ES256");
-const now = Math.floor(Date.now() / 1000);
-const jwt = await new SignJWT({})
-  .setProtectedHeader({ alg: "ES256", kid: KEY_ID })
-  .setIssuer(TEAM_ID)
-  .setIssuedAt(now)
-  .setExpirationTime(now + 60 * 60 * 24 * 180) // 180 天,Apple 上限约 6 个月
-  .setAudience("https://appleid.apple.com")
-  .setSubject(CLIENT_ID)
-  .sign(key);
-console.log(jwt);
-```
-
-产出的 JWT 即 `APPLE_CLIENT_SECRET`。**脚本与 .p8 放临时目录跑,别进仓库。**
-
-## ⑦ 配置到环境变量(接线待补)
-
-按 env.ts 集中读取的铁律,凭据进 `packages/auth/src/env.ts`,再由 `social.ts` 派生 provider
-(现仅处理 Google,需照其写法补 Apple 分支)。`.env` 追加(对齐 Google 的注释风格):
+按 env.ts 集中读取的铁律,`.env` 追加(与 `.env.example` 保持一致;四项 CLIENT_ID/TEAM_ID/KEY_ID/PRIVATE_KEY
+齐备才注册 provider,缺一即跳过):
 
 ```env
-# Apple 社交登录(可选)。三者齐备才注册 Apple provider。
-# 回调地址在 Apple 后台 Service ID 配为 ${BETTER_AUTH_URL}/api/auth/callback/apple。
-APPLE_CLIENT_ID=dev.w3ctech.docpilot          # 原生用 Bundle ID;web 流程用 Service ID
-APPLE_CLIENT_SECRET=<⑥生成的 JWT>              # [secret] 约 6 个月过期,到期重签
-APPLE_APP_BUNDLE_IDENTIFIER=dev.w3ctech.docpilot  # 校验原生 id_token 的 aud
+# Sign in with Apple(可选)。client secret 由后端用私钥动态签发,不用自己配。
+APPLE_CLIENT_ID=dev.w3ctech.docpilot            # 原生用 Bundle ID;web OAuth 流程用 Service ID
+APPLE_TEAM_ID=A1BCD23EFG                         # ① Team ID
+APPLE_KEY_ID=2ABCD3EFGH                          # ④ Key ID
+APPLE_APP_BUNDLE_IDENTIFIER=dev.w3ctech.docpilot # 校验原生 idToken 的 aud(= App bundle id)
+# ④ 的 .p8 内容;单行存储时把换行转义为字面量 \n(env.ts 会还原)。[secret] 勿提交。
+APPLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
 ```
 
-> **服务端 `resolveSocialProviders` 与 iOS Swift 侧的 `ASAuthorization` 登录代码都尚未实现**,
-> 需另行开发。本手册只覆盖「拿到并配置凭据」这一段。
+> `.p8` 转单行:`awk 'BEGIN{ORS="\\n"}{print}' AuthKey_XXXX.p8`,把输出填进 `APPLE_PRIVATE_KEY` 的引号内。
+
+## ⑦ 验证(可选)
+
+配好后,不必等真机点按钮就能确认接线:
+
+- **私钥能签**:`cd packages/auth && node --env-file=../../.env --input-type=module -e 'import {importPKCS8} from "jose"; await importPKCS8((process.env.APPLE_PRIVATE_KEY??"").replace(/\\n/g,"\n"),"ES256"); console.log("ok")'` 打印 `ok` 即 `.p8` 格式正确。
+- **provider 已注册**:起 api 后 `curl -X POST $BETTER_AUTH_URL/api/auth/sign-in/social -H 'Content-Type: application/json' -d '{"provider":"apple","idToken":{"token":"bogus"}}'` 返回 `401 INVALID_TOKEN`(而非 `PROVIDER_NOT_FOUND`)即说明 apple provider 已上线。
+
+配置面到此为止;代码侧的取舍与落点见 [ADR-012](../adr/ADR-012-apple-native-signin.md)。

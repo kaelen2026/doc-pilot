@@ -15,3 +15,4 @@
 | [ADR-009](ADR-009-sse-over-websocket.md) | SSE 而不是 WebSocket | Accepted |
 | [ADR-010](ADR-010-soft-delete-async-purge.md) | 软删除加异步物理清理 | Accepted |
 | [ADR-011](ADR-011-scan-login-device-authorization.md) | 扫码登录采用设备授权流程(RFC 8628) | Accepted |
+| [ADR-012](ADR-012-apple-native-signin.md) | 原生 Sign in with Apple 采用 idToken 直登 | Accepted |
