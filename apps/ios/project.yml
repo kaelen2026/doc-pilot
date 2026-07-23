@@ -43,6 +43,9 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        # 仅用 HTTPS/TLS 与 SHA-256 哈希(SIWA nonce、上传校验和),属出口合规豁免。
+        # 声明为 false 免去 TestFlight 每版的 Missing Compliance 手填。
+        ITSAppUsesNonExemptEncryption: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.w3ctech.docpilot
