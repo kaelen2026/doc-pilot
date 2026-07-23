@@ -36,6 +36,11 @@ targets:
         NSCameraUsageDescription: 用于扫描二维码,登录 DocPilot 网页版。
         # 无此键 iOS 会以兼容 letterbox 缩放运行(黑边+顶部大片留白),故必须声明以启用原生全屏。
         UILaunchScreen: {}
+        # App Store 校验(90474)要求声明支持的方向;iPhone-only 用竖屏 + 左右横屏。
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
     settings:
@@ -43,6 +48,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: dev.w3ctech.docpilot
         MARKETING_VERSION: 0.1.0
         CURRENT_PROJECT_VERSION: 1
+        # iPad 已从原生 app 移除,锁 iPhone-only(避免 App Store 要求 iPad 多任务全方向)。
+        TARGETED_DEVICE_FAMILY: "1"
   DocPilotTests:
     type: bundle.unit-test
     supportedDestinations: [iOS]
