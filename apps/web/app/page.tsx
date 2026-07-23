@@ -95,6 +95,16 @@ export default function HomePage() {
           ))}
         </ol>
       </section>
+
+      <footer className="flex items-center justify-between border-t border-hairline py-8 text-sm text-ink-faint">
+        <span>DocPilot</span>
+        <Link
+          href="/privacy"
+          className="rounded-md px-1 outline-ring focus-visible:outline-2 focus-visible:outline-offset-2 [@media(hover:hover)]:hover:text-ink"
+        >
+          隐私政策
+        </Link>
+      </footer>
     </main>
   );
 }
