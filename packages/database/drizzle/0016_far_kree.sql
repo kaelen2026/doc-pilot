@@ -1,0 +1,8 @@
+ALTER TABLE "messages" ADD CONSTRAINT "messages_role_check" CHECK ("messages"."role" in ('user', 'assistant'));--> statement-breakpoint
+ALTER TABLE "messages" ADD CONSTRAINT "messages_status_check" CHECK ("messages"."status" in ('pending', 'completed', 'failed'));--> statement-breakpoint
+ALTER TABLE "documents" ADD CONSTRAINT "documents_status_check" CHECK ("documents"."status" in ('pending_upload', 'uploaded', 'queued', 'processing', 'ready', 'partially_ready', 'failed', 'deleting', 'deleted'));--> statement-breakpoint
+ALTER TABLE "documents" ADD CONSTRAINT "documents_current_stage_check" CHECK ("documents"."current_stage" is null or "documents"."current_stage" in ('validate', 'parse', 'clean', 'chunk', 'embed', 'summarize', 'finalize', 'delete'));--> statement-breakpoint
+ALTER TABLE "outbox_events" ADD CONSTRAINT "outbox_events_status_check" CHECK ("outbox_events"."status" in ('pending', 'publishing', 'published', 'failed'));--> statement-breakpoint
+ALTER TABLE "processing_jobs" ADD CONSTRAINT "processing_jobs_type_check" CHECK ("processing_jobs"."type" in ('process_document'));--> statement-breakpoint
+ALTER TABLE "processing_jobs" ADD CONSTRAINT "processing_jobs_stage_check" CHECK ("processing_jobs"."stage" in ('validate', 'parse', 'clean', 'chunk', 'embed', 'summarize', 'finalize', 'delete'));--> statement-breakpoint
+ALTER TABLE "processing_jobs" ADD CONSTRAINT "processing_jobs_status_check" CHECK ("processing_jobs"."status" in ('pending', 'running', 'retrying', 'completed', 'failed', 'cancelled'));

@@ -93,7 +93,8 @@ CREATE TABLE outbox_events (
   aggregate_id UUID NOT NULL,
   event_type VARCHAR(100) NOT NULL,
   payload JSONB NOT NULL,
-  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  status VARCHAR(20) NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'publishing', 'published', 'failed')),
   attempts INTEGER NOT NULL DEFAULT 0,
   last_error TEXT,
   attempted_at TIMESTAMPTZ,

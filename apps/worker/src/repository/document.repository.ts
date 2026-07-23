@@ -39,12 +39,13 @@ export interface ClaimedDocument {
  */
 export async function claimDocument(params: {
   documentId: string;
+  workspaceId: string;
   processingVersion: number;
 }): Promise<ClaimedDocument | null> {
   const [doc] = await db
     .select()
     .from(documents)
-    .where(eq(documents.id, params.documentId))
+    .where(and(eq(documents.id, params.documentId), eq(documents.workspaceId, params.workspaceId)))
     .limit(1);
 
   if (!passesProcessingGuard(doc, params.processingVersion)) {
@@ -123,6 +124,7 @@ export async function findCanonicalByChecksum(params: {
  * 返回 null——调用方据此回退正常处理,不冒险写入不完整数据。
  */
 export async function loadFinalizedContent(
+  workspaceId: string,
   documentId: string,
   processingVersion: number,
 ): Promise<{ chunks: Chunk[]; embedded: EmbeddedChunks } | null> {
@@ -131,6 +133,7 @@ export async function loadFinalizedContent(
     .from(documentChunks)
     .where(
       and(
+        eq(documentChunks.workspaceId, workspaceId),
         eq(documentChunks.documentId, documentId),
         eq(documentChunks.processingVersion, processingVersion),
       ),
@@ -172,6 +175,7 @@ export async function loadFinalizedContent(
  */
 export async function markStage(params: {
   documentId: string;
+  workspaceId: string;
   processingVersion: number;
   jobIdempotencyKey: string;
   stage: ProcessingStage;
@@ -181,7 +185,9 @@ export async function markStage(params: {
     const [doc] = await tx
       .select()
       .from(documents)
-      .where(eq(documents.id, params.documentId))
+      .where(
+        and(eq(documents.id, params.documentId), eq(documents.workspaceId, params.workspaceId)),
+      )
       .for("update");
 
     if (!passesProcessingGuard(doc, params.processingVersion)) {
@@ -197,12 +203,19 @@ export async function markStage(params: {
         progress: params.progress,
         updatedAt: new Date(),
       })
-      .where(eq(documents.id, params.documentId));
+      .where(
+        and(eq(documents.id, params.documentId), eq(documents.workspaceId, params.workspaceId)),
+      );
 
     await tx
       .update(processingJobs)
       .set({ status: "running", stage: params.stage, startedAt: new Date() })
-      .where(eq(processingJobs.idempotencyKey, params.jobIdempotencyKey));
+      .where(
+        and(
+          eq(processingJobs.idempotencyKey, params.jobIdempotencyKey),
+          eq(processingJobs.workspaceId, params.workspaceId),
+        ),
+      );
   });
 }
 
@@ -237,7 +250,9 @@ export async function saveChunksAndFinalize(params: {
     const [doc] = await tx
       .select()
       .from(documents)
-      .where(eq(documents.id, params.documentId))
+      .where(
+        and(eq(documents.id, params.documentId), eq(documents.workspaceId, params.workspaceId)),
+      )
       .for("update");
 
     if (!passesProcessingGuard(doc, params.processingVersion)) {
@@ -248,6 +263,7 @@ export async function saveChunksAndFinalize(params: {
       .delete(documentChunks)
       .where(
         and(
+          eq(documentChunks.workspaceId, params.workspaceId),
           eq(documentChunks.documentId, params.documentId),
           eq(documentChunks.processingVersion, params.processingVersion),
         ),
@@ -299,7 +315,9 @@ export async function saveChunksAndFinalize(params: {
         ...(params.checksumSha256 ? { checksumSha256: params.checksumSha256 } : {}),
         updatedAt: new Date(),
       })
-      .where(eq(documents.id, params.documentId));
+      .where(
+        and(eq(documents.id, params.documentId), eq(documents.workspaceId, params.workspaceId)),
+      );
 
     if (params.checksumSha256) {
       // 回填物理文件记录的 checksum(兑现 document_files.checksum_sha256 原有设计)。
@@ -323,7 +341,12 @@ export async function saveChunksAndFinalize(params: {
         },
         completedAt: new Date(),
       })
-      .where(eq(processingJobs.idempotencyKey, params.jobIdempotencyKey));
+      .where(
+        and(
+          eq(processingJobs.idempotencyKey, params.jobIdempotencyKey),
+          eq(processingJobs.workspaceId, params.workspaceId),
+        ),
+      );
 
     // 仅 ready 发通知(partially_ready 不发,v1 决策)。收件人为文档 owner。
     // onConflictDoNothing:重放(同 processing_version 的重复投递)不产生重复通知。
@@ -366,6 +389,7 @@ export async function saveChunksAndFinalize(params: {
  */
 export async function markFailed(params: {
   documentId: string;
+  workspaceId: string;
   processingVersion: number;
   jobIdempotencyKey: string;
   errorCode: string;
@@ -375,7 +399,9 @@ export async function markFailed(params: {
     const [doc] = await tx
       .select()
       .from(documents)
-      .where(eq(documents.id, params.documentId))
+      .where(
+        and(eq(documents.id, params.documentId), eq(documents.workspaceId, params.workspaceId)),
+      )
       .for("update");
 
     if (!passesProcessingGuard(doc, params.processingVersion, { blockStatuses: READY_STATUSES })) {
@@ -390,7 +416,9 @@ export async function markFailed(params: {
         errorMessage: params.errorMessage.slice(0, 2000),
         updatedAt: new Date(),
       })
-      .where(eq(documents.id, params.documentId));
+      .where(
+        and(eq(documents.id, params.documentId), eq(documents.workspaceId, params.workspaceId)),
+      );
 
     await tx
       .update(processingJobs)
@@ -400,7 +428,12 @@ export async function markFailed(params: {
         errorMessage: params.errorMessage.slice(0, 2000),
         completedAt: new Date(),
       })
-      .where(eq(processingJobs.idempotencyKey, params.jobIdempotencyKey));
+      .where(
+        and(
+          eq(processingJobs.idempotencyKey, params.jobIdempotencyKey),
+          eq(processingJobs.workspaceId, params.workspaceId),
+        ),
+      );
 
     const [row] = await tx
       .insert(notifications)

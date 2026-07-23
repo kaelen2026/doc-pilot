@@ -75,7 +75,7 @@ describe("公开主页仓库不变量", () => {
   it("关注与取消关注幂等且计数准确", async () => {
     await followByUsername(userB, usernameA);
     await followByUsername(userB, usernameA);
-    expect(await db.select().from(userFollows)).toEqual([
+    expect(await db.select().from(userFollows).where(eq(userFollows.followerId, userB))).toEqual([
       expect.objectContaining({ followerId: userB, followingId: userA }),
     ]);
     expect((await findPublicProfile(usernameA))?.followerCount).toBe(1);

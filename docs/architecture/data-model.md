@@ -173,9 +173,16 @@ CREATE TABLE documents (
   original_filename VARCHAR(255) NOT NULL,
   mime_type VARCHAR(100) NOT NULL,
   size_bytes BIGINT NOT NULL,
-  status VARCHAR(32) NOT NULL,
+  status VARCHAR(32) NOT NULL CHECK (
+    status IN ('pending_upload', 'uploaded', 'queued', 'processing', 'ready',
+               'partially_ready', 'failed', 'deleting', 'deleted')
+  ),
   visibility VARCHAR(16) NOT NULL DEFAULT 'private', -- private / public
-  current_stage VARCHAR(32),
+  current_stage VARCHAR(32) CHECK (
+    current_stage IS NULL OR current_stage IN (
+      'validate', 'parse', 'clean', 'chunk', 'embed', 'summarize', 'finalize', 'delete'
+    )
+  ),
   progress INTEGER NOT NULL DEFAULT 0,
   page_count INTEGER,
   text_length INTEGER,
@@ -294,9 +301,13 @@ CREATE TABLE processing_jobs (
   id UUID PRIMARY KEY,
   workspace_id UUID NOT NULL,
   document_id UUID NOT NULL,
-  type VARCHAR(50) NOT NULL,
-  stage VARCHAR(32) NOT NULL,
-  status VARCHAR(32) NOT NULL,
+  type VARCHAR(50) NOT NULL CHECK (type IN ('process_document')),
+  stage VARCHAR(32) NOT NULL CHECK (
+    stage IN ('validate', 'parse', 'clean', 'chunk', 'embed', 'summarize', 'finalize', 'delete')
+  ),
+  status VARCHAR(32) NOT NULL CHECK (
+    status IN ('pending', 'running', 'retrying', 'completed', 'failed', 'cancelled')
+  ),
   idempotency_key VARCHAR(255) NOT NULL,
   attempt INTEGER NOT NULL DEFAULT 0,
   max_attempts INTEGER NOT NULL DEFAULT 5,
@@ -334,9 +345,9 @@ CREATE TABLE messages (
   id UUID PRIMARY KEY,
   conversation_id UUID NOT NULL,
   workspace_id UUID NOT NULL,
-  role VARCHAR(20) NOT NULL,
+  role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant')),
   content TEXT NOT NULL,
-  status VARCHAR(20) NOT NULL,
+  status VARCHAR(20) NOT NULL CHECK (status IN ('pending', 'completed', 'failed')),
   client_request_id VARCHAR(100),
   parent_message_id UUID,
   generation_id UUID,

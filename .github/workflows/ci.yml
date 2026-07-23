@@ -88,6 +88,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:migrate
       - run: pnpm --filter @doc-pilot/api test:integration
+      - run: pnpm --filter @doc-pilot/worker test:integration
 
   build:
     runs-on: ubuntu-latest
@@ -100,6 +101,32 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+
+  ios:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build iOS Simulator without signing
+        run: |
+          xcodebuild \
+            -project apps/ios/DocPilot.xcodeproj \
+            -scheme docpilot \
+            -configuration Debug \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+      - name: Run iOS unit tests
+        run: |
+          xcodebuild \
+            -project apps/ios/DocPilot.xcodeproj \
+            -scheme docpilot \
+            -configuration Debug \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            -only-testing:DocPilotTests \
+            test
 
   commitlint:
     if: github.event_name == 'pull_request'

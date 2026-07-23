@@ -20,6 +20,15 @@
 
 职责：登录、文档列表、上传、处理进度、PDF 阅读器、摘要、流式问答、引用定位。
 
+### 3.2.1 iOS
+
+- SwiftUI（iOS 26+）
+- SwiftData
+- 原生 PDF 阅读与本地高亮
+
+职责：邮箱 OTP / 社交登录、PDF 上传与缓存阅读、流式问答与引用跳页、搜索、通知和账户用量。
+它与 Web 共用公开 HTTP/SSE API，不直接访问数据库、Redis 或对象存储。
+
 ### 3.3 API
 
 - Hono
@@ -186,11 +195,18 @@ API 内部采用**模块化单体**。
 
 ```
 modules/
+├── admin/
 ├── conversations/
 ├── documents/
 ├── health/
 ├── me/
-└── quota/
+├── notifications/
+├── profiles/
+├── public-documents/
+├── push/
+├── quota/
+├── scan-login/
+└── search/
 ```
 
 > **与早期设计的差异(现状说明)**:早期草案曾规划 users/workspaces/authorization/

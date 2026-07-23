@@ -75,7 +75,7 @@ export function createDocumentProcessor(deps: {
       }
     };
 
-    const claim = await repo.claimDocument({ documentId, processingVersion });
+    const claim = await repo.claimDocument({ documentId, workspaceId, processingVersion });
     if (!claim) {
       log.info("document.skip", { reason: "guard_failed" });
       return { status: "skipped" };
@@ -87,6 +87,7 @@ export function createDocumentProcessor(deps: {
     try {
       await repo.markStage({
         documentId,
+        workspaceId: claim.workspaceId,
         processingVersion,
         jobIdempotencyKey,
         stage: "parse",
@@ -105,7 +106,11 @@ export function createDocumentProcessor(deps: {
         excludeDocumentId: documentId,
       });
       if (canonical) {
-        const content = await repo.loadFinalizedContent(canonical.id, canonical.processingVersion);
+        const content = await repo.loadFinalizedContent(
+          claim.workspaceId,
+          canonical.id,
+          canonical.processingVersion,
+        );
         if (content) {
           const summaryError =
             canonical.status === "partially_ready"
@@ -144,6 +149,7 @@ export function createDocumentProcessor(deps: {
 
       await repo.markStage({
         documentId,
+        workspaceId: claim.workspaceId,
         processingVersion,
         jobIdempotencyKey,
         stage: "clean",
@@ -153,6 +159,7 @@ export function createDocumentProcessor(deps: {
 
       await repo.markStage({
         documentId,
+        workspaceId: claim.workspaceId,
         processingVersion,
         jobIdempotencyKey,
         stage: "chunk",
@@ -163,6 +170,7 @@ export function createDocumentProcessor(deps: {
       // embed 失败会阻断管线(没有向量就没法问答):瞬时 AI 错误重试,其余判失败。
       await repo.markStage({
         documentId,
+        workspaceId: claim.workspaceId,
         processingVersion,
         jobIdempotencyKey,
         stage: "embed",
@@ -181,6 +189,7 @@ export function createDocumentProcessor(deps: {
       // 摘要失败不阻断管线:文档仍可问答,状态落为 partially_ready(pipeline.md §13)。
       await repo.markStage({
         documentId,
+        workspaceId: claim.workspaceId,
         processingVersion,
         jobIdempotencyKey,
         stage: "summarize",
@@ -238,6 +247,7 @@ export function createDocumentProcessor(deps: {
         if (job.attemptsMade + 1 >= attempts) {
           const notification = await repo.markFailed({
             documentId,
+            workspaceId: claim.workspaceId,
             processingVersion,
             jobIdempotencyKey,
             errorCode,
@@ -251,6 +261,7 @@ export function createDocumentProcessor(deps: {
       // 不可重试:落库 failed 并阻止重试。
       const notification = await repo.markFailed({
         documentId,
+        workspaceId: claim.workspaceId,
         processingVersion,
         jobIdempotencyKey,
         errorCode,
