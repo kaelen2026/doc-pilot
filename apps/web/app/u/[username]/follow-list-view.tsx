@@ -15,7 +15,7 @@ export function FollowListView({
     queryFn: () => fetchFollowUsers(username, direction),
   });
   return (
-    <main className="mx-auto min-h-screen max-w-2xl px-6 py-14">
+    <main className="mx-auto max-w-2xl px-6 py-14">
       <Link href={`/u/${username}`} className="text-sm text-seal">
         ← 返回主页
       </Link>
