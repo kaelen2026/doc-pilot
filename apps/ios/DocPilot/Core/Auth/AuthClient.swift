@@ -36,6 +36,29 @@ struct AuthClient: Sendable {
         return session
     }
 
+    /// 原生 Sign in with Apple:把 Apple 返回的 idToken 交给后端换取会话。
+    /// 收尾与 `verifyOTP` 完全一致——从响应头 `set-auth-token` 取 bearer 存 Keychain,
+    /// 再 `restoreSession()` 拉 `AuthSession`。`nonce` 传 iOS 生成的 raw nonce(见 AppleSignIn)。
+    func signInWithApple(identityToken: String, nonce: String?) async throws -> AuthSession {
+        let response = try await api.transport.send(try request(
+            path: "/api/auth/sign-in/social",
+            body: SignInSocialBody(
+                provider: "apple",
+                idToken: SignInSocialBody.IDToken(token: identityToken, nonce: nonce)
+            )
+        ))
+        guard 200..<300 ~= response.response.statusCode else {
+            if response.response.statusCode == 401 { throw APIError.unauthorized }
+            throw APIError.server(statusCode: response.response.statusCode, code: nil)
+        }
+        guard let token = response.response.value(forHTTPHeaderField: "set-auth-token"), !token.isEmpty else {
+            throw APIError.invalidResponse
+        }
+        try tokenStore.saveToken(token)
+        guard let session = try await restoreSession() else { throw APIError.unauthorized }
+        return session
+    }
+
     func restoreSession() async throws -> AuthSession? {
         guard let token = try tokenStore.loadToken() else { return nil }
         var authenticated = api
@@ -74,3 +97,11 @@ struct AuthClient: Sendable {
 private struct SendOTPBody: Encodable, Sendable { let email: String; let type: String }
 private struct VerifyOTPBody: Encodable, Sendable { let email: String; let otp: String }
 private struct EmptyBody: Encodable, Sendable {}
+
+/// better-auth `POST /api/auth/sign-in/social` 的原生 idToken 登录形状:
+/// `{ provider, idToken: { token, nonce? } }`。nonce 为 nil 时 JSONEncoder 省略该键。
+private struct SignInSocialBody: Encodable, Sendable {
+    let provider: String
+    let idToken: IDToken
+    struct IDToken: Encodable, Sendable { let token: String; let nonce: String? }
+}
