@@ -28,6 +28,9 @@ export async function sendTestPushToUser(input: {
   apns: ApnsClient;
 }): Promise<TestSendSummary> {
   const devices = await repo.listByUserId(input.userId);
+  // 管理后台测试推送当前由 APNS client 驱动；Android 的真实业务通知由 Worker FCM 分发。
+  // 必须先按平台过滤，绝不能把大小写敏感的 FCM token 误发给 APNS。
+  const iosDevices = devices.filter((device) => device.platform === "ios");
   const payload = buildAlertPayload({
     title: input.title,
     body: input.body,
@@ -37,7 +40,7 @@ export async function sendTestPushToUser(input: {
   const { outcomes } = await sendToDevices({
     client: input.apns,
     // 库内 environment 受注册时的枚举校验保护,只会是 sandbox / production。
-    devices: devices.map((d) => ({
+    devices: iosDevices.map((d) => ({
       token: d.token,
       environment: d.environment as ApnsEnvironment,
     })),

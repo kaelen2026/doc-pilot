@@ -2,6 +2,7 @@ package dev.w3ctech.docpilot
 
 import android.app.Application
 import android.net.Uri
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
@@ -16,13 +17,18 @@ import dev.w3ctech.docpilot.data.DocumentItem
 import dev.w3ctech.docpilot.data.NotificationItem
 import dev.w3ctech.docpilot.data.SearchResult
 import dev.w3ctech.docpilot.data.Usage
+import dev.w3ctech.docpilot.data.GoogleSignIn
+import dev.w3ctech.docpilot.data.HighlightEntity
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.tasks.await
 
 enum class Page { Documents, Account, Search, Notifications, Scanner, Reader }
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
   private val repo = (application as DocPilotApplication).repository
+  private val highlights = (application as DocPilotApplication).database.highlights()
   var session by mutableStateOf<AuthSession?>(null); private set
   var restoring by mutableStateOf(true); private set
   var busy by mutableStateOf(false); private set
@@ -39,13 +45,24 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
   var pdfPage by mutableStateOf<Bitmap?>(null); private set
   var pdfPageIndex by mutableStateOf(0); private set
   var pdfPageCount by mutableStateOf(0); private set
+  var highlightedPages by mutableStateOf<Set<Int>>(emptySet()); private set
   private var renderer: PdfRenderer? = null
 
-  init { viewModelScope.launch { session = repo.restore(); restoring = false; if (session != null) refresh() } }
+  init { viewModelScope.launch {
+    session = repo.restore()
+    restoring = false
+    if (session != null) {
+      refresh()
+      registerPush()
+    }
+  } }
 
   fun sendOtp(email: String) = run { repo.sendOtp(email); otpSent = true }
   fun login(email: String, secret: String, otp: Boolean) = run {
-    session = repo.signIn(email, secret, otp); refresh()
+    session = repo.signIn(email, secret, otp); refresh(); registerPush()
+  }
+  fun googleSignIn(context: Context) = run {
+    session = repo.signInGoogle(GoogleSignIn(context).idToken()); refresh(); registerPush()
   }
   fun refresh() = run { documents = repo.documents() }
   fun upload(uri: Uri) = run {
@@ -62,7 +79,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
       renderer = PdfRenderer(ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY))
       pdfPageCount = renderer?.pageCount ?: 0
       renderPage(((initialPage ?: 1) - 1).coerceAtLeast(0))
+      viewModelScope.launch {
+        highlights.observe(session!!.user.id, document.id).collect { rows ->
+          highlightedPages = rows.mapTo(mutableSetOf()) { it.page }
+        }
+      }
     }
+  }
+  fun highlightCurrentPage() = run {
+    highlights.put(HighlightEntity(session!!.user.id, selectedDocument!!.id, pdfPageIndex + 1))
   }
   fun renderPage(index: Int) {
     val active = renderer ?: return
@@ -96,6 +121,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
   fun signOut() = run { repo.signOut(); session = null; documents = emptyList() }
   fun deleteAccount() = run { repo.scheduleDeletion(); repo.signOut(); session = null }
   fun clearError() { error = null }
+
+  private suspend fun registerPush() {
+    runCatching { repo.registerPush(FirebaseMessaging.getInstance().token.await()) }
+  }
 
   private fun run(block: suspend () -> Unit) {
     viewModelScope.launch {

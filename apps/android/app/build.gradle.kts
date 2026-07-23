@@ -3,6 +3,11 @@ plugins {
   id("org.jetbrains.kotlin.android")
   id("org.jetbrains.kotlin.plugin.compose")
   id("org.jetbrains.kotlin.plugin.serialization")
+  id("com.google.devtools.ksp")
+}
+
+if (file("google-services.json").exists()) {
+  apply(plugin = "com.google.gms.google-services")
 }
 
 android {
@@ -18,6 +23,7 @@ android {
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     vectorDrawables.useSupportLibrary = true
     buildConfigField("String", "API_BASE_URL", "\"${providers.gradleProperty("DOC_PILOT_API_URL").orElse("http://10.0.2.2:3001").get()}\"")
+    buildConfigField("String", "GOOGLE_CLIENT_ID", "\"${providers.gradleProperty("DOC_PILOT_GOOGLE_CLIENT_ID").orElse("").get()}\"")
   }
 
   buildTypes {
@@ -53,11 +59,22 @@ dependencies {
   implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
   implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
   implementation("androidx.navigation:navigation-compose:2.9.6")
+  implementation("androidx.credentials:credentials:1.6.0")
+  implementation("androidx.credentials:credentials-play-services-auth:1.6.0")
+  implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
   implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
   implementation("com.squareup.okhttp3:okhttp:5.3.2")
   implementation("androidx.security:security-crypto:1.1.0")
+  implementation("androidx.room:room-runtime:2.8.4")
+  implementation("androidx.room:room-ktx:2.8.4")
+  ksp("androidx.room:room-compiler:2.8.4")
   implementation("com.google.firebase:firebase-messaging:25.0.1")
+  implementation("androidx.camera:camera-camera2:1.5.3")
+  implementation("androidx.camera:camera-lifecycle:1.5.3")
+  implementation("androidx.camera:camera-view:1.5.3")
+  implementation("com.google.mlkit:barcode-scanning:17.3.0")
 
   testImplementation("junit:junit:4.13.2")
   testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")

@@ -1,17 +1,15 @@
-import {
-  type ApnsClient,
-  buildAlertPayload,
-  type PushTarget,
-  sendToDevices,
-} from "@doc-pilot/push";
+import { type ApnsClient, buildAlertPayload, sendToDevices } from "@doc-pilot/push";
+import type { MobilePushTarget } from "../repository/push.repository";
+import type { FcmClient } from "./fcm";
 
 /**
  * 发角标推送所需的依赖(注入,便于单测):APNS client、按用户查设备、按 (workspace, user)
  * 计未读、清除失效令牌。接线在 apps/worker/src/index.ts(缺 APNS 配置时整条通路不接)。
  */
 export interface BadgePushDeps {
-  client: ApnsClient;
-  listDevices: (userId: string) => Promise<PushTarget[]>;
+  apns?: ApnsClient;
+  fcm?: FcmClient;
+  listDevices: (userId: string) => Promise<MobilePushTarget[]>;
   countUnread: (params: { workspaceId: string; userId: string }) => Promise<number>;
   deleteInvalidTokens: (tokens: string[]) => Promise<void>;
 }
@@ -36,6 +34,21 @@ export async function sendBadgePush(
     badge: unread,
     data: { type: "document" },
   });
-  const { invalidTokens } = await sendToDevices({ client: deps.client, devices, payload });
+  const ios = devices.filter((device) => device.platform === "ios");
+  const android = devices.filter((device) => device.platform === "android");
+  const invalidTokens: string[] = [];
+  if (deps.apns && ios.length > 0) {
+    const result = await sendToDevices({ client: deps.apns, devices: ios, payload });
+    invalidTokens.push(...result.invalidTokens);
+  }
+  if (deps.fcm && android.length > 0) {
+    const result = await deps.fcm.send({
+      tokens: android.map((device) => device.token),
+      title: input.title,
+      body: input.body ?? undefined,
+      badge: unread,
+    });
+    invalidTokens.push(...result.invalidTokens);
+  }
   await deps.deleteInvalidTokens(invalidTokens);
 }

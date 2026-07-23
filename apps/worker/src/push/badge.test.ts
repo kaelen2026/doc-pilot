@@ -1,5 +1,6 @@
-import type { ApnsClient, PushTarget } from "@doc-pilot/push";
+import type { ApnsClient } from "@doc-pilot/push";
 import { describe, expect, it, vi } from "vitest";
+import type { MobilePushTarget } from "../repository/push.repository";
 import { type BadgePushDeps, sendBadgePush } from "./badge";
 
 function deps(overrides: Partial<BadgePushDeps> = {}): {
@@ -13,10 +14,10 @@ function deps(overrides: Partial<BadgePushDeps> = {}): {
     send,
     del,
     deps: {
-      client: { send },
-      listDevices: async (): Promise<PushTarget[]> => [
-        { token: "a", environment: "production" },
-        { token: "b", environment: "sandbox" },
+      apns: { send },
+      listDevices: async (): Promise<MobilePushTarget[]> => [
+        { token: "a", platform: "ios", environment: "production" },
+        { token: "b", platform: "ios", environment: "sandbox" },
       ],
       countUnread: async () => 4,
       deleteInvalidTokens: del,
@@ -54,10 +55,35 @@ describe("sendBadgePush", () => {
     const send = vi.fn<ApnsClient["send"]>(async (req) =>
       req.deviceToken === "a" ? { status: 410 } : { status: 200 },
     );
-    const { deps: d, del } = deps({ client: { send } });
+    const { deps: d, del } = deps({ apns: { send } });
     await sendBadgePush(d, { workspaceId: "w1", userId: "u1", title: "t", body: "b" });
 
     expect(del).toHaveBeenCalledWith(["a"]);
+  });
+
+  it("Android 设备只走 FCM,失效 token 与 APNS 一起清除", async () => {
+    const fcmSend = vi.fn(async () => ({ invalidTokens: ["fcm-bad"] }));
+    const {
+      deps: d,
+      send,
+      del,
+    } = deps({
+      fcm: { send: fcmSend },
+      listDevices: async () => [
+        { token: "ios-a", platform: "ios", environment: "production" },
+        { token: "fcm-bad", platform: "android", environment: "production" },
+      ],
+    });
+    await sendBadgePush(d, { workspaceId: "w1", userId: "u1", title: "t", body: "b" });
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(fcmSend).toHaveBeenCalledWith({
+      tokens: ["fcm-bad"],
+      title: "t",
+      body: "b",
+      badge: 4,
+    });
+    expect(del).toHaveBeenCalledWith(["fcm-bad"]);
   });
 
   it("收件人无设备:不发、不查未读、不删", async () => {

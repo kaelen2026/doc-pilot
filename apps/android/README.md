@@ -19,13 +19,24 @@ cd apps/android
 ./gradlew assembleDebug -PDOC_PILOT_API_URL=https://api.example.com
 ```
 
+Google 登录使用 Web OAuth Client ID（服务端用同一 audience 校验）：
+
+```bash
+./gradlew assembleDebug \
+  -PDOC_PILOT_GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
+```
+
+服务端同时配置 `GOOGLE_ANDROID_CLIENT_ID`，值与上面一致。
+
 APK 输出在 `app/build/outputs/apk/debug/app-debug.apk`。
 
 ## Firebase
 
 真实 FCM 需在本地放置 `app/google-services.json` 并配置与
 `dev.w3ctech.docpilot` 匹配的 Firebase Android App。该文件已被 `.gitignore` 排除。
-客户端会在 token 刷新时向 `/push/devices` 注册 `platform=android`。
+客户端会在登录、恢复会话和 token 刷新时向 `/push/devices` 注册 `platform=android`。
+Worker 通过 `FCM_SERVICE_ACCOUNT_JSON` 使用 Firebase Admin SDK 投递；缺配置时仅跳过 FCM，
+不影响文档处理和 APNs。
 
 ## 已接入能力
 
@@ -34,7 +45,7 @@ APK 输出在 `app/build/outputs/apk/debug/app-debug.apk`。
 - PDF 私有缓存、按页渲染、问答引用跳页；
 - SSE 流式问答、搜索、通知、账户用量、退出与注销；
 - FCM 接收与 token 注册；
-- 扫码登录的用户码认领/确认 API。
-
-Google 登录需要配置 OAuth client ID 后启用 Credential Manager 接线。CameraX/ML Kit
-相机取码和服务端 FCM HTTP v1 投递仍需在生产 Firebase 工程配置完成后联调。
+- Credential Manager 原生 Google 登录；
+- CameraX + ML Kit 二维码扫描及用户码确认；
+- Room 按用户、文档和页码隔离的本地高亮；
+- Firebase Messaging 接收及 Worker FCM HTTP v1 投递。

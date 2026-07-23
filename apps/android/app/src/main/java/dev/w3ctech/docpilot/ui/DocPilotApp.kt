@@ -2,6 +2,9 @@ package dev.w3ctech.docpilot.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -56,6 +59,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import dev.w3ctech.docpilot.AppViewModel
 import dev.w3ctech.docpilot.Page
 import dev.w3ctech.docpilot.data.DocumentItem
@@ -79,6 +84,7 @@ fun DocPilotApp(model: AppViewModel) {
 
 @Composable
 private fun LoginScreen(model: AppViewModel) {
+  val context = LocalContext.current
   var email by remember { mutableStateOf("") }
   var secret by remember { mutableStateOf("") }
   var useOtp by remember { mutableStateOf(true) }
@@ -103,14 +109,31 @@ private fun LoginScreen(model: AppViewModel) {
     TextButton(onClick = { useOtp = !useOtp; secret = "" }) {
       Text(if (useOtp) "改用邮箱密码登录" else "改用邮箱验证码登录")
     }
-    OutlinedButton(onClick = { }, modifier = Modifier.fillMaxWidth()) {
-      Text("使用 Google 登录（配置 OAuth 后启用）")
+    OutlinedButton(onClick = { model.googleSignIn(context) }, modifier = Modifier.fillMaxWidth()) {
+      Text("使用 Google 登录")
     }
   }
 }
 
 @Composable
 private fun Workspace(model: AppViewModel) {
+  val context = LocalContext.current
+  var notificationsGranted by remember {
+    mutableStateOf(
+      Build.VERSION.SDK_INT < 33 ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+        PackageManager.PERMISSION_GRANTED,
+    )
+  }
+  val notificationsPermission =
+    rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+      notificationsGranted = it
+    }
+  LaunchedEffect(Unit) {
+    if (!notificationsGranted && Build.VERSION.SDK_INT >= 33) {
+      notificationsPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+  }
   val primary = model.page == Page.Documents || model.page == Page.Account
   Scaffold(
     bottomBar = {
@@ -268,10 +291,17 @@ private fun AccountScreen(model: AppViewModel) {
 
 @Composable
 private fun ScannerScreen(model: AppViewModel) {
+  val context = LocalContext.current
   var code by remember { mutableStateOf("") }
+  var granted by remember {
+    mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
+  }
+  val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
+  LaunchedEffect(Unit) { if (!granted) permission.launch(Manifest.permission.CAMERA) }
   BackPage("扫码登录网页版", model) { padding ->
     Column(Modifier.padding(padding).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-      Text("扫描能力已接入 CameraX/ML Kit；也可输入网页显示的用户码。")
+      if (granted) ScannerView(Modifier.fillMaxWidth().height(280.dp)) { code = it }
+      else Text("需要相机权限才能扫描二维码。")
       OutlinedTextField(code, { code = it }, Modifier.fillMaxWidth(), label = { Text("用户码") })
       Button(onClick = { model.approve(code.trim()) }, enabled = code.trim().length >= 4) { Text("确认授权") }
     }
@@ -295,6 +325,9 @@ private fun ReaderScreen(model: AppViewModel) {
         TextButton(onClick = { model.renderPage(model.pdfPageIndex - 1) }, enabled = model.pdfPageIndex > 0) { Text("上一页") }
         Text("${model.pdfPageIndex + 1} / ${model.pdfPageCount}")
         TextButton(onClick = { model.renderPage(model.pdfPageIndex + 1) }, enabled = model.pdfPageIndex + 1 < model.pdfPageCount) { Text("下一页") }
+      }
+      TextButton(onClick = model::highlightCurrentPage, Modifier.fillMaxWidth()) {
+        Text(if (model.pdfPageIndex + 1 in model.highlightedPages) "本页已高亮" else "高亮本页")
       }
       if (model.chatText.isNotBlank()) Card(Modifier.fillMaxWidth().padding(12.dp)) {
         Column(Modifier.padding(12.dp)) {
