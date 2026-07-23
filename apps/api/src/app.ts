@@ -6,8 +6,10 @@ import type { Context, MiddlewareHandler } from "hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { apiEnv } from "./env";
+import { requireAdmin } from "./middleware/admin.middleware";
 import { requireAuth } from "./middleware/auth.middleware";
 import { observability } from "./middleware/observability.middleware";
+import { createAdminRoutes } from "./modules/admin/admin.routes";
 import { createConversationRoutes } from "./modules/conversations/conversation.routes";
 import { createDocumentRoutes } from "./modules/documents/document.routes";
 import { createHealthRoutes, type ReadinessProbes } from "./modules/health/health.routes";
@@ -16,6 +18,7 @@ import { createNotificationRoutes } from "./modules/notifications/notification.r
 import { createProfileRoutes, createPublicProfileRoutes } from "./modules/profiles/profile.routes";
 import { createPublicDocumentRoutes } from "./modules/public-documents/public-document.routes";
 import { createSearchRoutes } from "./modules/search/search.routes";
+import { isAdminEmail } from "./shared/admin";
 import { getSession, loadMemberships } from "./shared/auth-context";
 import { DomainError } from "./shared/errors";
 import {
@@ -82,6 +85,13 @@ export function createApp(
   app.use("/notifications", guard);
   app.use("/notifications/*", guard);
   app.use("/users/*", guard);
+  // 平台管理后台:先过登录门禁(拿到 user),再过 requireAdmin(邮箱白名单)。两条链路
+  // 都要覆盖精确路径与子路径(与 /me 同理)。requireAdmin 是所有跨租户查询的唯一闸门。
+  const adminGuard = requireAdmin({ isAdmin: isAdminEmail });
+  app.use("/admin", guard);
+  app.use("/admin/*", guard);
+  app.use("/admin", adminGuard);
+  app.use("/admin/*", adminGuard);
 
   // 贵操作限流(用户维度),挂在 guard 之后以便拿到 user。
   const subjectByUser = (c: Context<AppEnv>) => c.get("user")?.id ?? null;
@@ -118,6 +128,7 @@ export function createApp(
   app.route("/conversations", createConversationRoutes());
   app.route("/search", createSearchRoutes());
   app.route("/notifications", createNotificationRoutes({ bus: notificationBus }));
+  app.route("/admin", createAdminRoutes());
   app.route("/", createProfileRoutes());
 
   // 统一错误映射：领域错误 → 对应 HTTP 状态。

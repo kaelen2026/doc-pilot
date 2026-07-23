@@ -6,6 +6,7 @@ import {
 } from "@doc-pilot/database/schema";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
+import { isAdminEmail } from "../../shared/admin";
 import type { AppEnv } from "../../shared/types";
 import { activeWorkspaceId } from "../../shared/workspace";
 import { getUsage } from "../quota/quota.service";
@@ -34,7 +35,8 @@ export function createMeRoutes() {
           .where(eq(userProfiles.userId, user.id))
           .limit(1);
 
-        return c.json({ user, profile, workspaces: rows });
+        // isAdmin 供前端门禁 /admin(真正的授权仍在 API 的 requireAdmin,前端只是 UX)。
+        return c.json({ user, profile, workspaces: rows, isAdmin: isAdminEmail(user.email) });
       })
       // 当前 workspace 的配额用量 vs 上限,供前端展示(cross-cutting.md §27.2)。
       .get("/usage", async (c) => {

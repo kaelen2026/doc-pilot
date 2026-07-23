@@ -24,4 +24,15 @@ describe("受保护路由的鉴权门禁", () => {
       expect(res.status).toBe(401);
     },
   );
+
+  // /admin 先过 requireAuth 再过 requireAdmin;未认证时应止步于 401(拿不到 user),
+  // 不会走到 requireAdmin 更不会触到跨租户查询。
+  it.each(["/admin", "/admin/overview", "/admin/usage", "/admin/workspaces", "/admin/users"])(
+    "未认证访问 %s 返回 401",
+    async (path) => {
+      const app = createApp();
+      const res = await app.request(path);
+      expect(res.status).toBe(401);
+    },
+  );
 });

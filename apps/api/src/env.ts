@@ -6,6 +6,13 @@ export const apiEnv = {
   port: Number(process.env.API_PORT ?? 3001),
   redisUrl: process.env.REDIS_URL ?? "redis://localhost:6379",
   webOrigin: process.env.WEB_ORIGIN ?? "http://localhost:3000",
+  // 平台管理员邮箱白名单(逗号分隔)。/admin 后台的授权基础:不给 Better Auth 的 user
+  // 表加角色字段,而用 env 白名单判定谁是平台 admin(见 cross-cutting.md §25)。
+  // 规范化为小写去空,比对时大小写不敏感;留空即无人可访问 /admin。
+  adminEmails: (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean),
   /** 检索相似度下限;mock 伪向量分数无语义,本地开发用 0 关闭过滤(见 .env.example)。 */
   ragMinScore: Number(process.env.RAG_MIN_SCORE ?? 0),
   ai: {
