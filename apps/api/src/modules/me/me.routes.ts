@@ -10,7 +10,6 @@ import { isAdminEmail } from "../../shared/admin";
 import type { AppEnv } from "../../shared/types";
 import { activeWorkspaceId } from "../../shared/workspace";
 import { getUsage } from "../quota/quota.service";
-import { getDeletionScheduledAt } from "./me.repository";
 import { cancelAccountDeletion, requestAccountDeletion } from "./me.service";
 
 /**
@@ -38,7 +37,8 @@ export function createMeRoutes() {
           .limit(1);
 
         // deletionScheduledAt 非空表示账户处于注销冷静期;前端据此把用户冻结重定向到恢复页。
-        const deletionScheduledAt = await getDeletionScheduledAt(user.id);
+        // 复用 requireAuth 已随 membership 载入的值,不再另查一次(见 loadAccountContext)。
+        const deletionScheduledAt = c.get("accountDeletionScheduledAt");
         // isAdmin 供前端门禁 /admin(真正的授权仍在 API 的 requireAdmin,前端只是 UX)。
         return c.json({
           user,

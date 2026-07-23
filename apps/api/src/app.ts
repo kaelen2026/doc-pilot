@@ -14,14 +14,13 @@ import { createAdminRoutes } from "./modules/admin/admin.routes";
 import { createConversationRoutes } from "./modules/conversations/conversation.routes";
 import { createDocumentRoutes } from "./modules/documents/document.routes";
 import { createHealthRoutes, type ReadinessProbes } from "./modules/health/health.routes";
-import { getDeletionScheduledAt } from "./modules/me/me.repository";
 import { createMeRoutes } from "./modules/me/me.routes";
 import { createNotificationRoutes } from "./modules/notifications/notification.routes";
 import { createProfileRoutes, createPublicProfileRoutes } from "./modules/profiles/profile.routes";
 import { createPublicDocumentRoutes } from "./modules/public-documents/public-document.routes";
 import { createSearchRoutes } from "./modules/search/search.routes";
 import { isAdminEmail } from "./shared/admin";
-import { getSession, loadMemberships } from "./shared/auth-context";
+import { getSession, loadAccountContext } from "./shared/auth-context";
 import { DomainError } from "./shared/errors";
 import {
   deviceCodeRateLimit,
@@ -74,7 +73,7 @@ export function createApp(
   app.route("/public/documents", createPublicDocumentRoutes());
 
   // 受保护路由：未登录返回 401（满足「未登录无法访问文档」验收）。
-  const guard = requireAuth({ getSession, loadMemberships });
+  const guard = requireAuth({ getSession, loadAccountContext });
   app.use("/me", guard);
   // /me/* 子路由(如 /me/usage)同样受保护:Hono 的 use("/me") 只匹配精确路径,
   // 漏了这条会让子路由绕过鉴权,且拿不到 memberships(activeWorkspaceId 会崩)。
@@ -95,21 +94,20 @@ export function createApp(
   app.use("/admin", adminGuard);
   app.use("/admin/*", adminGuard);
 
-  // 冷静期冻结门禁:处于注销冷静期的账户禁止访问业务端点(挂在 guard 之后,拿得到 user)。
-  // 刻意不挂 /me——「恢复账户」页要能读 /me 状态、撤销(DELETE /me/deletion)、退出登录。
-  const activeAccount = requireActiveAccount({ getDeletionState: getDeletionScheduledAt });
-  // /me 整体放行(恢复页要读状态/撤销/退出),但 /me/profile 是业务写(改公开主页),须冻结。
-  app.use("/me/profile", activeAccount);
-  app.use("/documents", activeAccount);
-  app.use("/documents/*", activeAccount);
-  app.use("/conversations", activeAccount);
-  app.use("/conversations/*", activeAccount);
-  app.use("/search", activeAccount);
-  app.use("/notifications", activeAccount);
-  app.use("/notifications/*", activeAccount);
-  app.use("/users/*", activeAccount);
-  app.use("/admin", activeAccount);
-  app.use("/admin/*", activeAccount);
+  // 冷静期冻结门禁:处于注销冷静期的账户禁止访问业务端点(挂在 guard 之后,拿得到 user 与
+  // 已随 membership 载入的注销状态)。刻意不挂 /me——恢复页要读 /me 状态、撤销、退出。
+  // /me 整体放行,但 /me/profile 是业务写(改公开主页),须冻结。
+  app.use("/me/profile", requireActiveAccount);
+  app.use("/documents", requireActiveAccount);
+  app.use("/documents/*", requireActiveAccount);
+  app.use("/conversations", requireActiveAccount);
+  app.use("/conversations/*", requireActiveAccount);
+  app.use("/search", requireActiveAccount);
+  app.use("/notifications", requireActiveAccount);
+  app.use("/notifications/*", requireActiveAccount);
+  app.use("/users/*", requireActiveAccount);
+  app.use("/admin", requireActiveAccount);
+  app.use("/admin/*", requireActiveAccount);
 
   // 贵操作限流(用户维度),挂在 guard 之后以便拿到 user。
   const subjectByUser = (c: Context<AppEnv>) => c.get("user")?.id ?? null;
