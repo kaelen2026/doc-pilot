@@ -20,33 +20,38 @@ struct AuthClient: Sendable {
     }
 
     func verifyOTP(email: String, otp: String) async throws -> AuthSession {
-        let response = try await api.transport.send(try request(
+        try await bearerSignIn(
             path: "/api/auth/sign-in/email-otp",
             body: VerifyOTPBody(email: email, otp: otp)
-        ))
-        guard 200..<300 ~= response.response.statusCode else {
-            if response.response.statusCode == 401 { throw APIError.unauthorized }
-            throw APIError.server(statusCode: response.response.statusCode, code: nil)
-        }
-        guard let token = response.response.value(forHTTPHeaderField: "set-auth-token"), !token.isEmpty else {
-            throw APIError.invalidResponse
-        }
-        try tokenStore.saveToken(token)
-        guard let session = try await restoreSession() else { throw APIError.unauthorized }
-        return session
+        )
+    }
+
+    /// 邮箱 + 密码登录:`POST /api/auth/sign-in/email`,请求体 `{ email, password }`。
+    /// 收尾与 `verifyOTP`/`signInWithApple` 完全一致——从响应头 `set-auth-token` 取 bearer
+    /// 存 Keychain,再 `restoreSession()` 拉 `AuthSession`(见 bearerSignIn)。
+    func signInWithPassword(email: String, password: String) async throws -> AuthSession {
+        try await bearerSignIn(
+            path: "/api/auth/sign-in/email",
+            body: SignInEmailBody(email: email, password: password)
+        )
     }
 
     /// 原生 Sign in with Apple:把 Apple 返回的 idToken 交给后端换取会话。
-    /// 收尾与 `verifyOTP` 完全一致——从响应头 `set-auth-token` 取 bearer 存 Keychain,
-    /// 再 `restoreSession()` 拉 `AuthSession`。`nonce` 传 iOS 生成的 raw nonce(见 AppleSignIn)。
+    /// 收尾与 `verifyOTP` 完全一致(见 bearerSignIn)。`nonce` 传 iOS 生成的 raw nonce(见 AppleSignIn)。
     func signInWithApple(identityToken: String, nonce: String?) async throws -> AuthSession {
-        let response = try await api.transport.send(try request(
+        try await bearerSignIn(
             path: "/api/auth/sign-in/social",
             body: SignInSocialBody(
                 provider: "apple",
                 idToken: SignInSocialBody.IDToken(token: identityToken, nonce: nonce)
             )
-        ))
+        )
+    }
+
+    /// bearer 登录收尾:POST body → 从响应头 `set-auth-token` 取 bearer 存 Keychain →
+    /// `restoreSession()` 拉 `AuthSession`。OTP / 密码 / Apple 三条登录路径共用此收尾。
+    private func bearerSignIn(path: String, body: some Encodable) async throws -> AuthSession {
+        let response = try await api.transport.send(try request(path: path, body: body))
         guard 200..<300 ~= response.response.statusCode else {
             if response.response.statusCode == 401 { throw APIError.unauthorized }
             throw APIError.server(statusCode: response.response.statusCode, code: nil)
@@ -96,6 +101,7 @@ struct AuthClient: Sendable {
 
 private struct SendOTPBody: Encodable, Sendable { let email: String; let type: String }
 private struct VerifyOTPBody: Encodable, Sendable { let email: String; let otp: String }
+private struct SignInEmailBody: Encodable, Sendable { let email: String; let password: String }
 private struct EmptyBody: Encodable, Sendable {}
 
 /// better-auth `POST /api/auth/sign-in/social` 的原生 idToken 登录形状:

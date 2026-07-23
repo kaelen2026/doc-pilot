@@ -63,6 +63,7 @@
 		C8E8E4381BD0C03CA1480481 /* DocumentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64EB1DCF03C6C5DEC9D53129 /* DocumentsView.swift */; };
 		CDCFE69B3DEEDA3E3291BE59 /* LoginModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B0F034B7D279EBB2535CB41 /* LoginModel.swift */; };
 		D4C61FC46221CB98D0956C8E /* ReaderModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27534D826B04A3CDE878A5FB /* ReaderModel.swift */; };
+		D5792515FA009A2B48F56BD6 /* PasswordSignInTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60897851F23D66483F8838F1 /* PasswordSignInTests.swift */; };
 		D835273A1249E16F38D950F0 /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCAB735E1EDC4EA1D6215D53 /* SmokeTests.swift */; };
 		E1A00B6902A8E1C3C15A4668 /* AppAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF8712123802519DAAF5FDB5 /* AppAppearance.swift */; };
 		E502C57C60FA0D11D6FF5433 /* ScanLoginTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE613D636E0FC1BC3CABCEF0 /* ScanLoginTests.swift */; };
@@ -116,6 +117,7 @@
 		5D01C85F9471BFD4692A56E8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		5DDA713E214E3EA55AD50558 /* PDFValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFValidator.swift; sourceTree = "<group>"; };
 		5EBB055A3125F7AB6E7DEB13 /* UploadStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadStateTests.swift; sourceTree = "<group>"; };
+		60897851F23D66483F8838F1 /* PasswordSignInTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasswordSignInTests.swift; sourceTree = "<group>"; };
 		6329F631C808CC6D60723B16 /* Documents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Documents.swift; sourceTree = "<group>"; };
 		64EB1DCF03C6C5DEC9D53129 /* DocumentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentsView.swift; sourceTree = "<group>"; };
 		679F1F137DCFA93E71A4ECC1 /* ReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderView.swift; sourceTree = "<group>"; };
@@ -312,6 +314,7 @@
 			isa = PBXGroup;
 			children = (
 				C42457008BD35632B9D55777 /* AppleSignInTests.swift */,
+				60897851F23D66483F8838F1 /* PasswordSignInTests.swift */,
 				FE613D636E0FC1BC3CABCEF0 /* ScanLoginTests.swift */,
 			);
 			path = Auth;
@@ -620,6 +623,7 @@
 				5A483D86A33253D3FF472BEA /* DocumentsContractTests.swift in Sources */,
 				3CE1B08489AA6D7E0BC3690E /* HighlightTests.swift in Sources */,
 				BF52260017510E912F26ADF3 /* PDFValidatorTests.swift in Sources */,
+				D5792515FA009A2B48F56BD6 /* PasswordSignInTests.swift in Sources */,
 				F0C0FCBA22DC6D4DEF44A040 /* SSEParserTests.swift in Sources */,
 				E502C57C60FA0D11D6FF5433 /* ScanLoginTests.swift in Sources */,
 				D835273A1249E16F38D950F0 /* SmokeTests.swift in Sources */,
