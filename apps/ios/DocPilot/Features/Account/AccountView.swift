@@ -4,6 +4,8 @@ struct AccountView: View {
     @Bindable var model: AccountModel
     @State private var showSettings = false
     @State private var showScanLogin = false
+    @State private var showDeleteConfirm = false
+    @State private var showDeletionRequested = false
 
     var body: some View {
         ScrollView {
@@ -81,10 +83,18 @@ struct AccountView: View {
                 .buttonStyle(.glass)
                 .tint(DesignTokens.seal)
                 .padding(.top, DesignTokens.spacingSm)
+
+                deletionSection()
             }
             .padding()
         }
         .background(DesignTokens.paper)
+        // 请求注销成功后先给一句明确提示,用户确认后再登出回登录页(账户已冻结)。
+        .alert("账户已进入注销冷静期", isPresented: $showDeletionRequested) {
+            Button("好") { Task { await model.signOut() } }
+        } message: {
+            Text("7 天内重新登录即可撤销注销;到期后你的文档、对话与全部数据将被永久删除。")
+        }
         .navigationTitle("账户")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -97,6 +107,71 @@ struct AccountView: View {
         .navigationDestination(isPresented: $showSettings) { SettingsView() }
         .sheet(isPresented: $showScanLogin) { ScanLoginView(client: model.scanLogin) }
         .task { await model.load() }
+    }
+
+    // 注销区:冷静期内显示撤销入口,否则显示删除入口(互斥,早返回不用嵌套三元)。
+    @ViewBuilder
+    private func deletionSection() -> some View {
+        if model.isPendingDeletion {
+            restoreBanner()
+        } else {
+            deleteButton()
+        }
+    }
+
+    @ViewBuilder
+    private func deleteButton() -> some View {
+        VStack(spacing: DesignTokens.spacingSm) {
+            Button("删除账户", role: .destructive) { showDeleteConfirm = true }
+                .font(.callout)
+                .disabled(model.isDeletingAccount)
+                // iOS 26 的 confirmationDialog 以来源视图为锚:必须挂在具体按钮上,
+                // 挂到外层 ScrollView/容器会锚到左上角错位(见 apple-ios26-swiftui-gotchas)。
+                .confirmationDialog("删除账户?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+                    Button("删除账户", role: .destructive) {
+                        Task { if await model.requestDeletion() { showDeletionRequested = true } }
+                    }
+                } message: {
+                    Text("账户将进入 7 天冷静期,期间重新登录即可撤销。到期后你的文档、对话与全部数据将被永久删除,无法恢复。")
+                }
+                .accessibilityIdentifier("account.deleteAccount")
+
+            if let error = model.deletionErrorMessage {
+                Text(error).font(.caption).foregroundStyle(DesignTokens.seal)
+            }
+        }
+        .padding(.top, DesignTokens.spacingSm)
+    }
+
+    @ViewBuilder
+    private func restoreBanner() -> some View {
+        VStack(alignment: .leading, spacing: DesignTokens.spacingSm) {
+            sectionHeader("账户注销")
+            VStack(alignment: .leading, spacing: 10) {
+                Text("账户正在注销冷静期")
+                    .font(.body.weight(.medium)).foregroundStyle(DesignTokens.seal)
+                if let scheduledAt = model.me?.deletionScheduledAt {
+                    Text("将于 \(AccountDeletion.scheduledDateText(scheduledAt)) 被永久删除,现在撤销即可恢复账户与全部数据。")
+                        .font(.subheadline).foregroundStyle(DesignTokens.inkSoft)
+                }
+                Button { Task { await model.cancelDeletion() } } label: {
+                    Text(model.isRestoring ? "撤销中…" : "撤销注销")
+                        .font(.body.weight(.medium))
+                        .frame(maxWidth: .infinity).padding(.vertical, 6)
+                }
+                .buttonStyle(.glass)
+                .tint(DesignTokens.seal)
+                .disabled(model.isRestoring)
+                .accessibilityIdentifier("account.cancelDeletion")
+                if let error = model.deletionErrorMessage {
+                    Text(error).font(.caption).foregroundStyle(DesignTokens.seal)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .cardSurface()
+        }
+        .padding(.top, DesignTokens.spacingSm)
     }
 
     private func profileCard(name: String, email: String) -> some View {
