@@ -93,6 +93,13 @@ struct LoginView: View {
 
                 googleButton
             }
+            // 提交中整体禁用表单(含分段控件与输入框),叠加加载遮罩——Apple/Google/
+            // 密码/验证码 任一登录进行中都给出一致反馈,避免授权返回后还能切换登录方式。
+            .disabled(model.isSubmitting)
+            // overlay 加在 .disabled 之后,故遮罩自身不受禁用影响(可正常吸收点击、拦住穿透)。
+            .overlay {
+                if model.isSubmitting { loadingOverlay }
+            }
             Spacer()
         }
         .padding(.horizontal, DesignTokens.spacingLg)
@@ -177,5 +184,19 @@ struct LoginView: View {
             Rectangle().fill(DesignTokens.hairline).frame(height: 1)
         }
         .padding(.vertical, 4)
+    }
+
+    /// 提交中的加载遮罩:半透明纸底 scrim + 居中朱印色 ProgressView,盖在表单之上。
+    /// 覆盖表单区域即可拦住穿透点击(表单已 .disabled),遵循墨水纸设计语言。
+    private var loadingOverlay: some View {
+        ZStack {
+            DesignTokens.paper.opacity(0.7)
+            ProgressView()
+                .controlSize(.large)
+                .tint(DesignTokens.seal)
+        }
+        .accessibilityElement()
+        .accessibilityLabel("正在登录")
+        .accessibilityIdentifier("login.loading")
     }
 }
