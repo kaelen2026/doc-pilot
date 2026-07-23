@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch, requireOk } from "@/lib/api-client";
 import { authClient } from "@/lib/auth-client";
 
 /**
@@ -19,6 +20,26 @@ export function useUpdateName() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["me"] });
       // 会话里也缓存了 user.name(头部头像/菜单读它),刷新以保持一致。
+      await authClient.getSession({ query: { disableCookieCache: true } });
+    },
+  });
+}
+
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      name: string;
+      image: string | null;
+      bio: string | null;
+      location: string | null;
+      websiteUrl: string | null;
+      socialLinks: Record<string, string>;
+    }) => {
+      await requireOk(await apiFetch("/me/profile", { method: "PATCH", json: input }));
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
       await authClient.getSession({ query: { disableCookieCache: true } });
     },
   });

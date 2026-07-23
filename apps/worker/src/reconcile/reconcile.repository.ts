@@ -93,7 +93,13 @@ export function createReconcileDeps(processingQueue: Queue): ReconcileDeps {
     async recover(doc: StaleDocument): Promise<boolean> {
       const reset = await db
         .update(documents)
-        .set({ status: "queued", currentStage: null, progress: 0, updatedAt: new Date() })
+        .set({
+          status: "queued",
+          visibility: "private",
+          currentStage: null,
+          progress: 0,
+          updatedAt: new Date(),
+        })
         .where(guardedDocumentWhere(doc, RECOVERABLE_STATUSES))
         .returning({ id: documents.id });
 

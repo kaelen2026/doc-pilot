@@ -119,6 +119,7 @@ CREATE TABLE documents (
   mime_type VARCHAR(100) NOT NULL,
   size_bytes BIGINT NOT NULL,
   status VARCHAR(32) NOT NULL,
+  visibility VARCHAR(16) NOT NULL DEFAULT 'private', -- private / public
   current_stage VARCHAR(32),
   progress INTEGER NOT NULL DEFAULT 0,
   page_count INTEGER,
@@ -162,6 +163,18 @@ WHERE deleted_at IS NULL AND checksum_sha256 IS NOT NULL;
 > 实现补充（内容去重）：`documents` 增加 `checksum_sha256 VARCHAR(64)` 列（与
 > `document_files.checksum_sha256` 冗余，此处冗余以按 workspace 建索引），由 Worker
 > 从真实字节算出后在文档就绪时回填，用于内容级去重（见 rag.md §23.4）。
+>
+> 实现补充（公开阅读）：`visibility` 使用 `VARCHAR + CHECK`，仅允许 `private` / `public`。
+> 新建及历史文档默认私有；只有 `ready` / `partially_ready` 可公开。公开查询必须在 SQL
+> 本身同时过滤 visibility、status 与 deleted_at，不得先取行再在业务层判断。
+
+### 8.2.1 公开用户资料与关注关系
+
+`user_profiles` 以 Better Auth `user.id` 为主键，保存不可变的唯一随机 `username`、简介、
+地区、HTTPS 网站和受平台白名单约束的社交链接。显示名与头像仍以 `user` 表为事实源。
+
+`user_follows` 以 `(follower_id, following_id)` 为复合主键，两列均引用 `user.id` 并级联
+删除；CHECK 约束禁止自己关注自己。第一版关注/粉丝数实时聚合，不保存易漂移的冗余计数。
 
 ### 8.3 document_files
 

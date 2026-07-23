@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  check,
   index,
   integer,
   jsonb,
@@ -34,6 +35,7 @@ export const documents = pgTable(
     mimeType: varchar("mime_type", { length: 100 }).notNull(),
     sizeBytes: bigint("size_bytes", { mode: "number" }).notNull(),
     status: varchar("status", { length: 32 }).notNull().default("pending_upload"),
+    visibility: varchar("visibility", { length: 16 }).notNull().default("private"),
     currentStage: varchar("current_stage", { length: 32 }),
     progress: integer("progress").notNull().default(0),
     pageCount: integer("page_count"),
@@ -70,6 +72,7 @@ export const documents = pgTable(
     index("documents_workspace_checksum_idx")
       .on(t.workspaceId, t.checksumSha256)
       .where(sql`${t.deletedAt} is null and ${t.checksumSha256} is not null`),
+    check("documents_visibility_check", sql`${t.visibility} in ('private', 'public')`),
   ],
 );
 

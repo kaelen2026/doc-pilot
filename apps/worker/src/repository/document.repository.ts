@@ -189,6 +189,7 @@ export async function markStage(params: {
       .update(documents)
       .set({
         status: "processing",
+        visibility: "private",
         currentStage: params.stage,
         progress: params.progress,
         updatedAt: new Date(),
