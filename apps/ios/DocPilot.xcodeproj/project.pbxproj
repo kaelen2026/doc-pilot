@@ -27,6 +27,7 @@
 		545E7FD1A4F90392B6617A3C /* Chat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5261C20EDD63A2127A47EACA /* Chat.swift */; };
 		571A356EC2358EE8A6584D17 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD9270FF1534656C565A201C /* AppEnvironment.swift */; };
 		57729ED37A2483A2DADCE0E0 /* SettingsNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59FD8E8838D218BACDD3B4B4 /* SettingsNavigationTests.swift */; };
+		5819A103EE3DD058F82F9D75 /* AppleSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04E004D647A3955EE285DF9F /* AppleSignIn.swift */; };
 		5A483D86A33253D3FF472BEA /* DocumentsContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3003B57F523A591844B0036 /* DocumentsContractTests.swift */; };
 		601620B12EF4853C888B664B /* NotificationsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00B7384B35176C48E10865A /* NotificationsModel.swift */; };
 		65FE0F0697D5F097ECC855C4 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F81CEA71A7E940861A89271 /* APIClient.swift */; };
@@ -44,6 +45,7 @@
 		9A2652EA2055A81F54C18988 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C105BF75D5D0061F4D73EC4 /* LoginView.swift */; };
 		A9C952DF15B8CA984D2984F1 /* UploadState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F1E1A2D9E5D39F027AA8B1C /* UploadState.swift */; };
 		AA5735D251488E6F7D467C24 /* AuthClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EDC63DACD2ED46D258775ED /* AuthClient.swift */; };
+		AAED20FD5E5F25157FE6C7FE /* AppleSignInTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C42457008BD35632B9D55777 /* AppleSignInTests.swift */; };
 		AB1E843C8E1FF1BDA896B64F /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B18D4F06D8A8250F657F3900 /* ScreenshotTests.swift */; };
 		AE4E23F01A3FF68A7660395B /* DiscoveryContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC235BDF137951C714BD0E26 /* DiscoveryContractTests.swift */; };
 		B175CD7FCC6B9FB7B5ED148A /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05900E7AA9C677E807DBCF43 /* NotificationsView.swift */; };
@@ -89,6 +91,7 @@
 
 /* Begin PBXFileReference section */
 		01DA64EAF820D7D2DFD0F92A /* DocPilotUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = DocPilotUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		04E004D647A3955EE285DF9F /* AppleSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignIn.swift; sourceTree = "<group>"; };
 		05900E7AA9C677E807DBCF43 /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
 		0C58C0B76487E3B0A6F46A46 /* OtpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OtpView.swift; sourceTree = "<group>"; };
 		0EDC63DACD2ED46D258775ED /* AuthClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthClient.swift; sourceTree = "<group>"; };
@@ -131,6 +134,7 @@
 		B38A401F33D10F5A0CC58709 /* DocumentCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentCache.swift; sourceTree = "<group>"; };
 		BAA628AA8F9020A4CEA2270D /* LiveSmokeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSmokeTests.swift; sourceTree = "<group>"; };
 		C244492A10A61EF83ADA477B /* AccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountView.swift; sourceTree = "<group>"; };
+		C42457008BD35632B9D55777 /* AppleSignInTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInTests.swift; sourceTree = "<group>"; };
 		C7C2F8CDB098F8E0912D945C /* DocPilot.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DocPilot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C886E045FACAEBAAEC85BC0D /* HighlightTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighlightTests.swift; sourceTree = "<group>"; };
 		C934A772FD1AF4BF2BC6DF61 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -298,6 +302,7 @@
 		5D7B77DB760AAF9FB1D82556 /* Auth */ = {
 			isa = PBXGroup;
 			children = (
+				C42457008BD35632B9D55777 /* AppleSignInTests.swift */,
 				FE613D636E0FC1BC3CABCEF0 /* ScanLoginTests.swift */,
 			);
 			path = Auth;
@@ -347,6 +352,7 @@
 		84BABD9F0382ACA225F8A49D /* Auth */ = {
 			isa = PBXGroup;
 			children = (
+				04E004D647A3955EE285DF9F /* AppleSignIn.swift */,
 				0EDC63DACD2ED46D258775ED /* AuthClient.swift */,
 				6B7CD75FCB6F35080BCFF75E /* KeychainStore.swift */,
 				D4FAE6F50C666DFFE2B11D29 /* ScanLoginClient.swift */,
@@ -596,6 +602,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				EA5314CCC37DCB70FAA4D632 /* APIClientTests.swift in Sources */,
+				AAED20FD5E5F25157FE6C7FE /* AppleSignInTests.swift in Sources */,
 				AE4E23F01A3FF68A7660395B /* DiscoveryContractTests.swift in Sources */,
 				3A99B83888B98B7FF7707F18 /* DocumentCacheTests.swift in Sources */,
 				5A483D86A33253D3FF472BEA /* DocumentsContractTests.swift in Sources */,
@@ -628,6 +635,7 @@
 				22407A18EC56C00D0EDCD23A /* AccountView.swift in Sources */,
 				E1A00B6902A8E1C3C15A4668 /* AppAppearance.swift in Sources */,
 				571A356EC2358EE8A6584D17 /* AppEnvironment.swift in Sources */,
+				5819A103EE3DD058F82F9D75 /* AppleSignIn.swift in Sources */,
 				AA5735D251488E6F7D467C24 /* AuthClient.swift in Sources */,
 				545E7FD1A4F90392B6617A3C /* Chat.swift in Sources */,
 				C6EB63441C43658063475051 /* ChatClient.swift in Sources */,
@@ -815,6 +823,7 @@
 			baseConfigurationReference = FBCD6408EBDC7B646F745A4D /* Debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/DocPilot.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = Config/Info.plist;
@@ -917,6 +926,7 @@
 			baseConfigurationReference = 7D72DF19AC25115D1EB852FD /* Release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/DocPilot.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = Config/Info.plist;
