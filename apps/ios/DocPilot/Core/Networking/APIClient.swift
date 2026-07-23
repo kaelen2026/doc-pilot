@@ -68,7 +68,22 @@ private struct AnyEncodable: Encodable {
 extension JSONDecoder {
     static var docPilot: JSONDecoder {
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        // better-auth 的时间戳来自 JS `toISOString()`,恒带毫秒(如 `2026-07-30T10:06:29.476Z`);
+        // 而 `.iso8601` 默认不解析小数秒,会让 get-session 的 expiresAt 解码失败、整条登录收尾崩。
+        // 故自定义:先试带小数秒,再退回不带,两种 ISO8601 都能解。
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let raw = try decoder.singleValueContainer().decode(String.self)
+            // ISO8601DateFormatter 非 Sendable,不能作全局常量(Swift 6 严格并发),就地构造。
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = formatter.date(from: raw) { return date }
+            formatter.formatOptions = [.withInternetDateTime]
+            if let date = formatter.date(from: raw) { return date }
+            throw DecodingError.dataCorruptedError(
+                in: try decoder.singleValueContainer(),
+                debugDescription: "无法解析 ISO8601 日期：\(raw)"
+            )
+        }
         return decoder
     }
 }
