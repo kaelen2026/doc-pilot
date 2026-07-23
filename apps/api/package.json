@@ -9,7 +9,7 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage --coverage.include='src/{ai/mock-answer,middleware/auth.middleware,modules/conversations/retrieval,modules/health/health.routes,modules/quota/{month,quota.rules},shared/{rate-limit,token-bucket}}.ts' --coverage.thresholds.lines=75 --coverage.thresholds.functions=65 --coverage.thresholds.branches=65 --coverage.thresholds.statements=75",
+    "test:coverage": "vitest run --coverage --coverage.include='src/**/*.ts' --coverage.exclude='src/**/*.test.ts' --coverage.exclude='src/**/*.integration.test.ts' --coverage.exclude=src/index.ts --coverage.exclude=src/env.ts --coverage.thresholds.lines=35 --coverage.thresholds.functions=40 --coverage.thresholds.branches=80 --coverage.thresholds.statements=35",
     "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {

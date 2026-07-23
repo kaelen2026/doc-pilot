@@ -73,6 +73,14 @@ export const documents = pgTable(
       .on(t.workspaceId, t.checksumSha256)
       .where(sql`${t.deletedAt} is null and ${t.checksumSha256} is not null`),
     check("documents_visibility_check", sql`${t.visibility} in ('private', 'public')`),
+    check(
+      "documents_status_check",
+      sql`${t.status} in ('pending_upload', 'uploaded', 'queued', 'processing', 'ready', 'partially_ready', 'failed', 'deleting', 'deleted')`,
+    ),
+    check(
+      "documents_current_stage_check",
+      sql`${t.currentStage} is null or ${t.currentStage} in ('validate', 'parse', 'clean', 'chunk', 'embed', 'summarize', 'finalize', 'delete')`,
+    ),
   ],
 );
 
@@ -130,6 +138,15 @@ export const processingJobs = pgTable(
   (t) => [
     unique("processing_jobs_idempotency_unique").on(t.idempotencyKey),
     index("processing_jobs_document_idx").on(t.documentId),
+    check("processing_jobs_type_check", sql`${t.type} in ('process_document')`),
+    check(
+      "processing_jobs_stage_check",
+      sql`${t.stage} in ('validate', 'parse', 'clean', 'chunk', 'embed', 'summarize', 'finalize', 'delete')`,
+    ),
+    check(
+      "processing_jobs_status_check",
+      sql`${t.status} in ('pending', 'running', 'retrying', 'completed', 'failed', 'cancelled')`,
+    ),
   ],
 );
 
@@ -152,5 +169,11 @@ export const outboxEvents = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     publishedAt: timestamp("published_at", { withTimezone: true }),
   },
-  (t) => [index("outbox_events_status_idx").on(t.status, t.createdAt)],
+  (t) => [
+    index("outbox_events_status_idx").on(t.status, t.createdAt),
+    check(
+      "outbox_events_status_check",
+      sql`${t.status} in ('pending', 'publishing', 'published', 'failed')`,
+    ),
+  ],
 );

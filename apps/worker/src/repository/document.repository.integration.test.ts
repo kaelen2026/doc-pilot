@@ -1,9 +1,15 @@
 import { NOTIFICATION_RESOURCE, NOTIFICATION_TYPE } from "@doc-pilot/contracts";
 import { db, queryClient } from "@doc-pilot/database";
-import { notifications, user, workspaces } from "@doc-pilot/database/schema";
+import {
+  documentChunks,
+  documents,
+  notifications,
+  user,
+  workspaces,
+} from "@doc-pilot/database/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { countUnread } from "./document.repository";
+import { countUnread, loadFinalizedContent } from "./document.repository";
 
 // 唯一 runId 隔离本次夹具(见 tdd.md「集成测试自我隔离」)。
 const runId = `notif-count-it-${Date.now()}`;
@@ -11,6 +17,7 @@ const userA = `${runId}-a`;
 const userB = `${runId}-b`;
 let workspaceA = "";
 let workspaceB = "";
+let documentA = "";
 
 async function seedUser(userId: string): Promise<string> {
   await db.insert(user).values({
@@ -49,6 +56,35 @@ async function seedNotification(input: {
 beforeAll(async () => {
   workspaceA = await seedUser(userA);
   workspaceB = await seedUser(userB);
+  const [doc] = await db
+    .insert(documents)
+    .values({
+      workspaceId: workspaceA,
+      ownerId: userA,
+      title: "租户隔离夹具",
+      originalFilename: "tenant.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 1,
+      status: "ready",
+    })
+    .returning({ id: documents.id });
+  if (!doc) {
+    throw new Error("集成测试 document 创建失败");
+  }
+  documentA = doc.id;
+  await db.insert(documentChunks).values({
+    workspaceId: workspaceA,
+    documentId: documentA,
+    processingVersion: 1,
+    chunkIndex: 0,
+    content: "workspace A 私有内容",
+    contentHash: "a".repeat(64),
+    tokenCount: 4,
+    pageStart: 1,
+    pageEnd: 1,
+    embedding: Array.from({ length: 1024 }, () => 0),
+    embeddingModel: "test",
+  });
   // A 在 workspace A:2 未读 + 1 已读。
   await seedNotification({
     workspaceId: workspaceA,
@@ -92,5 +128,14 @@ describe("countUnread 租户/用户隔离", () => {
 
   it("跨 workspace 不串:拿 A 的 workspace 查 B 的用户 → 0", async () => {
     expect(await countUnread({ workspaceId: workspaceA, userId: userB })).toBe(0);
+  });
+});
+
+describe("loadFinalizedContent 租户隔离", () => {
+  it("工作区不匹配时即使 documentId 与版本准确也不能读取 chunk", async () => {
+    expect(await loadFinalizedContent(workspaceB, documentA, 1)).toBeNull();
+    expect(await loadFinalizedContent(workspaceA, documentA, 1)).toMatchObject({
+      chunks: [{ content: "workspace A 私有内容" }],
+    });
   });
 });

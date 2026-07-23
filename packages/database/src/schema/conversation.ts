@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
+  check,
   index,
   integer,
   numeric,
@@ -71,6 +73,8 @@ export const messages = pgTable(
   (t) => [
     unique("messages_conversation_request_unique").on(t.conversationId, t.clientRequestId),
     index("messages_conversation_created_idx").on(t.conversationId, t.createdAt),
+    check("messages_role_check", sql`${t.role} in ('user', 'assistant')`),
+    check("messages_status_check", sql`${t.status} in ('pending', 'completed', 'failed')`),
   ],
 );
 

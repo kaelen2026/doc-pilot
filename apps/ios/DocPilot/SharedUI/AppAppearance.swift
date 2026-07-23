@@ -4,6 +4,7 @@ import SwiftUI
 /// display 衬线气质。iOS 的 UINavigationBar 标题字体不吃 SwiftUI 修饰器,只能走
 /// UIKit appearance;macOS 的标题栏无对应开关,视图内标题另用 DesignTokens.display。
 enum AppAppearance {
+    @MainActor
     static func apply() {
 #if canImport(UIKit) && !os(watchOS)
         let inkColor = UIColor { traits in
