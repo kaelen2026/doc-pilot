@@ -42,10 +42,17 @@ fastlane,本 skill 就是补上这段本地发布流程。全程用 **App Store 
 
 ## 上线前必查(否则包能传但是废的)
 
+前两条(生产地址 / 审核账号)已由**发版前端到端冒烟门禁**自动兜底:上传脚本在 archive 前会先跑
+`apps/ios/scripts/preflight-smoke.sh`——在模拟器里用审核账号「邮箱+密码」登录**生产**,红灯即
+fail-closed 中止上传。所以正常路径下你**不必手动核对**下面 1;冒烟跑绿即已证明。
+
 1. **`API_BASE_URL` 指向生产**。`apps/ios/Config/Release.xcconfig` 默认是占位
    `https://api.example.invalid`——**归档前务必改成真实生产 HTTPS 地址**,否则 TestFlight 包连不上后端。
-2. **`DEVELOPMENT_TEAM`**。`apps/ios/project.yml` 里留空;脚本会在命令行用 `TEAM_ID` 覆盖,无需改文件。
-3. **build number 必须单调递增**。TestFlight 拒绝重复的 (version, build)。脚本默认用时间戳
+   (占位地址下冒烟门禁会直接红。)
+2. **审核账号已在生产就绪**。冒烟用 `review@docpilot.app` 登生产;若该账号未在生产重建,门禁会在
+   「登录后仍停留在登录页」处红。见 `app-store-release`「演示/审核账号」。
+3. **`DEVELOPMENT_TEAM`**。`apps/ios/project.yml` 里留空;脚本会在命令行用 `TEAM_ID` 覆盖,无需改文件。
+4. **build number 必须单调递增**。TestFlight 拒绝重复的 (version, build)。脚本默认用时间戳
    `YYYYMMDDHHMM` 作 build number,天然递增;要固定值用 `--build <n>`。
 
 ## 怎么跑
@@ -61,9 +68,17 @@ export ASC_KEY_PATH=~/.appstoreconnect/private_keys/AuthKey_2ABCD3EFGH.p8
 .claude/skills/ios-test-flight/scripts/upload-testflight.sh
 ```
 
-脚本按序做:校验凭据与工具 → `xcodegen generate` → `xcodebuild archive`(Release,分发签名)→
-`xcodebuild -exportArchive`(`destination=upload` 直传 App Store Connect)。产物在 `apps/ios/build/`
-(已被顶层 `.gitignore` 的 `build/` 忽略)。
+脚本按序做:校验凭据与工具 → **发版前端到端冒烟门禁**(`preflight-smoke.sh`,审核账号密码登生产,
+红灯中止)→ `xcodegen generate` → `xcodebuild archive`(Release,分发签名)→ `xcodebuild -exportArchive`
+(`destination=upload` 直传 App Store Connect)。产物在 `apps/ios/build/`(已被顶层 `.gitignore` 的
+`build/` 忽略)。
+
+冒烟也可**单独跑**(不上传,纯验证生产 + 审核账号):
+
+```bash
+apps/ios/scripts/preflight-smoke.sh
+# 可覆盖:REVIEW_EMAIL / REVIEW_PASSWORD / SIMULATOR_NAME(默认 iPhone 16)
+```
 
 常用参数:
 
@@ -71,6 +86,7 @@ export ASC_KEY_PATH=~/.appstoreconnect/private_keys/AuthKey_2ABCD3EFGH.p8
 - `--version <x.y.z>` 覆盖 `MARKETING_VERSION`(默认取 `project.yml` 的 `0.1.0`)。
 - `--dry-run` 只归档+导出到 `.ipa` **不上传**(用于本地核对签名),此时 ExportOptions 的
   `destination` 切为 `export`。
+- `--skip-preflight` 跳过冒烟门禁(不推荐;仅当你刚单独跑过 `preflight-smoke.sh` 时用)。
 
 跑完后到 App Store Connect → TestFlight,build 先 Processing(几分钟到半小时),转 Ready 后分配到内部/
 外部测试组;外部测试组首个 build 需过 Beta App Review。

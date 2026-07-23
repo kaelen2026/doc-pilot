@@ -34,6 +34,14 @@ final class LoginModel {
             otp = "935"
             step = .otp
         }
+        // 发版前端到端冒烟用:-prefillLogin 从环境预填邮箱/密码并切到密码方式,绕开 XCUITest
+        // 往 SecureField 敲复杂密码的不稳(大写/符号常被弄错)。生产不会带此参数,故无副作用。
+        if ProcessInfo.processInfo.arguments.contains("-prefillLogin") {
+            let env = ProcessInfo.processInfo.environment
+            if let prefillEmail = env["PREFILL_EMAIL"] { email = prefillEmail }
+            if let prefillPassword = env["PREFILL_PASSWORD"] { password = prefillPassword }
+            method = .password
+        }
     }
 
     /// OTP 位数,输满即自动验证。

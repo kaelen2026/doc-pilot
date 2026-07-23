@@ -19,12 +19,14 @@ PLIST="$BUILD_DIR/ExportOptions.plist"
 BUILD_NUMBER=""
 MARKETING_VERSION=""
 DRY_RUN=0
+SKIP_PREFLIGHT="${SKIP_PREFLIGHT:-0}"
 usage() {
   cat >&2 <<'EOF'
-用法: upload-testflight.sh [--build N] [--version X.Y.Z] [--dry-run]
-  --build N       指定 build number(默认时间戳 YYYYMMDDHHMM,单调递增)
-  --version X.Y.Z 覆盖 MARKETING_VERSION(默认取 project.yml 的值)
-  --dry-run       只归档+导出 .ipa,不上传(destination=export)
+用法: upload-testflight.sh [--build N] [--version X.Y.Z] [--dry-run] [--skip-preflight]
+  --build N        指定 build number(默认时间戳 YYYYMMDDHHMM,单调递增)
+  --version X.Y.Z  覆盖 MARKETING_VERSION(默认取 project.yml 的值)
+  --dry-run        只归档+导出 .ipa,不上传(destination=export)
+  --skip-preflight 跳过发版前端到端冒烟门禁(不推荐;仅在刚单独跑过 preflight 时用)
 
 必需环境变量: TEAM_ID ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_PATH
 EOF
@@ -35,6 +37,7 @@ while [[ $# -gt 0 ]]; do
     --build) BUILD_NUMBER="${2:?--build 需要值}"; shift 2 ;;
     --version) MARKETING_VERSION="${2:?--version 需要值}"; shift 2 ;;
     --dry-run) DRY_RUN=1; shift ;;
+    --skip-preflight) SKIP_PREFLIGHT=1; shift ;;
     -h|--help) usage 0 ;;
     *) echo "未知参数: $1" >&2; usage 1 ;;
   esac
@@ -53,6 +56,15 @@ done
 
 # build number 默认时间戳;必须单调递增否则 TestFlight 拒收
 if [[ -z "$BUILD_NUMBER" ]]; then BUILD_NUMBER="$(date +%Y%m%d%H%M)"; fi
+
+# —— 发版前端到端冒烟门禁 ——(审核账号密码登录生产;红灯 fail-closed 阻止上传废包)
+# 顺带在占位 API_BASE_URL 下直接红,故它跑过后下面的软预警不会再触发。
+if [[ "$SKIP_PREFLIGHT" != 1 ]]; then
+  echo "▸ 发版前端到端冒烟(审核账号密码登录生产后端)"
+  "$IOS_DIR/scripts/preflight-smoke.sh"
+else
+  echo "⚠️  已跳过发版前冒烟门禁(--skip-preflight)。" >&2
+fi
 
 # —— API_BASE_URL 生产地址预警(占位值会导致包连不上后端)——
 if grep -q "api.example.invalid" "$IOS_DIR/Config/Release.xcconfig"; then
