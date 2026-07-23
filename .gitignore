@@ -31,3 +31,8 @@ pnpm-debug.log*
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Xcode(apps/ios;.xcodeproj 由 xcodegen 生成但纳入版本控制,仅忽略用户态与构建产物)
+xcuserdata/
+*.xcuserstate
+DerivedData/
