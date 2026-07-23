@@ -121,9 +121,13 @@ struct AccountView: View {
 
     @ViewBuilder
     private func deleteButton() -> some View {
+        // 删除账户是页面最末、最少用的破坏性动作:比「退出登录」(glass 强调)更收敛,
+        // 但要与全页一致——全宽、居中、字号对齐,而非左对齐的小号文字浮在角落。
         VStack(spacing: DesignTokens.spacingSm) {
             Button("删除账户", role: .destructive) { showDeleteConfirm = true }
-                .font(.callout)
+                .font(.body.weight(.medium))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
                 .disabled(model.isDeletingAccount)
                 // iOS 26 的 confirmationDialog 以来源视图为锚:必须挂在具体按钮上,
                 // 挂到外层 ScrollView/容器会锚到左上角错位(见 apple-ios26-swiftui-gotchas)。
@@ -137,7 +141,11 @@ struct AccountView: View {
                 .accessibilityIdentifier("account.deleteAccount")
 
             if let error = model.deletionErrorMessage {
-                Text(error).font(.caption).foregroundStyle(DesignTokens.seal)
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(DesignTokens.seal)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .multilineTextAlignment(.center)
             }
         }
         .padding(.top, DesignTokens.spacingSm)
