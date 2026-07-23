@@ -1,30 +1,219 @@
 # 工作流规则
 
-## 禁止直接在 main 提交代码
+本项目采用「一项任务、一个分支、一个 worktree、一个 Pull Request」的协作方式。
+`docs/` 是行为契约的权威参考；实现与文档冲突时，先确认并更新契约，不得在代码中静默绕过。
 
-`main` 是受保护的默认分支,**禁止在 `main` 上直接 commit**。
+## 1. 接任务与确认范围
 
-- 任何代码改动都必须先从 `main` 切出特性分支再提交:
-  - 命名约定:`feat/<简述>`、`fix/<简述>`、`ci/<简述>`、`docs/<简述>`、`chore/<简述>`。。
-- 提交前必须确认当前不在 `main`:`git branch --show-current` 不得返回 `main`。
-- 改动通过 **Pull Request** 合入 `main`,且必须通过 CI 质量门禁(lint / typecheck / build / test。
-- 提交信息遵循 **Conventional Commits**(由 husky `commit-msg` + commitlint 强制)。
+开始开发前，先明确：
 
-> 例外:仅当用户明确要求"就在 main 上提交"时才可破例,否则一律先建分支。
+- 问题背景、目标和验收标准。
+- 涉及 Web、API、Worker、iOS 或哪些共享包。
+- 是否修改接口、Schema、状态机、异步任务、权限或 AI 行为。
+- 应先阅读哪些 `docs/` 契约和 `.claude/rules/` 规则。
 
-## 使用 worktree 开发特性分支(与主仓库目录平级)
+按改动类型只加载必要文档：
 
-特性分支在 **独立的 git worktree** 中开发。worktree 目录与主仓库目录 **平级**——放在
-同一父目录下的兄弟目录,命名为 `<仓库名>-<端/简述>`,**不要**嵌套在主仓库内部。
+- 前端组件：`.claude/rules/frontend.md`
+- 后端模块：`.claude/rules/backend.md`
+- 测试：`.claude/rules/tdd.md`
+- 数据模型：`docs/architecture/data-model.md`
+- 处理管线：`docs/architecture/pipeline.md`
+- RAG 与 AI：`docs/architecture/rag.md`
+- 权限、限流、配额与可观测性：`docs/architecture/cross-cutting.md`
 
-当前有哪些 worktree 以 `git worktree list` 的实时输出为准——本文档不维护清单
-(此处曾有一张硬编码的表,worktree 合并清理后即过时,故移除)。
+## 2. 禁止直接在 main 提交代码
 
-约定:
+`main` 是受保护的默认分支，**禁止在 `main` 上直接开发或提交**。
 
-- 创建:`git worktree add -b feat/<简述> ../doc-pilot-<简述> <基线提交>`。
-- 主仓库目录保持在基线分支;同一分支不能在多个 worktree 同时检出(git 会拒绝)。
-- 查看:`git worktree list`。
-- 清理:特性合并后,**删除 worktree 的同时一并删除分支**(分支不长期保留):
-  - `git worktree remove ../doc-pilot-<简述>`
-  - `git branch -d feat/<简述>`(已合并;远端分支一并删除:`git push origin --delete feat/<简述>`)
+- 任何改动都必须从最新的 `main` 基线切出特性分支，并在独立 worktree 中完成。
+- 提交前必须运行 `git branch --show-current`，输出不得为 `main`。
+- 改动必须通过 Pull Request 合入 `main`，并通过 CI 质量门禁。
+- 提交信息遵循 Conventional Commits，由 Husky `commit-msg` 和 commitlint 强制检查。
+
+> 例外：仅当用户明确要求「就在 main 上提交」时才可破例。
+
+## 3. 同步基线并检查现场
+
+创建分支前，在主仓库检查工作区和现有 worktree：
+
+```bash
+git status --short
+git branch --show-current
+git fetch origin
+git pull --ff-only origin main
+git worktree list
+```
+
+若存在未提交改动，先确认其归属，不得覆盖、丢弃或混入当前任务。同一分支不能在多个 worktree
+中同时检出。
+
+## 4. 使用独立 worktree
+
+worktree 必须与主仓库目录平级，命名为 `<仓库名>-<端/简述>`，不得嵌套在主仓库内部。
+
+分支命名约定：
+
+- `feat/<简述>`
+- `fix/<简述>`
+- `docs/<简述>`
+- `ci/<简述>`
+- `chore/<简述>`
+
+创建示例：
+
+```bash
+git worktree add \
+  -b feat/document-search \
+  ../doc-pilot-document-search \
+  origin/main
+cd ../doc-pilot-document-search
+pnpm install
+git branch --show-current
+```
+
+当前有哪些 worktree 以 `git worktree list` 的实时输出为准，文档中不维护静态清单。
+
+## 5. 小步开发与验证
+
+遵循 `.claude/rules/tdd.md` 的红—绿—重构流程：
+
+1. 先写能够暴露目标行为或缺陷的失败测试。
+2. 实现让测试通过的最小改动。
+3. 重构并再次验证。
+4. 同步更新受影响的契约和中文文档。
+
+开发过程中优先运行受影响 workspace 的快速检查：
+
+```bash
+pnpm --filter @doc-pilot/api test
+pnpm --filter @doc-pilot/api typecheck
+```
+
+根据实际改动替换 workspace。不要把格式化、无关重构和功能修改混入同一任务。
+
+## 6. 提交前自检
+
+先检查改动范围：
+
+```bash
+git status --short
+git diff
+git diff --stat
+```
+
+至少运行与改动相关的测试；提交 Pull Request 前运行完整质量门禁：
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+涉及数据库或完整用户流程时，追加：
+
+```bash
+pnpm --filter @doc-pilot/api test:integration
+pnpm test:e2e
+```
+
+自检还应确认：
+
+- 未提交 `.env`、密钥、调试日志、临时文件或无关生成物。
+- 数据库和向量查询在查询本身包含 `workspace_id`。
+- API 异步交接经过 Transactional Outbox，而非直接发布到 BullMQ。
+- Worker 写入受到 `processing_version` 和删除状态保护。
+- AI 调用统一经过 AI Gateway，引用经过业务级校验。
+- 行为、接口或运维方式变化时，相关中文文档已同步更新。
+
+## 7. 提交规范
+
+### 一个 commit 是一个原子任务
+
+每个 commit 必须对应一个原子任务：只表达一个清晰意图，能够独立审查、独立验证，并可在不破坏
+其他改动的前提下安全回退。
+
+- 功能、缺陷修复、重构、格式化和文档更新不得无关地混在同一个 commit。
+- 测试应与它验证的实现放在同一个 commit，保证该 commit 自身完整。
+- 为当前实现所必需的契约或文档更新，应与实现放在同一个 commit。
+- 大任务应按可验证的行为边界拆成多个 commit，而不是按文件或代码层机械拆分。
+- 任一中间 commit 都不得故意留下无法构建、类型错误或测试失败的仓库状态。
+- 如果提交说明中需要用「以及」「顺便」连接两个无关目的，应继续拆分。
+
+例如，“增加文档标题搜索”可以作为一个原子任务，包含对应的契约、实现和测试；无关的上传页
+格式调整应放入另一个 commit。
+
+提交信息格式为 `<type>: <中文说明>`，例如：
+
+```bash
+git commit -m "feat: 增加文档标题搜索"
+git commit -m "fix: 修复重复提交问答消息"
+git commit -m "test: 补充上传配额边界测试"
+git commit -m "docs: 完善本地开发说明"
+```
+
+提交前再次确认当前分支：
+
+```bash
+git branch --show-current
+```
+
+## 8. Pull Request
+
+推送分支：
+
+```bash
+git push -u origin feat/document-search
+```
+
+Pull Request 描述至少包含：
+
+```markdown
+## 背景
+
+为什么需要这个改动。
+
+## 改动
+
+- 修改了什么。
+- 有哪些重要设计决策。
+
+## 验证
+
+- 运行了哪些自动化检查。
+- 如何手工验证。
+
+## 风险
+
+数据库、兼容性、异步任务、发布或回滚风险。
+```
+
+一个 Pull Request 只解决一个清晰问题。大型需求可按「契约/Schema → 后端能力 → 前端接入
+→ 清理与文档」拆分，但每个中间 Pull Request 都必须保持仓库可构建、可测试。
+
+## 9. Review 与 CI
+
+- 收到 Review 意见后，先确认问题和影响范围，再在原分支修复并补充测试。
+- 回复评论时说明改了什么、如何验证，不要只回复「已修改」。
+- 不得为消除评论而绕过架构不变量。
+- CI 全部通过、所有阻塞评论处理完毕后才能合并。
+
+## 10. 合并后清理
+
+清理前确认 worktree 没有未提交内容：
+
+```bash
+git -C ../doc-pilot-document-search status --short
+```
+
+特性合并后，删除 worktree 和本地、远端特性分支：
+
+```bash
+git worktree remove ../doc-pilot-document-search
+git branch -d feat/document-search
+git push origin --delete feat/document-search
+git worktree prune
+```
+
+分支不长期保留。删除前若发现未提交内容，应先确认并处理，不得强制丢弃。
