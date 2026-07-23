@@ -20,6 +20,27 @@ describe("parseRegisterDevice", () => {
     ).toThrow(ValidationError);
   });
 
+  it("接受 Android FCM token 并保留大小写", () => {
+    const fcmToken = `fcm-${"Ab_9:".repeat(30)}`;
+    expect(
+      parseRegisterDevice({
+        token: `  ${fcmToken}  `,
+        platform: "android",
+        environment: "production",
+      }),
+    ).toEqual({ token: fcmToken, platform: "android", environment: "production" });
+  });
+
+  it("拒绝包含空白或控制字符的 Android FCM token", () => {
+    expect(() =>
+      parseRegisterDevice({
+        token: `fcm-${"a".repeat(40)} bad`,
+        platform: "android",
+        environment: "production",
+      }),
+    ).toThrow(ValidationError);
+  });
+
   it("过短 / 过长令牌被拒", () => {
     expect(() =>
       parseRegisterDevice({ token: "ab", platform: "ios", environment: "sandbox" }),
@@ -31,7 +52,7 @@ describe("parseRegisterDevice", () => {
 
   it("未知 platform / environment 被拒", () => {
     expect(() =>
-      parseRegisterDevice({ token, platform: "android", environment: "sandbox" }),
+      parseRegisterDevice({ token, platform: "windows", environment: "sandbox" }),
     ).toThrow(ValidationError);
     expect(() => parseRegisterDevice({ token, platform: "ios", environment: "prod" })).toThrow(
       ValidationError,

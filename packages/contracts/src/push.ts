@@ -6,9 +6,10 @@
  * environment 必须与 App 的 aps-environment entitlement 一致,否则 APNS 直接 BadDeviceToken。
  */
 
-/** 推送平台。v1 仅 iOS(APNS)。VARCHAR + 应用层校验,不用 PG ENUM。 */
+/** 推送平台。VARCHAR + 应用层校验,不用 PG ENUM。 */
 export const PUSH_PLATFORM = {
   ios: "ios",
+  android: "android",
 } as const;
 export type PushPlatform = (typeof PUSH_PLATFORM)[keyof typeof PUSH_PLATFORM];
 
@@ -26,6 +27,12 @@ export type PushEnvironment = (typeof PUSH_ENVIRONMENT)[keyof typeof PUSH_ENVIRO
 export const PUSH_DEVICE_TOKEN = {
   minLength: 32,
   maxLength: 400,
+} as const;
+
+/** FCM registration token 边界。token 大小写敏感,不得像 APNS token 一样转小写。 */
+export const FCM_DEVICE_TOKEN = {
+  minLength: 32,
+  maxLength: 4096,
 } as const;
 
 /** 管理后台测试推送的文案上限(防御异常大的输入)。 */

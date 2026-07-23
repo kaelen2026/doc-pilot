@@ -1,5 +1,10 @@
 import type { PushEnvironment, PushPlatform } from "@doc-pilot/contracts";
-import { PUSH_DEVICE_TOKEN, PUSH_ENVIRONMENT, PUSH_PLATFORM } from "@doc-pilot/contracts";
+import {
+  FCM_DEVICE_TOKEN,
+  PUSH_DEVICE_TOKEN,
+  PUSH_ENVIRONMENT,
+  PUSH_PLATFORM,
+} from "@doc-pilot/contracts";
 import { ValidationError } from "../../shared/errors";
 
 export interface RegisterDeviceInput {
@@ -11,6 +16,7 @@ export interface RegisterDeviceInput {
 const PLATFORMS = new Set<string>(Object.values(PUSH_PLATFORM));
 const ENVIRONMENTS = new Set<string>(Object.values(PUSH_ENVIRONMENT));
 const HEX = /^[0-9a-f]+$/;
+const FCM_TOKEN = /^[A-Za-z0-9_:.~-]+$/;
 
 function asRecord(body: unknown): Record<string, unknown> {
   if (typeof body !== "object" || body === null) {
@@ -26,15 +32,6 @@ export function parseRegisterDevice(body: unknown): RegisterDeviceInput {
   if (typeof b.token !== "string") {
     throw new ValidationError("token 必填且为字符串");
   }
-  const token = b.token.trim().toLowerCase();
-  if (
-    token.length < PUSH_DEVICE_TOKEN.minLength ||
-    token.length > PUSH_DEVICE_TOKEN.maxLength ||
-    !HEX.test(token)
-  ) {
-    throw new ValidationError("token 必须是合法的十六进制设备令牌");
-  }
-
   if (typeof b.platform !== "string" || !PLATFORMS.has(b.platform)) {
     throw new ValidationError(`platform 必须是 ${[...PLATFORMS].join(" / ")}`);
   }
@@ -42,9 +39,28 @@ export function parseRegisterDevice(body: unknown): RegisterDeviceInput {
     throw new ValidationError(`environment 必须是 ${[...ENVIRONMENTS].join(" / ")}`);
   }
 
+  const platform = b.platform as PushPlatform;
+  const trimmed = b.token.trim();
+  const token = platform === PUSH_PLATFORM.ios ? trimmed.toLowerCase() : trimmed;
+  const valid =
+    platform === PUSH_PLATFORM.ios
+      ? token.length >= PUSH_DEVICE_TOKEN.minLength &&
+        token.length <= PUSH_DEVICE_TOKEN.maxLength &&
+        HEX.test(token)
+      : token.length >= FCM_DEVICE_TOKEN.minLength &&
+        token.length <= FCM_DEVICE_TOKEN.maxLength &&
+        FCM_TOKEN.test(token);
+  if (!valid) {
+    throw new ValidationError(
+      platform === PUSH_PLATFORM.ios
+        ? "token 必须是合法的十六进制 APNS 设备令牌"
+        : "token 必须是合法的 FCM 设备令牌",
+    );
+  }
+
   return {
     token,
-    platform: b.platform as PushPlatform,
+    platform,
     environment: b.environment as PushEnvironment,
   };
 }
