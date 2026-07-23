@@ -1,3 +1,4 @@
+import GoogleSignIn
 import SwiftUI
 import SwiftData
 
@@ -15,6 +16,8 @@ struct DocPilotApp: App {
             RootView(environment: environment, pushRegistration: appDelegate.pushRegistration)
                 .tint(DesignTokens.seal)
                 .preferredColorScheme(AppearancePreference.from(appearanceRaw).colorScheme)
+                // Google 登录回调:GIDSignIn 消费反转 client id 的 URL scheme;handle 幂等,非其回调返回 false。
+                .onOpenURL { url in _ = GIDSignIn.sharedInstance.handle(url) }
         }
         .modelContainer(for: Highlight.self)
     }

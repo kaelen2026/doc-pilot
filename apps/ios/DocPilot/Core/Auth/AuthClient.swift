@@ -48,8 +48,21 @@ struct AuthClient: Sendable {
         )
     }
 
+    /// 原生 Google 登录:把 GoogleSignIn 返回的 idToken 交给后端换取会话。
+    /// 与 Apple 同构走 `POST /api/auth/sign-in/social`(provider=google),但 Google 无需 nonce
+    /// (nonce 传 nil → JSONEncoder 省略该键)。收尾复用 bearerSignIn(见 signInWithApple)。
+    func signInWithGoogle(idToken: String) async throws -> AuthSession {
+        try await bearerSignIn(
+            path: "/api/auth/sign-in/social",
+            body: SignInSocialBody(
+                provider: "google",
+                idToken: SignInSocialBody.IDToken(token: idToken, nonce: nil)
+            )
+        )
+    }
+
     /// bearer 登录收尾:POST body → 从响应头 `set-auth-token` 取 bearer 存 Keychain →
-    /// `restoreSession()` 拉 `AuthSession`。OTP / 密码 / Apple 三条登录路径共用此收尾。
+    /// `restoreSession()` 拉 `AuthSession`。OTP / 密码 / Apple / Google 登录路径共用此收尾。
     private func bearerSignIn(path: String, body: some Encodable) async throws -> AuthSession {
         let response = try await api.transport.send(try request(path: path, body: body))
         guard 200..<300 ~= response.response.statusCode else {
