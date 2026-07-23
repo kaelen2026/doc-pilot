@@ -26,30 +26,57 @@ const fullApple = {
 } as const;
 
 describe("resolveSocialProviders", () => {
-  it("clientId 与 secret 齐备时注册 Google", () => {
+  it("clientId 与 secret 齐备、未配 iOS client 时,google.clientId 为单串", () => {
     const providers = resolveSocialProviders({
-      google: { clientId: "gid", clientSecret: "gsecret" },
+      google: { clientId: "gid", clientSecret: "gsecret", iosClientId: "" },
       apple: noApple,
     });
 
     expect(providers.google).toEqual({ clientId: "gid", clientSecret: "gsecret" });
   });
 
+  it("配了 iOS client ID 时,google.clientId 为 [web, ios] 数组——供原生 idToken 的 aud 校验", () => {
+    const providers = resolveSocialProviders({
+      google: {
+        clientId: "gid",
+        clientSecret: "gsecret",
+        iosClientId: "ios.apps.googleusercontent.com",
+      },
+      apple: noApple,
+    });
+
+    // better-auth google 的 clientId 接受 string[],作为 verifyIdToken 的 audience 列表;
+    // 首项(web)仍是 web OAuth 流程的 primary client id。
+    expect(providers.google).toEqual({
+      clientId: ["gid", "ios.apps.googleusercontent.com"],
+      clientSecret: "gsecret",
+    });
+  });
+
   it("凭据缺失(空串)时不注册,返回空对象——避免装配出必然报错的 provider", () => {
     expect(
-      resolveSocialProviders({ google: { clientId: "", clientSecret: "" }, apple: noApple }),
+      resolveSocialProviders({
+        google: { clientId: "", clientSecret: "", iosClientId: "" },
+        apple: noApple,
+      }),
     ).toEqual({});
     expect(
-      resolveSocialProviders({ google: { clientId: "gid", clientSecret: "" }, apple: noApple }),
+      resolveSocialProviders({
+        google: { clientId: "gid", clientSecret: "", iosClientId: "" },
+        apple: noApple,
+      }),
     ).toEqual({});
     expect(
-      resolveSocialProviders({ google: { clientId: "", clientSecret: "gsecret" }, apple: noApple }),
+      resolveSocialProviders({
+        google: { clientId: "", clientSecret: "gsecret", iosClientId: "" },
+        apple: noApple,
+      }),
     ).toEqual({});
   });
 
   it("Apple 凭据齐备时注册,provider 为动态签发 client secret 的工厂函数", async () => {
     const providers = resolveSocialProviders({
-      google: { clientId: "", clientSecret: "" },
+      google: { clientId: "", clientSecret: "", iosClientId: "" },
       apple: fullApple,
     });
 
@@ -71,7 +98,7 @@ describe("resolveSocialProviders", () => {
 
   it("Apple 私钥缺失时不注册——生成 client secret 必须有私钥", () => {
     const providers = resolveSocialProviders({
-      google: { clientId: "", clientSecret: "" },
+      google: { clientId: "", clientSecret: "", iosClientId: "" },
       apple: { ...fullApple, privateKey: "" },
     });
 
@@ -80,7 +107,7 @@ describe("resolveSocialProviders", () => {
 
   it("Apple 齐备但未配 appBundleIdentifier 时仍注册,只是省略该字段", async () => {
     const providers = resolveSocialProviders({
-      google: { clientId: "", clientSecret: "" },
+      google: { clientId: "", clientSecret: "", iosClientId: "" },
       apple: { ...fullApple, appBundleIdentifier: "" },
     });
 
