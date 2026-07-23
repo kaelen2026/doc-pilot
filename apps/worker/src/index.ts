@@ -1,4 +1,4 @@
-import { RECONCILE } from "@doc-pilot/contracts";
+import { ACCOUNT_PURGE, RECONCILE } from "@doc-pilot/contracts";
 import {
   errToLog,
   jobMetrics,
@@ -18,6 +18,7 @@ import { Worker } from "bullmq";
 import { workerEnv } from "./env";
 import { startOutboxPublisher } from "./outbox/publisher";
 import { createDocumentProcessor } from "./processors/document.processor";
+import { createPurgeAccountProcessor } from "./purge-account/purge-account.processor";
 import { createReconcileProcessor } from "./reconcile/reconcile.processor";
 
 // Metrics:配置 METRICS_PORT 时暴露 Prometheus /metrics;未配置则 no-op。
@@ -79,9 +80,12 @@ const stopPublisher = startOutboxPublisher({
 // reconcile 会检查/重新入队 document-processing 的 Job,故传入一个该队列的客户端。
 const reconcileProcessingQueue = getDocumentProcessingQueue(maintenanceQueueConnection);
 const maintenanceQueue = getMaintenanceQueue(maintenanceQueueConnection);
+// maintenance 队列现承载两类周期任务(reconcile + 账户清理),按 job.name 分发到各自处理器。
+const reconcileProcessor = createReconcileProcessor(reconcileProcessingQueue);
+const purgeAccountProcessor = createPurgeAccountProcessor();
 const maintenanceWorker = new Worker(
   QUEUE_NAMES.maintenance,
-  createReconcileProcessor(reconcileProcessingQueue),
+  (job) => (job.name === JOB_NAMES.purgeAccount ? purgeAccountProcessor() : reconcileProcessor()),
   { connection: maintenanceWorkerConnection, concurrency: 1 },
 );
 maintenanceWorker.on("completed", (job) => {
@@ -101,6 +105,16 @@ void maintenanceQueue
   )
   .then(() => logger.info("reconcile.scheduled", { intervalMs: RECONCILE.intervalMs }))
   .catch((err) => logger.error("reconcile.schedule_failed", errToLog(err)));
+
+// 调度周期性账户清理(注销冷静期到期 → 硬删除)。同一 maintenance 队列,按 name 去重。
+void maintenanceQueue
+  .add(
+    JOB_NAMES.purgeAccount,
+    {},
+    { repeat: { every: ACCOUNT_PURGE.intervalMs }, removeOnComplete: true, removeOnFail: 100 },
+  )
+  .then(() => logger.info("account_purge.scheduled", { intervalMs: ACCOUNT_PURGE.intervalMs }))
+  .catch((err) => logger.error("account_purge.schedule_failed", errToLog(err)));
 
 logger.info("worker.started", {
   queues: [QUEUE_NAMES.documentProcessing, QUEUE_NAMES.maintenance],

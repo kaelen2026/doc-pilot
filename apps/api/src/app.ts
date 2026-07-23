@@ -6,6 +6,7 @@ import type { Context, MiddlewareHandler } from "hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { apiEnv } from "./env";
+import { requireActiveAccount } from "./middleware/account.middleware";
 import { requireAdmin } from "./middleware/admin.middleware";
 import { requireAuth } from "./middleware/auth.middleware";
 import { observability } from "./middleware/observability.middleware";
@@ -13,6 +14,7 @@ import { createAdminRoutes } from "./modules/admin/admin.routes";
 import { createConversationRoutes } from "./modules/conversations/conversation.routes";
 import { createDocumentRoutes } from "./modules/documents/document.routes";
 import { createHealthRoutes, type ReadinessProbes } from "./modules/health/health.routes";
+import { getDeletionScheduledAt } from "./modules/me/me.repository";
 import { createMeRoutes } from "./modules/me/me.routes";
 import { createNotificationRoutes } from "./modules/notifications/notification.routes";
 import { createProfileRoutes, createPublicProfileRoutes } from "./modules/profiles/profile.routes";
@@ -92,6 +94,22 @@ export function createApp(
   app.use("/admin/*", guard);
   app.use("/admin", adminGuard);
   app.use("/admin/*", adminGuard);
+
+  // 冷静期冻结门禁:处于注销冷静期的账户禁止访问业务端点(挂在 guard 之后,拿得到 user)。
+  // 刻意不挂 /me——「恢复账户」页要能读 /me 状态、撤销(DELETE /me/deletion)、退出登录。
+  const activeAccount = requireActiveAccount({ getDeletionState: getDeletionScheduledAt });
+  // /me 整体放行(恢复页要读状态/撤销/退出),但 /me/profile 是业务写(改公开主页),须冻结。
+  app.use("/me/profile", activeAccount);
+  app.use("/documents", activeAccount);
+  app.use("/documents/*", activeAccount);
+  app.use("/conversations", activeAccount);
+  app.use("/conversations/*", activeAccount);
+  app.use("/search", activeAccount);
+  app.use("/notifications", activeAccount);
+  app.use("/notifications/*", activeAccount);
+  app.use("/users/*", activeAccount);
+  app.use("/admin", activeAccount);
+  app.use("/admin/*", activeAccount);
 
   // 贵操作限流(用户维度),挂在 guard 之后以便拿到 user。
   const subjectByUser = (c: Context<AppEnv>) => c.get("user")?.id ?? null;

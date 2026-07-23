@@ -52,6 +52,22 @@ cancelled
 
 > ⚠️ 重要：Better Auth 的 `user.id` 是 **TEXT**（非 UUID）。因此所有引用用户的外键（如后文 `documents.owner_id`、`memberships.user_id`、`workspaces.owner_id`）在实现中应为 **TEXT** 引用 `user(id)`，即便后续表格的 SQL 示例写作 `UUID`——以本条为准。
 
+**`user.deletion_scheduled_at`（自定义列,非 Better Auth 字段）**——账户注销的**冷静期**状态。
+
+```sql
+ALTER TABLE "user" ADD COLUMN deletion_scheduled_at TIMESTAMP;  -- 可空
+CREATE INDEX user_deletion_scheduled_idx
+  ON "user"(deletion_scheduled_at) WHERE deletion_scheduled_at IS NOT NULL;  -- 部分索引,供 worker 周期扫描
+```
+
+- **语义**:`NULL` = 正常账户;非空 = 已请求注销,值为**到期(可硬删除)时刻** = 请求时刻 + `ACCOUNT_DELETION_COOLDOWN_DAYS`(7 天,见 `@doc-pilot/contracts`)。这是我们加的列,Better Auth 不读写它。
+- **生命周期**(见 `apps/api/src/modules/me/`、`apps/worker/src/purge-account/`):
+  1. **请求**(`POST /me/deletion`):写入到期时刻。幂等——已在冷静期不重置倒计时。
+  2. **冻结**:冷静期内账户被 `requireActiveAccount` 中间件挡在所有业务端点外(放行 `/me` 读状态/撤销/退出);前端 `(workspace)` 壳把用户重定向到 `/restore` 恢复页。
+  3. **撤销**(`DELETE /me/deletion`):置回 `NULL`,账户即刻恢复。
+  4. **到期硬删除**:worker maintenance 队列的周期任务 `purge_account`(仿 Reconciliation)扫 `deletion_scheduled_at <= now`,**守卫式原子** `DELETE FROM "user" WHERE id=? AND deletion_scheduled_at <= now`——若期间被撤销则命中 0 行、跳过(与撤销的竞态安全落点)。删 `user` 行靠 FK 级联清空其全部数据(见下各表 `ON DELETE CASCADE`);对象存储(`document_files` 的 S3 对象)不随 DB 级联,故 worker 在删库前收集 objectKey、删库成功后再 best-effort `deleteObject`。
+- 硬删除后邮箱唯一约束释放,同邮箱可重新注册为全新账户。
+
 **device_code**（扫码登录:OAuth 2.0 设备授权流程 RFC 8628,见 ADR-011）
 
 由 Better Auth 的 `deviceAuthorization` 插件读写,经 `/api/auth/device/*` 挂载。字段名（JS 属性）必须与插件声明的 field 名逐字一致（drizzle 适配器按属性名匹配），列名 snake_case。短生命周期（默认 2 分钟即过期），不承载持久业务事实。
