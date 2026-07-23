@@ -52,6 +52,42 @@ cancelled
 
 > ⚠️ 重要：Better Auth 的 `user.id` 是 **TEXT**（非 UUID）。因此所有引用用户的外键（如后文 `documents.owner_id`、`memberships.user_id`、`workspaces.owner_id`）在实现中应为 **TEXT** 引用 `user(id)`，即便后续表格的 SQL 示例写作 `UUID`——以本条为准。
 
+**`user.deletion_scheduled_at`（自定义列,非 Better Auth 字段）**——账户注销的**冷静期**状态。
+
+```sql
+ALTER TABLE "user" ADD COLUMN deletion_scheduled_at TIMESTAMP;  -- 可空
+CREATE INDEX user_deletion_scheduled_idx
+  ON "user"(deletion_scheduled_at) WHERE deletion_scheduled_at IS NOT NULL;  -- 部分索引,供 worker 周期扫描
+```
+
+- **语义**:`NULL` = 正常账户;非空 = 已请求注销,值为**到期(可硬删除)时刻** = 请求时刻 + `ACCOUNT_DELETION_COOLDOWN_DAYS`(7 天,见 `@doc-pilot/contracts`)。这是我们加的列,Better Auth 不读写它。
+- **生命周期**(见 `apps/api/src/modules/me/`、`apps/worker/src/purge-account/`):
+  1. **请求**(`POST /me/deletion`):写入到期时刻。幂等——已在冷静期不重置倒计时。
+  2. **冻结**:冷静期内账户被 `requireActiveAccount` 中间件挡在所有业务端点外(放行 `/me` 读状态/撤销/退出);前端 `(workspace)` 壳把用户重定向到 `/restore` 恢复页。
+  3. **撤销**(`DELETE /me/deletion`):置回 `NULL`,账户即刻恢复。
+  4. **到期硬删除**:worker maintenance 队列的周期任务 `purge_account`(仿 Reconciliation)扫 `deletion_scheduled_at <= now`,在**同一事务**里:收集该账户对象 key → **守卫式原子** `DELETE FROM "user" WHERE id=? AND deletion_scheduled_at <= now`(期间被撤销则命中 0 行、跳过——竞态安全落点)→ 把 key 写入 `pending_object_deletions`。删 `user` 行靠 FK 级联清空其全部数据(见下各表 `ON DELETE CASCADE`)。
+  5. **对象存储清理**:S3 对象不随 DB 级联,故删库时把待删 objectKey 原子登记到 `pending_object_deletions`(下段),由同一任务的 drain 阶段消费删除——删成功销行,失败累加 `attempts` 留作死信,下轮重试;超过 `OBJECT_PURGE.maxAttempts` 不再重试(供运维排查)。删库与登记原子一致,故崩溃/S3 抖动都不丢 key。
+- 硬删除后邮箱唯一约束释放,同邮箱可重新注册为全新账户。
+
+**`pending_object_deletions`(对象存储删除的持久化死信队列)**——见上「对象存储清理」。
+
+```sql
+CREATE TABLE pending_object_deletions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider VARCHAR(32) NOT NULL,
+  bucket VARCHAR(255) NOT NULL,
+  object_key VARCHAR(1024) NOT NULL,
+  size_bytes BIGINT,
+  attempts INTEGER NOT NULL DEFAULT 0,     -- 达 maxAttempts 后不再被 drain 取出(死信)
+  last_error TEXT,
+  last_attempt_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX pending_object_deletions_scan_idx ON pending_object_deletions(attempts, created_at);
+```
+
+无 FK(记录的对象所属 user 已被删除)。`deleteObject` 幂等,故「上轮实删但未销行」的重试再删仍成功→销行。
+
 **device_code**（扫码登录:OAuth 2.0 设备授权流程 RFC 8628,见 ADR-011）
 
 由 Better Auth 的 `deviceAuthorization` 插件读写,经 `/api/auth/device/*` 挂载。字段名（JS 属性）必须与插件声明的 field 名逐字一致（drizzle 适配器按属性名匹配），列名 snake_case。短生命周期（默认 2 分钟即过期），不承载持久业务事实。

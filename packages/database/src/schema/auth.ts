@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 /**
@@ -5,18 +6,32 @@ import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
  * （见 better-auth 的 drizzle 适配器 schema），不要随意改动。
  * 使用默认单数表名：user / session / account / verification。
  */
-export const user = pgTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: boolean("email_verified").default(false).notNull(),
-  image: text("image"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at")
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull(),
-});
+export const user = pgTable(
+  "user",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    email: text("email").notNull().unique(),
+    emailVerified: boolean("email_verified").default(false).notNull(),
+    image: text("image"),
+    // 账户注销冷静期:非空表示已请求注销,值为到期(可执行硬删除)时刻 = 请求时刻 + 冷静期。
+    // 撤销即置回 NULL;worker 周期扫描 deletion_scheduled_at <= now 的用户执行硬删除。
+    // 这是我们的自定义列,非 Better Auth 字段,故 Better Auth 不会读写它。
+    deletionScheduledAt: timestamp("deletion_scheduled_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    // worker 每分钟扫 deletion_scheduled_at <= now;部分索引只收录待注销行(绝大多数为 NULL),
+    // 让周期扫描走索引而非全表 seq-scan。
+    index("user_deletion_scheduled_idx")
+      .on(t.deletionScheduledAt)
+      .where(sql`${t.deletionScheduledAt} is not null`),
+  ],
+);
 
 export const session = pgTable(
   "session",

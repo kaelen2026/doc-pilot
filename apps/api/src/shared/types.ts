@@ -10,11 +10,14 @@ export interface Membership {
 }
 
 /**
- * Hono 环境类型：鉴权中间件通过后，user / memberships 挂在 context 上。
+ * Hono 环境类型：鉴权中间件通过后，user / memberships / 账户注销状态挂在 context 上。
+ * accountDeletionScheduledAt 与 memberships 同源(一次查询取回),供 requireActiveAccount 判冻结,
+ * 免去每请求一次额外 PK 查询。
  */
 export type AppEnv = {
   Variables: {
     user: AuthUser;
     memberships: Membership[];
+    accountDeletionScheduledAt: Date | null;
   };
 };

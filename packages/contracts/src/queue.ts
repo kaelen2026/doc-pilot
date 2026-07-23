@@ -11,6 +11,7 @@ export const QUEUE_NAMES = {
 export const JOB_NAMES = {
   processDocument: "process_document",
   reconcile: "reconcile",
+  purgeAccount: "purge_account",
 } as const;
 
 /**

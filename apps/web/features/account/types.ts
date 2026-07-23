@@ -30,6 +30,8 @@ export interface Me {
   workspaces: WorkspaceMembership[];
   /** 是否平台管理员(邮箱白名单)。用于前端门禁 /admin 与侧栏入口。 */
   isAdmin: boolean;
+  /** 非空表示账户处于注销冷静期,值为到期(硬删除)时刻的 ISO 串;前端据此冻结重定向。 */
+  deletionScheduledAt: string | null;
 }
 
 /** 单个配额维度的用量与上限。 */
