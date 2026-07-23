@@ -55,6 +55,8 @@ export async function sendTestPush(input: TestPushInput): Promise<TestPushReport
     userId: target.id,
     title: input.title,
     body: input.body,
+    // 角标 = 收件人真实未读数(而非硬编码);与 Worker 通知推送、iOS 前台重同步同一口径。
+    badge: await repo.countUnreadByUserId(target.id),
     apns: apiApnsClient(),
   });
   // 只回传失效令牌的**数量**,完整令牌(即便已删)不出 API。

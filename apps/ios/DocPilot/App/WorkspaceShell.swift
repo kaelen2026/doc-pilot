@@ -8,6 +8,7 @@ struct WorkspaceShell: View {
     @State private var notificationsModel: NotificationsModel
     @State private var accountModel: AccountModel
     @State private var selection: Section
+    @Environment(\.scenePhase) private var scenePhase
     let userID: String
     let api: APIClient
     let pushRegistration: PushRegistrationModel
@@ -44,6 +45,12 @@ struct WorkspaceShell: View {
             // 仅在登录后(WorkspaceShell 存在即已登录)申请通知权限并注册推送。
             // activate 幂等 + 权限一次性 guard,故 .task 在视图重建后重跑无副作用。
             await pushRegistration.activate(client: PushClient(api: api))
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // 回到前台即重新拉取真实未读数并经模型同步系统角标,清掉推送残留的 stale 红点。
+            // 打开 app 与点击推送(推送点击会把 app 带前台)都会触发;load() 幂等,重跑无副作用。
+            guard phase == .active else { return }
+            Task { await notificationsModel.load() }
         }
     }
 

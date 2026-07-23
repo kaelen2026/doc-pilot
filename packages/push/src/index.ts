@@ -12,6 +12,12 @@ export {
   signApnsJwt,
 } from "./jwt";
 export { type AlertPayloadInput, buildAlertPayload } from "./payload";
+export {
+  type DeviceSendOutcome,
+  type PushTarget,
+  type SendToDevicesResult,
+  sendToDevices,
+} from "./send";
 export type {
   ApnsEnvironment,
   ApnsPayload,

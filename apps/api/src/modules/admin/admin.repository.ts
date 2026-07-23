@@ -3,10 +3,11 @@ import {
   aiGenerations,
   documents,
   memberships,
+  notifications,
   user,
   workspaces,
 } from "@doc-pilot/database/schema";
-import { desc, gte, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import type { UsageByDay, UsageByModel, UsageMetrics } from "./admin.rollup";
 
 /**
@@ -199,4 +200,16 @@ export async function findUserByEmail(
     .where(sql`lower(${user.email}) = ${email.trim().toLowerCase()}`)
     .limit(1);
   return row ?? null;
+}
+
+/**
+ * 某用户的未读通知数(跨租户,按用户维度)。测试推送据此设角标,与"角标=未读数"模型一致。
+ * MVP 单 workspace,故按 user_id 聚合即该用户的全部未读;与 push_devices 的用户维度一致。
+ */
+export async function countUnreadByUserId(userId: string): Promise<number> {
+  const [row] = await db
+    .select({ v: sql`count(*)` })
+    .from(notifications)
+    .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)));
+  return num(row?.v);
 }

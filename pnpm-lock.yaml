@@ -199,6 +199,9 @@ importers:
       '@doc-pilot/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@doc-pilot/push':
+        specifier: workspace:*
+        version: link:../../packages/push
       '@doc-pilot/queue':
         specifier: workspace:*
         version: link:../../packages/queue

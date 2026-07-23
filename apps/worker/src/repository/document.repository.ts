@@ -8,7 +8,7 @@ import {
   notifications,
   processingJobs,
 } from "@doc-pilot/database/schema";
-import { and, asc, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import type { Chunk, EmbeddedChunks } from "../pipeline";
 import { passesProcessingGuard, READY_STATUSES } from "./processing-guard";
 
@@ -19,6 +19,9 @@ import { passesProcessingGuard, READY_STATUSES } from "./processing-guard";
 export interface CreatedNotification {
   id: string;
   userId: string;
+  /** 通知标题/正文,供离线角标推送直接构造 APNS alert,无需回查(见 src/push/badge.ts)。 */
+  title: string;
+  body: string | null;
 }
 
 export interface ClaimedDocument {
@@ -339,7 +342,12 @@ export async function saveChunksAndFinalize(params: {
           dedupeKey: `document:${params.documentId}:v${params.processingVersion}:ready`,
         })
         .onConflictDoNothing({ target: notifications.dedupeKey })
-        .returning({ id: notifications.id, userId: notifications.userId });
+        .returning({
+          id: notifications.id,
+          userId: notifications.userId,
+          title: notifications.title,
+          body: notifications.body,
+        });
       notification = row ?? null;
     }
 
@@ -408,7 +416,33 @@ export async function markFailed(params: {
         dedupeKey: `document:${params.documentId}:v${params.processingVersion}:failed`,
       })
       .onConflictDoNothing({ target: notifications.dedupeKey })
-      .returning({ id: notifications.id, userId: notifications.userId });
+      .returning({
+        id: notifications.id,
+        userId: notifications.userId,
+        title: notifications.title,
+        body: notifications.body,
+      });
     return row ?? null;
   });
+}
+
+/**
+ * 收件人在某 workspace 的未读通知数(离线角标推送据此设 badge)。
+ * 与 api 的 scopedNotificationRepo.countUnread 同口径:workspace_id + user_id + read_at is null。
+ */
+export async function countUnread(params: {
+  workspaceId: string;
+  userId: string;
+}): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(notifications)
+    .where(
+      and(
+        eq(notifications.workspaceId, params.workspaceId),
+        eq(notifications.userId, params.userId),
+        isNull(notifications.readAt),
+      ),
+    );
+  return row?.count ?? 0;
 }
