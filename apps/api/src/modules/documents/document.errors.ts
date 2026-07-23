@@ -9,3 +9,9 @@ export class UploadNotFoundError extends DomainError {
     super("upload_not_found", message, 400);
   }
 }
+
+export class DocumentNotPublishableError extends DomainError {
+  constructor() {
+    super("DOCUMENT_NOT_PUBLISHABLE", "document is not ready to publish", 409);
+  }
+}

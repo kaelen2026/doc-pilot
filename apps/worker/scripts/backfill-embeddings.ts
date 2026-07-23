@@ -92,7 +92,7 @@ async function enqueueReprocess(target: BackfillTarget): Promise<boolean> {
 
     await tx
       .update(documents)
-      .set({ status: "queued", updatedAt: new Date() })
+      .set({ status: "queued", visibility: "private", updatedAt: new Date() })
       .where(eq(documents.id, target.id));
 
     // 复用同一 processing_version 的幂等键;原任务 removeOnComplete 后 BullMQ jobId 可安全重用。

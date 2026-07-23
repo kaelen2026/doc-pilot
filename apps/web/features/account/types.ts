@@ -20,6 +20,13 @@ export interface WorkspaceMembership {
 /** `GET /me` 响应。 */
 export interface Me {
   user: MeUser;
+  profile: {
+    username: string;
+    bio: string | null;
+    location: string | null;
+    websiteUrl: string | null;
+    socialLinks: Record<string, string>;
+  } | null;
   workspaces: WorkspaceMembership[];
 }
 

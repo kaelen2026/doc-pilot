@@ -5,4 +5,5 @@ export * from "./conversation";
 export * from "./device-code";
 export * from "./document";
 export * from "./notification";
+export * from "./profile";
 export * from "./workspace";

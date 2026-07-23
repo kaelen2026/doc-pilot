@@ -1,5 +1,9 @@
 import { db } from "@doc-pilot/database";
-import { memberships as membershipsTable, workspaces } from "@doc-pilot/database/schema";
+import {
+  memberships as membershipsTable,
+  userProfiles,
+  workspaces,
+} from "@doc-pilot/database/schema";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import type { AppEnv } from "../../shared/types";
@@ -24,7 +28,13 @@ export function createMeRoutes() {
           .innerJoin(workspaces, eq(membershipsTable.workspaceId, workspaces.id))
           .where(eq(membershipsTable.userId, user.id));
 
-        return c.json({ user, workspaces: rows });
+        const [profile] = await db
+          .select()
+          .from(userProfiles)
+          .where(eq(userProfiles.userId, user.id))
+          .limit(1);
+
+        return c.json({ user, profile, workspaces: rows });
       })
       // 当前 workspace 的配额用量 vs 上限,供前端展示(cross-cutting.md §27.2)。
       .get("/usage", async (c) => {

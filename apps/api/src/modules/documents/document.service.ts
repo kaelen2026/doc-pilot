@@ -1,4 +1,8 @@
-import { buildParseJobId, type CreateUploadResponse } from "@doc-pilot/contracts";
+import {
+  buildParseJobId,
+  type CreateUploadResponse,
+  isPublishableDocumentStatus,
+} from "@doc-pilot/contracts";
 import {
   bucket,
   buildOriginalObjectKey,
@@ -8,7 +12,7 @@ import {
 } from "@doc-pilot/storage";
 import { NotFoundError, ValidationError } from "../../shared/errors";
 import { assertUploadQuota } from "../quota/quota.service";
-import { UploadNotFoundError } from "./document.errors";
+import { DocumentNotPublishableError, UploadNotFoundError } from "./document.errors";
 import { scopedDocumentRepo } from "./document.repository";
 import { type CreateUploadInput, validateUploadConstraints } from "./document.schema";
 
@@ -173,4 +177,20 @@ export async function getDocument(params: { workspaceId: string; documentId: str
     throw new NotFoundError("document not found");
   }
   return { document };
+}
+
+export async function setDocumentVisibility(params: {
+  workspaceId: string;
+  documentId: string;
+  visibility: "private" | "public";
+}) {
+  const repo = scopedDocumentRepo(params.workspaceId);
+  const document = await repo.findById(params.documentId);
+  if (!document) throw new NotFoundError("document not found");
+  if (params.visibility === "public" && !isPublishableDocumentStatus(document.status)) {
+    throw new DocumentNotPublishableError();
+  }
+  const updated = await repo.setVisibility(params.documentId, params.visibility);
+  if (!updated) throw new NotFoundError("document not found");
+  return { document: updated };
 }

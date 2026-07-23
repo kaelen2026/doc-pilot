@@ -16,9 +16,12 @@ describe("health", () => {
 describe("受保护路由的鉴权门禁", () => {
   // /me 与其子路由都必须过 requireAuth。曾漏挂 `/me/*`,导致 /me/usage 绕过鉴权并 500。
   // 未带会话 cookie 时 getSession 返回 null,应统一 401(不落到 handler)。
-  it.each(["/me", "/me/usage"])("未认证访问 %s 返回 401", async (path) => {
-    const app = createApp();
-    const res = await app.request(path);
-    expect(res.status).toBe(401);
-  });
+  it.each(["/me", "/me/usage", "/me/profile", "/users/dp_test000/follow"])(
+    "未认证访问 %s 返回 401",
+    async (path) => {
+      const app = createApp();
+      const res = await app.request(path, { method: path.startsWith("/users/") ? "PUT" : "GET" });
+      expect(res.status).toBe(401);
+    },
+  );
 });

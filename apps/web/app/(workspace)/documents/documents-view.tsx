@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { failureReason } from "@/features/documents/failure-reason";
 import { validateFile } from "@/features/documents/upload";
+import { useDocumentVisibility } from "@/features/documents/use-document-visibility";
 import { useDocuments } from "@/features/documents/use-documents";
 import { useUploadDocument } from "@/features/documents/use-upload-document";
 import { authClient } from "@/lib/auth-client";
@@ -58,6 +59,7 @@ export function DocumentsView() {
   const [fileError, setFileError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const upload = useUploadDocument();
+  const visibility = useDocumentVisibility();
 
   function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -137,9 +139,29 @@ export function DocumentsView() {
                             </Link>
                           ) : null}
                           {d.status === "ready" || d.status === "partially_ready" ? (
-                            <Link href={`/documents/${d.id}/chat`} className={docLinkClass}>
-                              问答
-                            </Link>
+                            <>
+                              <button
+                                type="button"
+                                className={docLinkClass}
+                                disabled={visibility.isPending}
+                                onClick={() =>
+                                  visibility.mutate({
+                                    id: d.id,
+                                    visibility: d.visibility === "public" ? "private" : "public",
+                                  })
+                                }
+                              >
+                                {d.visibility === "public" ? "取消公开" : "公开"}
+                              </button>
+                              {d.visibility === "public" ? (
+                                <Link href={`/p/${d.id}`} className={docLinkClass}>
+                                  公开页
+                                </Link>
+                              ) : null}
+                              <Link href={`/documents/${d.id}/chat`} className={docLinkClass}>
+                                问答
+                              </Link>
+                            </>
                           ) : null}
                           <Badge>{STATUS_LABEL[d.status] ?? d.status}</Badge>
                         </span>

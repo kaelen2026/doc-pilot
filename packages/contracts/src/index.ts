@@ -3,6 +3,7 @@ export * from "./documents";
 export * from "./limits";
 export * from "./notifications";
 export * from "./processing";
+export * from "./profiles";
 export * from "./queue";
 export * from "./scan-login";
 export * from "./search";

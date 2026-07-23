@@ -9,6 +9,7 @@ const mockRepo = vi.hoisted(() => ({
   getStatusById: vi.fn(),
   list: vi.fn(),
   completeUploadTx: vi.fn(),
+  setVisibility: vi.fn(),
 }));
 const scopedDocumentRepo = vi.hoisted(() => vi.fn(() => mockRepo));
 
@@ -26,7 +27,7 @@ vi.mock("@doc-pilot/storage", () => ({
 }));
 
 import { assertUploadQuota } from "../quota/quota.service";
-import { createUpload } from "./document.service";
+import { createUpload, setDocumentVisibility } from "./document.service";
 
 const INPUT = { filename: "a.pdf", contentType: "application/pdf", sizeBytes: 100 };
 
@@ -102,5 +103,23 @@ describe("createUpload 内容去重（§23.4）", () => {
     // 回归护栏:租户边界由工厂构造注入,漏掉 workspace 时同一 owner 跨 workspace 会串号。
     expect(scopedDocumentRepo).toHaveBeenCalledWith("w1");
     expect(mockRepo.findByOwnerIdempotency).toHaveBeenCalledWith("u1", "key-1");
+  });
+});
+
+describe("文档公开状态", () => {
+  it("拒绝公开尚不可阅读的文档", async () => {
+    mockRepo.findById.mockResolvedValue({ id: "d1", status: "processing" });
+    await expect(
+      setDocumentVisibility({ workspaceId: "w1", documentId: "d1", visibility: "public" }),
+    ).rejects.toMatchObject({ code: "DOCUMENT_NOT_PUBLISHABLE", status: 409 });
+    expect(mockRepo.setVisibility).not.toHaveBeenCalled();
+  });
+
+  it("允许公开 ready 文档", async () => {
+    mockRepo.findById.mockResolvedValue({ id: "d1", status: "ready" });
+    mockRepo.setVisibility.mockResolvedValue({ id: "d1", status: "ready", visibility: "public" });
+    await expect(
+      setDocumentVisibility({ workspaceId: "w1", documentId: "d1", visibility: "public" }),
+    ).resolves.toEqual({ document: { id: "d1", status: "ready", visibility: "public" } });
   });
 });

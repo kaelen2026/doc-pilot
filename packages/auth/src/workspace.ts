@@ -1,5 +1,15 @@
+import { randomBytes } from "node:crypto";
 import { db } from "@doc-pilot/database";
-import { memberships, workspaces } from "@doc-pilot/database/schema";
+import { memberships, userProfiles, workspaces } from "@doc-pilot/database/schema";
+
+const ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
+
+export function generateProfileUsername(): string {
+  const bytes = randomBytes(8);
+  let suffix = "";
+  for (const byte of bytes) suffix += ALPHABET[byte % ALPHABET.length];
+  return `dp_${suffix}`;
+}
 
 /**
  * 为新注册用户创建个人 workspace + owner membership（单事务）。
@@ -24,6 +34,16 @@ export async function createPersonalWorkspace(input: {
       userId: input.userId,
       role: "owner",
     });
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const inserted = await tx
+        .insert(userProfiles)
+        .values({ userId: input.userId, username: generateProfileUsername() })
+        .onConflictDoNothing()
+        .returning({ userId: userProfiles.userId });
+      if (inserted.length > 0) break;
+      if (attempt === 4) throw new Error("failed to create public profile");
+    }
 
     return { workspaceId: ws.id };
   });

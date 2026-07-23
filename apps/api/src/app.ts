@@ -13,6 +13,8 @@ import { createDocumentRoutes } from "./modules/documents/document.routes";
 import { createHealthRoutes, type ReadinessProbes } from "./modules/health/health.routes";
 import { createMeRoutes } from "./modules/me/me.routes";
 import { createNotificationRoutes } from "./modules/notifications/notification.routes";
+import { createProfileRoutes, createPublicProfileRoutes } from "./modules/profiles/profile.routes";
+import { createPublicDocumentRoutes } from "./modules/public-documents/public-document.routes";
 import { createSearchRoutes } from "./modules/search/search.routes";
 import { getSession, loadMemberships } from "./shared/auth-context";
 import { DomainError } from "./shared/errors";
@@ -63,6 +65,8 @@ export function createApp(
 
   // 公开路由
   app.route("/health", createHealthRoutes(deps.readiness));
+  app.route("/public/profiles", createPublicProfileRoutes());
+  app.route("/public/documents", createPublicDocumentRoutes());
 
   // 受保护路由：未登录返回 401（满足「未登录无法访问文档」验收）。
   const guard = requireAuth({ getSession, loadMemberships });
@@ -77,6 +81,7 @@ export function createApp(
   app.use("/search", guard);
   app.use("/notifications", guard);
   app.use("/notifications/*", guard);
+  app.use("/users/*", guard);
 
   // 贵操作限流(用户维度),挂在 guard 之后以便拿到 user。
   const subjectByUser = (c: Context<AppEnv>) => c.get("user")?.id ?? null;
@@ -113,6 +118,7 @@ export function createApp(
   app.route("/conversations", createConversationRoutes());
   app.route("/search", createSearchRoutes());
   app.route("/notifications", createNotificationRoutes({ bus: notificationBus }));
+  app.route("/", createProfileRoutes());
 
   // 统一错误映射：领域错误 → 对应 HTTP 状态。
   app.onError((err, c) => {

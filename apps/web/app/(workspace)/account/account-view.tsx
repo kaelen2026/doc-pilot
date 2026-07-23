@@ -43,7 +43,7 @@ export function AccountView() {
     const { user, workspaces } = meQuery.data;
     return (
       <div className="space-y-10">
-        <ProfileSection user={user} />
+        <ProfileSection user={user} profile={meQuery.data.profile} />
         <UsageSection enabled={enabled} />
         <WorkspacesSection workspaces={workspaces} />
         <AppearanceSection />

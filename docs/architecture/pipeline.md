@@ -1,5 +1,9 @@
 # 处理管线
 
+> 文档一旦进入重新处理（`queued` / `processing`）必须在同一状态写入中把
+> `visibility` 恢复为 `private`。公开 repository 同时过滤处理状态，形成双重保护，防止
+> 旧版本内容在重处理期间继续公开。
+
 涵盖上传 API、Transactional Outbox、异步任务、文档状态机、PDF 解析、Chunk、Embedding 与删除流程。故障恢复见 [runbooks/failure-recovery.md](../runbooks/failure-recovery.md)。
 
 ## 10. 上传 API

@@ -4,6 +4,16 @@
 
 ## 25. 权限模型
 
+### 25.1 公开读取例外
+
+公开个人主页与公开 PDF 是租户边界之外的窄读取面，但不得复用或放宽 tenant-scoped
+repository。匿名请求只进入专用 public repository；公开文档查询必须同时满足
+`visibility = 'public'`、`deleted_at IS NULL`、`status IN ('ready', 'partially_ready')`，
+响应采用字段白名单，不暴露 workspace、对象存储 key、摘要、chunks、对话或内部用户 ID。
+
+资料、关注和文档可见性的写入仍需登录；文档写入继续从 membership 解析 workspace。
+取消公开立即阻断新的元数据请求与签名 URL，已签发 URL 只存活到其短有效期结束。
+
 ### 25.1 MVP 角色
 
 `owner`。仍保留 Workspace 和 Membership。

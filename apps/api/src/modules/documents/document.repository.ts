@@ -107,6 +107,7 @@ export function scopedDocumentRepo(workspaceId: string) {
           id: documents.id,
           title: documents.title,
           status: documents.status,
+          visibility: documents.visibility,
           currentStage: documents.currentStage,
           progress: documents.progress,
           sizeBytes: documents.sizeBytes,
@@ -136,6 +137,7 @@ export function scopedDocumentRepo(workspaceId: string) {
           id: documents.id,
           title: documents.title,
           status: documents.status,
+          visibility: documents.visibility,
           currentStage: documents.currentStage,
           progress: documents.progress,
           sizeBytes: documents.sizeBytes,
@@ -234,6 +236,25 @@ export function scopedDocumentRepo(workspaceId: string) {
 
         return { document: updated ?? current, alreadyQueued: false };
       });
+    },
+
+    async setVisibility(id: string, visibility: "private" | "public") {
+      const [row] = await db
+        .update(documents)
+        .set({ visibility, updatedAt: new Date() })
+        .where(
+          and(
+            eq(documents.id, id),
+            eq(documents.workspaceId, workspaceId),
+            isNull(documents.deletedAt),
+          ),
+        )
+        .returning({
+          id: documents.id,
+          status: documents.status,
+          visibility: documents.visibility,
+        });
+      return row;
     },
   };
 }

@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { ValidationError } from "../../shared/errors";
 import type { AppEnv } from "../../shared/types";
 import { activeWorkspaceId } from "../../shared/workspace";
 import { parseCreateUpload } from "./document.schema";
@@ -8,6 +9,7 @@ import {
   getDocument,
   getFileUrl,
   listDocuments,
+  setDocumentVisibility,
 } from "./document.service";
 
 export function createDocumentRoutes() {
@@ -44,5 +46,19 @@ export function createDocumentRoutes() {
       const workspaceId = activeWorkspaceId(c.get("memberships"));
       const result = await getFileUrl({ workspaceId, documentId: c.req.param("id") });
       return c.json(result);
+    })
+    .patch("/:id/visibility", async (c) => {
+      const workspaceId = activeWorkspaceId(c.get("memberships"));
+      const body = (await c.req.json().catch(() => null)) as { visibility?: unknown } | null;
+      if (body?.visibility !== "private" && body?.visibility !== "public") {
+        throw new ValidationError("visibility must be private or public");
+      }
+      return c.json(
+        await setDocumentVisibility({
+          workspaceId,
+          documentId: c.req.param("id"),
+          visibility: body.visibility,
+        }),
+      );
     });
 }

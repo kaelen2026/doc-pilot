@@ -7,6 +7,7 @@ export interface DocItem {
   id: string;
   title: string;
   status: string;
+  visibility: "private" | "public";
   currentStage: string | null;
   progress: number;
   pageCount: number | null;
