@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { useMe } from "@/features/account/use-me";
 import { authClient } from "@/lib/auth-client";
 import { OverviewSection } from "./overview-section";
+import { PushTestSection } from "./push-test-section";
 import { UsageSection } from "./usage-section";
 import { UsersSection } from "./users-section";
 import { WorkspacesSection } from "./workspaces-section";
@@ -51,6 +52,7 @@ export function AdminView() {
         <UsageSection enabled={enabled} />
         <WorkspacesSection enabled={enabled} />
         <UsersSection enabled={enabled} />
+        <PushTestSection />
       </div>
     );
   }

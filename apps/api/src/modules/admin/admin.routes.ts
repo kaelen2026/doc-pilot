@@ -1,10 +1,10 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../../shared/types";
-import { parsePageQuery, parseUsageQuery } from "./admin.schema";
+import { parsePageQuery, parseTestPush, parseUsageQuery } from "./admin.schema";
 import * as service from "./admin.service";
 
 /**
- * 平台管理后台路由(cross-cutting.md §25)。全部为只读跨租户聚合。
+ * 平台管理后台路由(cross-cutting.md §25)。除 push-test(会真实投递 APNS)外均为只读跨租户聚合。
  * 授权在挂载处的 requireAdmin 守卫完成(见 app.ts),本文件默认调用者已是平台 admin。
  */
 export function createAdminRoutes() {
@@ -21,5 +21,9 @@ export function createAdminRoutes() {
     .get("/users", async (c) => {
       const page = parsePageQuery({ limit: c.req.query("limit"), offset: c.req.query("offset") });
       return c.json({ users: await service.listUsers(page) });
+    })
+    .post("/push-test", async (c) => {
+      const input = parseTestPush(await c.req.json().catch(() => null));
+      return c.json(await service.sendTestPush(input));
     });
 }

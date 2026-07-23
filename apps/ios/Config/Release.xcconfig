@@ -1,2 +1,6 @@
 // CI 或 Archive 环境必须通过 API_BASE_URL 覆盖为生产 HTTPS 地址。
 API_BASE_URL = https:/$()/api.example.invalid
+
+// APNS 生产 entitlement(aps-environment=production)。路径相对 SRCROOT(apps/ios)。
+// Archive/TestFlight 需本地设置 DEVELOPMENT_TEAM 才能签发带 push 能力的描述文件。
+CODE_SIGN_ENTITLEMENTS = Config/DocPilot.Release.entitlements

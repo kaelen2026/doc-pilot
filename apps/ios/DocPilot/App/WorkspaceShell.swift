@@ -10,12 +10,14 @@ struct WorkspaceShell: View {
     @State private var selection: Section
     let userID: String
     let api: APIClient
+    let pushRegistration: PushRegistrationModel
 
     init(documentsModel: DocumentsModel, userID: String, api: APIClient,
-         signOut: @escaping () async -> Void) {
+         pushRegistration: PushRegistrationModel, signOut: @escaping () async -> Void) {
         self.documentsModel = documentsModel
         self.userID = userID
         self.api = api
+        self.pushRegistration = pushRegistration
         _searchModel = State(initialValue: SearchModel(api: api))
         _notificationsModel = State(initialValue: NotificationsModel(api: api))
         _accountModel = State(initialValue: AccountModel(api: api, signOut: signOut))
@@ -38,6 +40,11 @@ struct WorkspaceShell: View {
                 .tabItem { Label("账户", systemImage: "person.crop.circle") }.tag(Section.account)
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .task {
+            // 仅在登录后(WorkspaceShell 存在即已登录)申请通知权限并注册推送。
+            // activate 幂等 + 权限一次性 guard,故 .task 在视图重建后重跑无副作用。
+            await pushRegistration.activate(client: PushClient(api: api))
+        }
     }
 
     private func openDocument(_ id: String) {
