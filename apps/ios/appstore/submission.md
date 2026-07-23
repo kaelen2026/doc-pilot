@@ -1,7 +1,7 @@
 # DocPilot App Store 提审资料
 
 App Store 提审的填报清单与资产。流程细节见 `.claude/skills/app-store-release`;
-本目录是 DocPilot 具体的填报值与截图。截图在 `screenshots/6.9/`(iPhone 17 Pro Max,1320×2868)。
+本目录是 DocPilot 具体的填报值与截图。截图在 `screenshots/6.7/`(1284×2778)。
 
 > **演示账号密码不入库**:账号 `review@docpilot.app`,密码见 `.env` / 团队私密渠道
 > (勿在此文件或任何提交里写明文口令)。
@@ -37,7 +37,8 @@ App Store 提审的填报清单与资产。流程细节见 `.claude/skills/app-s
 - 关键词(≤100 字符):`PDF,文档,AI,问答,阅读,摘要,论文,合同,引用,检索,知识库`
 - 新功能(首版):`首次发布。`
 - App 图标:朱印「档」1024×1024,无 alpha。
-- 截图:`screenshots/6.9/`(01 文档列表 / 02 阅读器 / 03 带引用问答 / 04 账户)。ASC 用 6.9" 自动缩放其它尺寸。
+- 截图:`screenshots/6.7/`(01 文档列表 / 02 阅读器 / 03 带引用问答 / 04 账户),**1284×2778**。
+  - ⚠️ ASC 的 iPhone 截图槽位**不自动缩放**:该槽位只收 `1242×2688`(6.5")或 `1284×2778`(6.7");6.9"(1320×2868)在此槽位会被拒(见错误码「dimensions are wrong」)。本目录已是 1284×2778。
 - 价格与销售范围、年龄分级问卷:按商业/内容决定。
 
 ## ② App Privacy 数据标签(须与实际一致,上架前对着 observability / AI 网关留存复核)
@@ -79,5 +80,7 @@ App Store 提审的填报清单与资产。流程细节见 `.claude/skills/app-s
 
 ## 截图说明
 
-`screenshots/6.9/` 当前为**本地种子数据**拍摄的临时基线(2026-07-23,UITest 采集)。
-正式提审前建议换**生产**真实内容重拍(用 `.claude/skills/app-store-release/scripts/capture-screenshots.sh`)。
+`screenshots/6.7/` 当前为**本地种子数据**拍摄的临时基线(2026-07-23,UITest 采集,
+6.9" 原图等比缩至宽 1284 再居中裁到 2778 得 1284×2778)。
+正式提审前建议换**生产**真实内容重拍(用 `.claude/skills/app-store-release/scripts/capture-screenshots.sh`,
+并按需转成 ASC 槽位接受的 1242×2688 / 1284×2778)。
