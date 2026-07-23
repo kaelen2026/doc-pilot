@@ -5,9 +5,17 @@ import Observation
 @MainActor @Observable
 final class LoginModel {
     enum Step { case email, otp }
+    /// 邮箱页的两种登录方式:验证码(发码 → OTP 页)或密码(就地登录)。
+    enum Method: String, CaseIterable, Identifiable {
+        case otp, password
+        var id: String { rawValue }
+        var label: String { self == .otp ? "验证码" : "密码" }
+    }
 
     var email = ""
     var otp = ""
+    var password = ""
+    private(set) var method: Method = .otp
     private(set) var step: Step = .email
     private(set) var isSubmitting = false
     private(set) var errorMessage: String?
@@ -31,6 +39,31 @@ final class LoginModel {
 
     var canSubmit: Bool {
         !isSubmitting && (step == .email ? email.contains("@") : otp.count >= Self.otpLength)
+    }
+
+    /// 密码模式登录按钮的可用性:邮箱合法 + 密码非空。
+    var canSignInWithPassword: Bool {
+        !isSubmitting && email.contains("@") && !password.isEmpty
+    }
+
+    /// 切换验证码 / 密码方式:清错误,避免上一方式的报错留在新方式下。
+    func selectMethod(_ next: Method) {
+        guard method != next else { return }
+        method = next
+        errorMessage = nil
+    }
+
+    /// 邮箱 + 密码登录:成功后由 RootView 依 session 跳转;失败给出中文提示。
+    func signInWithPassword() async {
+        guard canSignInWithPassword else { return }
+        isSubmitting = true
+        errorMessage = nil
+        defer { isSubmitting = false }
+        do {
+            session = try await authClient.signInWithPassword(email: email, password: password)
+        } catch {
+            errorMessage = "登录失败，请检查邮箱与密码。"
+        }
     }
 
     /// 从 OTP 页退回邮箱页:清空验证码与错误,重新输入邮箱。
@@ -117,6 +150,8 @@ final class LoginModel {
         try? await authClient.signOut()
         session = nil
         otp = ""
+        password = ""
+        method = .otp
         step = .email
     }
 }
