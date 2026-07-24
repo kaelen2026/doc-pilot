@@ -7,10 +7,17 @@ import {
   GetObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
+  type S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { bucket, s3 } from "./client";
 import { storageEnv } from "./env";
+
+/**
+ * 对象操作只依赖 send 调用面;测试可注入手写假 client(tdd.md「依赖用注入,不用模块劫持」),
+ * 生产默认走 client.ts 的模块级单例。Presigned URL 签名需要完整 S3Client 配置,不走此接缝。
+ */
+export type ObjectStoreClient = Pick<S3Client, "send">;
 
 const DEFAULT_EXPIRES_SECONDS = storageEnv.uploadUrlExpiresSeconds; // 默认 15min，见 env.ts
 
@@ -61,9 +68,10 @@ export async function createPresignedGetUrl(input: {
  */
 export async function headObject(
   key: string,
+  client: ObjectStoreClient = s3,
 ): Promise<{ sizeBytes: number; contentType: string | undefined } | null> {
   try {
-    const res = await s3.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    const res = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
     return { sizeBytes: res.ContentLength ?? 0, contentType: res.ContentType };
   } catch (err) {
     if (isNotFound(err)) {
@@ -73,8 +81,8 @@ export async function headObject(
   }
 }
 
-export async function deleteObject(key: string): Promise<void> {
-  await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+export async function deleteObject(key: string, client: ObjectStoreClient = s3): Promise<void> {
+  await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
 }
 
 /**
@@ -82,8 +90,12 @@ export async function deleteObject(key: string): Promise<void> {
  * Worker 下载原始 PDF 到临时目录后再解析,避免整份文件常驻内存;
  * 目标目录不存在时自动创建。对象不存在会抛错(交由调用方按可重试/不可重试处理)。
  */
-export async function downloadObjectToFile(key: string, filePath: string): Promise<void> {
-  const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+export async function downloadObjectToFile(
+  key: string,
+  filePath: string,
+  client: ObjectStoreClient = s3,
+): Promise<void> {
+  const res = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
   if (!res.Body) {
     throw new Error(`empty body for object ${key}`);
   }
