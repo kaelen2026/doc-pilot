@@ -22,6 +22,14 @@ export interface DocumentParser {
  * 基于 unpdf(内置 pdf.js)的 PDF 解析器。
  * 第一版不还原排版,只保证逐页纯文本 + 页码 + 基本元数据(§14.1)。
  */
+/**
+ * 大小上限判定抽成纯函数:边界语义(取 > 而非 >=,恰好等于上限放行)由单测直接钉住,
+ * 不必为边界用例真解析一个 50MB 夹具(CI 上 pdf.js 扫描 50MB 会超时)。
+ */
+export function exceedsFileSizeLimit(sizeBytes: number): boolean {
+  return sizeBytes > MAX_FILE_BYTES;
+}
+
 export class PdfParser implements DocumentParser {
   supports(input: { mimeType: string }): boolean {
     return input.mimeType === "application/pdf";
@@ -32,7 +40,7 @@ export class PdfParser implements DocumentParser {
     // 用 stat 而非 readFile 后量 buffer:超限文件在读进内存之前就被拒绝,
     // 避免为绕过前两层校验的超大对象分配大 Buffer。
     const { size } = await stat(input.filePath);
-    if (size > MAX_FILE_BYTES) {
+    if (exceedsFileSizeLimit(size)) {
       throw PipelineError.nonRetryable(
         PROCESSING_ERROR_CODES.FILE_SIZE_LIMIT_EXCEEDED,
         `file is ${size} bytes, exceeds limit ${MAX_FILE_BYTES}`,
