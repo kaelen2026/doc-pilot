@@ -2,6 +2,9 @@
 #   cp .env.production.example .env.production && 编辑
 #   docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 #
+# 安全凭据 fail-fast:POSTGRES_PASSWORD / S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY 必填,
+# 缺失时 compose 直接报错拒绝启动(${VAR:?} 语法),不再回退弱默认值。
+#
 # postgres/redis/minio/ollama 为自托管默认。生产建议换托管服务(Managed PostgreSQL、
 # Managed Redis、Cloudflare R2 / S3),届时删掉对应 service,并把 .env.production 里的
 # DATABASE_URL / REDIS_URL / S3_* 指向托管端点即可(见 docs/runbooks/deployment.md)。
@@ -16,7 +19,7 @@ services:
     image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-docpilot}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-docpilot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?生产必须显式设置 POSTGRES_PASSWORD(强随机值),禁止弱默认密码}
       POSTGRES_DB: ${POSTGRES_DB:-docpilot}
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -39,23 +42,23 @@ services:
     restart: unless-stopped
 
   minio:
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:?生产必须显式设置 S3_ACCESS_KEY_ID,禁止 minioadmin 默认凭据}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:?生产必须显式设置 S3_SECRET_ACCESS_KEY(强随机值),禁止 minioadmin 默认凭据}
     volumes:
       - minio-data:/data
     restart: unless-stopped
 
   # 一次性:等 MinIO 就绪并建私有 bucket。
   minio-init:
-    image: minio/mc:latest
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
     depends_on:
       - minio
     entrypoint: >
       /bin/sh -c "
-      until mc alias set local http://minio:9000 ${S3_ACCESS_KEY_ID:-minioadmin} ${S3_SECRET_ACCESS_KEY:-minioadmin}; do sleep 2; done;
+      until mc alias set local http://minio:9000 ${S3_ACCESS_KEY_ID:?缺少 S3_ACCESS_KEY_ID} ${S3_SECRET_ACCESS_KEY:?缺少 S3_SECRET_ACCESS_KEY}; do sleep 2; done;
       mc mb --ignore-existing local/${S3_BUCKET:-docpilot-private};
       mc anonymous set none local/${S3_BUCKET:-docpilot-private};
       exit 0;
@@ -64,7 +67,7 @@ services:
 
   # 自托管 embedding 端点(OpenAI 兼容 /v1/embeddings,免鉴权)。
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.32.3
     volumes:
       - ollama-data:/root/.ollama
     healthcheck:
@@ -84,7 +87,7 @@ services:
 
   # 一次性:等 ollama 就绪并拉取 embedding 模型(默认 bge-m3),之后 api/worker 才启动。
   ollama-init:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.32.3
     depends_on:
       ollama:
         condition: service_healthy
@@ -134,6 +137,19 @@ services:
         condition: service_completed_successfully
       ollama-init:
         condition: service_completed_successfully
+    # 镜像是 node:24-alpine(无 curl/wget 可依赖),用 Node 24 自带的 fetch 探活 /health,零额外依赖。
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
     restart: unless-stopped
 
   worker:
@@ -179,8 +195,12 @@ services:
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
     ports:
       - "3000:3000"
+    # web 等 api 通过 /health 健康检查后再启动,避免刚起时首屏请求全部打向未就绪的 api。
+    # web/worker 自身不加 healthcheck:worker 无常驻 HTTP 端点(/metrics 仅在设 METRICS_PORT 时启动),
+    # web 无下游 depends_on 依赖方,restart: unless-stopped 已兜底,无低成本探针收益。
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
