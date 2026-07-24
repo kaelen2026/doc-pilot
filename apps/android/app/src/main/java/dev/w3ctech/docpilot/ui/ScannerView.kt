@@ -1,6 +1,7 @@
 package dev.w3ctech.docpilot.ui
 
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -23,10 +24,13 @@ fun parseDeviceCode(raw: String): String? {
   val fromUrl = Regex("""^docpilot://device-login(?:\?[^#]*)?(?:#.*)?$""")
     .takeIf { it.matches(value) }
     ?.let { Regex("""(?:[?&])user_code=([^&#]+)""").find(value)?.groupValues?.get(1) }
-    ?.let { java.net.URLDecoder.decode(it, Charsets.UTF_8) }
+    // Charset 重载要求 API 33(minSdk 31 会 NoSuchMethodError),改用 API 1 起可用的字符串重载
+    ?.let { java.net.URLDecoder.decode(it, "UTF-8") }
   return (fromUrl ?: value.takeIf { it.matches(Regex("[A-Za-z0-9-]{4,}")) })?.trim()
 }
 
+// proxy.image 是 CameraX 实验 API;用法位于嵌套 lambda 深处,函数级是最小可标注作用域
+@androidx.annotation.OptIn(ExperimentalGetImage::class)
 @Composable
 fun ScannerView(modifier: Modifier = Modifier, onCode: (String) -> Unit) {
   val context = LocalContext.current

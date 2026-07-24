@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 墨水纸品牌 token,与 ui/Theme.kt 的 Paper/Ink/Seal 保持同值,仅供资源层(启动图标)引用 -->
+<resources>
+  <color name="docpilot_paper">#F6F0E4</color>
+  <color name="docpilot_seal">#B43B32</color>
+</resources>

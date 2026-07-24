@@ -3,10 +3,16 @@
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.CAMERA" />
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <!-- CAMERA 权限默认被 Google Play 视为硬件必需;显式声明非必需,保留 ChromeOS/无摄像头设备 -->
+  <uses-feature
+    android:name="android.hardware.camera"
+    android:required="false" />
 
   <application
     android:name=".DocPilotApplication"
     android:allowBackup="false"
+    android:dataExtractionRules="@xml/data_extraction_rules"
+    android:icon="@mipmap/ic_launcher"
     android:label="DocPilot"
     android:theme="@style/Theme.DocPilot"
     android:usesCleartextTraffic="false">

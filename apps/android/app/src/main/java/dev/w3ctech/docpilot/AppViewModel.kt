@@ -7,8 +7,10 @@ import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.graphics.createBitmap
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.w3ctech.docpilot.data.AuthSession
@@ -43,8 +45,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
   var chatText by mutableStateOf(""); private set
   var citationPage by mutableStateOf<Int?>(null); private set
   var pdfPage by mutableStateOf<Bitmap?>(null); private set
-  var pdfPageIndex by mutableStateOf(0); private set
-  var pdfPageCount by mutableStateOf(0); private set
+  var pdfPageIndex by mutableIntStateOf(0); private set
+  var pdfPageCount by mutableIntStateOf(0); private set
   var highlightedPages by mutableStateOf<Set<Int>>(emptySet()); private set
   private var renderer: PdfRenderer? = null
 
@@ -94,7 +96,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val target = index.coerceIn(0, (active.pageCount - 1).coerceAtLeast(0))
     active.openPage(target).use { page ->
       val width = (page.width * 1.5f).toInt()
-      val bitmap = Bitmap.createBitmap(width, (page.height * 1.5f).toInt(), Bitmap.Config.ARGB_8888)
+      // KTX createBitmap 默认即 ARGB_8888,行为等价
+      val bitmap = createBitmap(width, (page.height * 1.5f).toInt())
       bitmap.eraseColor(android.graphics.Color.WHITE)
       page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
       pdfPage = bitmap
