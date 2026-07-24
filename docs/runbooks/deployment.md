@@ -10,6 +10,7 @@
   - `apps/web/Dockerfile`(Next standalone;`NEXT_PUBLIC_*` 在 **build 期**内联,用 build args 传入)
 - api/worker:tsup 把 `@doc-pilot/*` 源打进 `dist/index.js`,第三方依赖外部化,`pnpm deploy` 产出扁平(hoisted)的 prod `node_modules`;运行时 `node dist/index.js`。基础镜像 `node:24-alpine`。
 - web:`node:24-slim`(避开 sharp/musl 边角),运行 `node apps/web/server.js`。
+- 自托管基建镜像**pin 到具体版本 tag**,不用 `latest`(可复现、防上游突变):`minio/minio:RELEASE.2025-09-07T16-13-09Z`、`minio/mc:RELEASE.2025-08-13T08-35-41Z`、`ollama/ollama:0.32.3`(与 `pgvector/pgvector:pg16`、`redis:7-alpine` 同一口径)。升级时改 `docker-compose.prod.yml` 里的 tag 并重新 `up -d`。
 
 ## 一键起本地/自托管全栈
 
@@ -20,7 +21,9 @@ docker compose --env-file .env.production -f docker-compose.prod.yml up -d --bui
 
 > 必须用 `--env-file .env.production`:compose 用它做 `${VAR}` 插值(含 web 的 build args)。容器内环境变量由各 service 的 `env_file` 注入。
 
-启动顺序由 `depends_on` 保证:postgres/redis 健康 → `minio-init` 建桶 → `migrate` 迁移成功 → api/worker/web 启动。健康核对:
+> **凭据 fail-fast**:`POSTGRES_PASSWORD`、`S3_ACCESS_KEY_ID`、`S3_SECRET_ACCESS_KEY` 为**必填**,compose 用 `${VAR:?}` 语法插值——缺任一项时 `docker compose config`/`up` 直接报错拒绝启动,不再回退 `docpilot`/`minioadmin` 弱默认凭据。
+
+启动顺序由 `depends_on` 保证:postgres/redis 健康 → `minio-init` 建桶 → `migrate` 迁移成功 → api/worker 启动 → api 通过 `/health` 健康检查(Node `fetch` 探针)→ web 启动。健康核对:
 
 ```bash
 curl -sf http://localhost:3001/health       # liveness:{"status":"ok",...}
