@@ -32,6 +32,20 @@ TEST_RUNNER_LIVE_SMOKE=1 xcodebuild -project apps/ios/DocPilot.xcodeproj \
   -scheme DocPilotLiveSmoke -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
 ```
 
+## Android 原生客户端
+
+`apps/android` 是 Kotlin + Jetpack Compose 编写的 Android 客户端，最低支持 Android 12，
+采用 Material 3 交互并保留 DocPilot 墨水纸视觉。它复用公开 API，覆盖邮箱登录、PDF
+上传与缓存阅读、流式问答与引用跳页、搜索、通知和账户用量。
+
+```bash
+cd apps/android
+./gradlew testDebugUnitTest assembleDebug
+```
+
+Debug 模拟器默认连接 `http://10.0.2.2:3001`；配置、Firebase 和 APK 路径见
+[`apps/android/README.md`](apps/android/README.md)。
+
 ## 文档索引
 
 ### 产品

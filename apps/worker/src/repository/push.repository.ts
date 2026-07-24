@@ -1,6 +1,6 @@
 import { db } from "@doc-pilot/database";
 import { pushDevices } from "@doc-pilot/database/schema";
-import type { ApnsEnvironment, PushTarget } from "@doc-pilot/push";
+import type { ApnsEnvironment } from "@doc-pilot/push";
 import { eq, inArray } from "drizzle-orm";
 
 /**
@@ -9,13 +9,27 @@ import { eq, inArray } from "drizzle-orm";
  */
 
 /** 某用户的全部设备(令牌 + 注册环境),用于给该用户发角标推送。 */
-export async function listDevicesByUserId(userId: string): Promise<PushTarget[]> {
+export interface MobilePushTarget {
+  token: string;
+  platform: string;
+  environment: ApnsEnvironment;
+}
+
+export async function listDevicesByUserId(userId: string): Promise<MobilePushTarget[]> {
   const rows = await db
-    .select({ token: pushDevices.token, environment: pushDevices.environment })
+    .select({
+      token: pushDevices.token,
+      platform: pushDevices.platform,
+      environment: pushDevices.environment,
+    })
     .from(pushDevices)
     .where(eq(pushDevices.userId, userId));
   // 库内 environment 受注册时的枚举校验保护,只会是 sandbox / production。
-  return rows.map((r) => ({ token: r.token, environment: r.environment as ApnsEnvironment }));
+  return rows.map((r) => ({
+    token: r.token,
+    platform: r.platform,
+    environment: r.environment as ApnsEnvironment,
+  }));
 }
 
 /** 清除一批 APNS 判失效(Unregistered/BadDeviceToken)的令牌。token 全局唯一,无需按用户限定。 */

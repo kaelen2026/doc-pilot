@@ -2,7 +2,7 @@ import { index, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-c
 import { user } from "./auth";
 
 /**
- * APNS 设备令牌注册表(移动端推送)。
+ * 移动端推送设备令牌注册表(APNS / FCM)。
  *
  * 归属:**按用户身份键控,不做 workspace 作用域**——一台设备属于一个登录用户,而非某个工作区
  * (用户可属于多个 workspace)。这与 auth 的 session / device_code 表同源:它们都按 user.id 键控,
@@ -24,9 +24,9 @@ export const pushDevices = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    // APNS 设备令牌(十六进制)。唯一以支撑 upsert 幂等注册。
+    // APNS 或 FCM 设备令牌。唯一以支撑 upsert 幂等注册。
     token: text("token").notNull().unique(),
-    // 目前仅 "ios";预留其它平台(如 web push)。
+    // "ios" | "android"。
     platform: varchar("platform", { length: 20 }).notNull(),
     // "sandbox" | "production"。
     environment: varchar("environment", { length: 20 }).notNull(),

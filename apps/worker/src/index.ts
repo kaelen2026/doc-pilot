@@ -21,6 +21,7 @@ import { createDocumentProcessor } from "./processors/document.processor";
 import { createPurgeAccountProcessor } from "./purge-account/purge-account.processor";
 import { workerApnsClient } from "./push/apns";
 import { sendBadgePush } from "./push/badge";
+import { workerFcmClient } from "./push/fcm";
 import { createReconcileProcessor } from "./reconcile/reconcile.processor";
 import { type CreatedNotification, countUnread } from "./repository/document.repository";
 import { deleteInvalidTokens, listDevicesByUserId } from "./repository/push.repository";
@@ -45,18 +46,26 @@ const notificationBus = new RedisNotificationBus({
 
 // 离线角标推送:APNS 已配置才接线,否则整条通路为 undefined(处理器据此跳过,不影响处理)。
 const apnsClient = workerApnsClient();
-const pushBadge = apnsClient
-  ? (notification: CreatedNotification, workspaceId: string) =>
-      sendBadgePush(
-        { client: apnsClient, listDevices: listDevicesByUserId, countUnread, deleteInvalidTokens },
-        {
-          workspaceId,
-          userId: notification.userId,
-          title: notification.title,
-          body: notification.body,
-        },
-      )
-  : undefined;
+const fcmClient = workerFcmClient();
+const pushBadge =
+  apnsClient || fcmClient
+    ? (notification: CreatedNotification, workspaceId: string) =>
+        sendBadgePush(
+          {
+            apns: apnsClient,
+            fcm: fcmClient,
+            listDevices: listDevicesByUserId,
+            countUnread,
+            deleteInvalidTokens,
+          },
+          {
+            workspaceId,
+            userId: notification.userId,
+            title: notification.title,
+            body: notification.body,
+          },
+        )
+    : undefined;
 
 const worker = new Worker(
   QUEUE_NAMES.documentProcessing,

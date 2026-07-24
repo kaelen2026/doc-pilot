@@ -32,7 +32,12 @@ async function generateAppleClientSecret(opts: {
  * 避免生成一个必然在回调时报错的 provider,也让登录页据此决定是否展示按钮。
  */
 export function resolveSocialProviders(env: {
-  google: { clientId: string; clientSecret: string; iosClientId: string };
+  google: {
+    clientId: string;
+    clientSecret: string;
+    iosClientId: string;
+    androidClientId?: string;
+  };
   apple: {
     clientId: string;
     teamId: string;
@@ -44,13 +49,16 @@ export function resolveSocialProviders(env: {
   const providers: SocialProviders = {};
 
   if (env.google.clientId && env.google.clientSecret) {
+    const clientIds = [
+      env.google.clientId,
+      env.google.iosClientId,
+      env.google.androidClientId,
+    ].filter((id): id is string => Boolean(id));
     // 原生 iOS 登录签发的 idToken,其 aud 是「iOS 类型」OAuth client id,而非 web client id。
     // better-auth google 的 clientId 接受 string[] 并作为 verifyIdToken 的 audience 列表
     // (首项仍是 web OAuth 流程的 primary client id),故配了 iOS client 时传 [web, ios]。
     providers.google = {
-      clientId: env.google.iosClientId
-        ? [env.google.clientId, env.google.iosClientId]
-        : env.google.clientId,
+      clientId: clientIds.length === 1 ? (clientIds[0] as string) : clientIds,
       clientSecret: env.google.clientSecret,
     };
   }

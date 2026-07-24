@@ -24,9 +24,30 @@ function resolveApnsConfig() {
   } as const;
 }
 
+function resolveFcmConfig() {
+  const raw = process.env.FCM_SERVICE_ACCOUNT_JSON;
+  if (!raw) return undefined;
+  try {
+    const value = JSON.parse(raw) as {
+      project_id?: string;
+      client_email?: string;
+      private_key?: string;
+    };
+    if (!value.project_id || !value.client_email || !value.private_key) return undefined;
+    return {
+      projectId: value.project_id,
+      clientEmail: value.client_email,
+      privateKey: value.private_key.replace(/\\n/g, "\n"),
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 export const workerEnv = {
   /** APNS 凭据;未配置时为 undefined(见 resolveApnsConfig)。 */
   apns: resolveApnsConfig(),
+  fcm: resolveFcmConfig(),
   concurrency: Number(process.env.WORKER_CONCURRENCY ?? 2),
   outboxPollIntervalMs: Number(process.env.OUTBOX_POLL_INTERVAL_MS ?? 2000),
   summary: {
