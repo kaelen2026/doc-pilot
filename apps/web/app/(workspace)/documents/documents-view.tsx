@@ -1,5 +1,6 @@
 "use client";
 
+import { ALLOWED_MIME_TYPES } from "@doc-pilot/contracts";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -106,7 +107,7 @@ export function DocumentsView() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="application/pdf"
+                  accept={ALLOWED_MIME_TYPES.join(",")}
                   className="hidden"
                   onChange={onPickFile}
                 />
