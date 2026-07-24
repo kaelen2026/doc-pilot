@@ -9,7 +9,7 @@
     "start": "next start -p 3000",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage --coverage.include='{features,lib}/**/*.ts' --coverage.exclude='**/*.test.ts' --coverage.exclude='**/use-*.ts' --coverage.exclude='**/types.ts' --coverage.exclude=lib/env.ts --coverage.exclude=lib/auth-client.ts --coverage.thresholds.lines=35 --coverage.thresholds.functions=50 --coverage.thresholds.branches=80 --coverage.thresholds.statements=35"
+    "test:coverage": "vitest run --coverage --coverage.include='{features,lib}/**/*.ts' --coverage.exclude='**/*.test.ts' --coverage.exclude='**/use-*.ts' --coverage.exclude='**/types.ts' --coverage.exclude=lib/env.ts --coverage.exclude=lib/auth-client.ts --coverage.thresholds.lines=50 --coverage.thresholds.functions=50 --coverage.thresholds.branches=80 --coverage.thresholds.statements=50"
   },
   "dependencies": {
     "@doc-pilot/contracts": "workspace:*",
