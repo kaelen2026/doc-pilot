@@ -5,6 +5,7 @@ const FAILURE_REASON: Record<string, string> = {
   ENCRYPTED_PDF: "PDF 有密码保护,请上传未加密的版本",
   INVALID_PDF: "PDF 文件损坏或无法解析",
   UNSUPPORTED_FILE: "不支持的文件类型,仅支持 PDF",
+  FILE_SIZE_LIMIT_EXCEEDED: "文件大小超过上限(50MB)",
   PAGE_LIMIT_EXCEEDED: "页数超过上限(500 页)",
   CHUNK_LIMIT_EXCEEDED: "文档内容过多,超过处理上限",
   INVALID_CONFIGURATION: "处理配置异常,请联系支持",

@@ -1,5 +1,10 @@
-import { readFile } from "node:fs/promises";
-import { isAllowedMimeType, MAX_PAGES, PROCESSING_ERROR_CODES } from "@doc-pilot/contracts";
+import { readFile, stat } from "node:fs/promises";
+import {
+  isAllowedMimeType,
+  MAX_FILE_BYTES,
+  MAX_PAGES,
+  PROCESSING_ERROR_CODES,
+} from "@doc-pilot/contracts";
 import { extractText, getDocumentProxy, getMeta } from "unpdf";
 import { PipelineError } from "./errors";
 import type { ParsedDocument } from "./types";
@@ -23,6 +28,17 @@ export class PdfParser implements DocumentParser {
   }
 
   async parse(input: { filePath: string }): Promise<ParsedDocument> {
+    // Worker 是三层限额的最后一层(见 product/overview.md §22):复核文件字节大小。
+    // 用 stat 而非 readFile 后量 buffer:超限文件在读进内存之前就被拒绝,
+    // 避免为绕过前两层校验的超大对象分配大 Buffer。
+    const { size } = await stat(input.filePath);
+    if (size > MAX_FILE_BYTES) {
+      throw PipelineError.nonRetryable(
+        PROCESSING_ERROR_CODES.FILE_SIZE_LIMIT_EXCEEDED,
+        `file is ${size} bytes, exceeds limit ${MAX_FILE_BYTES}`,
+      );
+    }
+
     const bytes = new Uint8Array(await readFile(input.filePath));
 
     let pdf: Awaited<ReturnType<typeof getDocumentProxy>>;
