@@ -1,0 +1,112 @@
+name: Android Release (Play Internal)
+
+# 为什么与 iOS 解耦成两个 workflow:iOS 走 App Store 审核可能要数天,
+# 独立触发让 Android 能即时发版而不必等 iOS,反之亦然。
+on:
+  push:
+    tags:
+      - "android-v*"
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: "覆盖 versionName(如 0.1.0);留空取 build.gradle 的值"
+        required: false
+        type: string
+      version_code:
+        description: "覆盖 versionCode(整数,单调递增);留空用时间戳 date +%s"
+        required: false
+        type: string
+      track:
+        description: "Play 轨道"
+        required: false
+        default: "internal"
+        type: choice
+        options:
+          - internal
+          - alpha
+          - beta
+      release_status:
+        description: "发布状态:completed 直接生效,draft 留在 Play Console 手动完成"
+        required: false
+        default: "completed"
+        type: choice
+        options:
+          - completed
+          - draft
+
+concurrency:
+  # 同一 ref 的发版串行,且不取消进行中的上传(半途取消会留下脏 versionCode)。
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  play-internal:
+    runs-on: ubuntu-latest
+    env:
+      AAB_PATH: apps/android/app/build/outputs/bundle/release/app-release.aab
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      # 上传密钥库无法进仓库,从 secret base64 解到临时文件,构建后随 runner 销毁。
+      - name: Decode upload keystore
+        id: keystore
+        env:
+          DOC_PILOT_UPLOAD_KEYSTORE_BASE64: ${{ secrets.DOC_PILOT_UPLOAD_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          ks_path="$RUNNER_TEMP/docpilot-upload.jks"
+          echo "$DOC_PILOT_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$ks_path"
+          echo "path=$ks_path" >> "$GITHUB_OUTPUT"
+
+      # 构建生产签名 AAB:包裹现有 build-release.sh(注入生产 API 地址与版本,jarsigner 自校验)。
+      - name: Build signed release AAB
+        env:
+          DOC_PILOT_UPLOAD_KEYSTORE: ${{ steps.keystore.outputs.path }}
+          DOC_PILOT_UPLOAD_STORE_PASSWORD: ${{ secrets.DOC_PILOT_UPLOAD_STORE_PASSWORD }}
+          DOC_PILOT_UPLOAD_KEY_ALIAS: ${{ secrets.DOC_PILOT_UPLOAD_KEY_ALIAS }}
+          DOC_PILOT_UPLOAD_KEY_PASSWORD: ${{ secrets.DOC_PILOT_UPLOAD_KEY_PASSWORD }}
+          PROD_API_BASE_URL: ${{ vars.ANDROID_PROD_API_BASE_URL }}
+          GOOGLE_CLIENT_ID: ${{ vars.ANDROID_GOOGLE_CLIENT_ID }}
+          VERSION_NAME_INPUT: ${{ inputs.version_name }}
+          VERSION_CODE_INPUT: ${{ inputs.version_code }}
+        run: |
+          set -eo pipefail
+          if [ -z "$PROD_API_BASE_URL" ]; then
+            echo "✗ 缺少仓库变量 ANDROID_PROD_API_BASE_URL(生产 HTTPS 后端地址)。" >&2
+            exit 1
+          fi
+          args=(--api-base "$PROD_API_BASE_URL")
+          if [ -n "$GOOGLE_CLIENT_ID" ]; then args+=(--google-client-id "$GOOGLE_CLIENT_ID"); fi
+          if [ -n "$VERSION_NAME_INPUT" ]; then args+=(--version "$VERSION_NAME_INPUT"); fi
+          if [ -n "$VERSION_CODE_INPUT" ]; then args+=(--code "$VERSION_CODE_INPUT"); fi
+          ./.claude/skills/google-play-release/scripts/build-release.sh "${args[@]}"
+
+      # 上传到 Play 内测轨道。前置:该 app 已在 Play Console 建好且**首个版本曾人工上传过**
+      # (Play API 不接受从未有过版本的全新 app),见 google-play-release SKILL.md。
+      - name: Upload to Google Play
+        uses: r0adkll/upload-google-play@v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: dev.w3ctech.docpilot
+          releaseFiles: ${{ env.AAB_PATH }}
+          # release 开了 minify,带上 mapping 供 Play 反混淆崩溃栈。
+          mappingFile: apps/android/app/build/outputs/mapping/release/mapping.txt
+          track: ${{ inputs.track || 'internal' }}
+          status: ${{ inputs.release_status || 'completed' }}
+
+      - name: Upload AAB artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: docpilot-android-aab
+          path: ${{ env.AAB_PATH }}
+          if-no-files-found: ignore
