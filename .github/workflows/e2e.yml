@@ -94,6 +94,10 @@ jobs:
             sleep 2
           done
           aws --endpoint-url http://localhost:9000 s3 mb s3://docpilot-private || true
+      # 视觉基线的中文渲染钉在 Noto CJK 上:runner 镜像自带字体集可能随镜像更新漂移,
+      # 显式安装保证兜底字体稳定(Literata 仅拉丁字形,中文走系统衬线)。
+      - name: Install CJK fonts
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-noto-cjk
       - name: Install Playwright browser
         run: pnpm --filter @doc-pilot/e2e exec playwright install --with-deps chromium
       - name: Run E2E
@@ -123,4 +127,14 @@ jobs:
         with:
           name: playwright-report
           path: e2e/playwright-report
+          retention-days: 7
+      # 视觉基线的引导/更新通道:基线缺失时 Playwright 会「写入新基线并失败」,
+      # 把生成的基线作为制品上传,下载检查后提交进仓库(见 e2e/README.md「视觉回归」)。
+      - name: Upload visual snapshots
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-snapshots
+          path: e2e/tests/visual.spec.ts-snapshots
+          if-no-files-found: ignore
           retention-days: 7
