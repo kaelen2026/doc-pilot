@@ -1,0 +1,6 @@
+# pull/merge 后 lockfile 有变则自动装依赖:避免「本地 node_modules 过期 → 测试假红」
+# (firebase-admin、@opentelemetry/sdk-trace-base 都发生过)。ORIG_HEAD 是 merge 前的位置。
+if git diff-tree -r --name-only --no-commit-id ORIG_HEAD HEAD | grep -q '^pnpm-lock.yaml$'; then
+  echo "post-merge: pnpm-lock.yaml 有变更,自动执行 pnpm install..."
+  pnpm install --frozen-lockfile
+fi
