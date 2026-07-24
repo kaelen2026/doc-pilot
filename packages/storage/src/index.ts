@@ -6,4 +6,5 @@ export {
   deleteObject,
   downloadObjectToFile,
   headObject,
+  type ObjectStoreClient,
 } from "./storage";
