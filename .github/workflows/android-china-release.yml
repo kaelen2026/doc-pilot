@@ -174,3 +174,53 @@ jobs:
           set -eo pipefail
           node ./apps/android/scripts/upload-tencent.mjs \
             --apk dist/app-release.apk --package "$PACKAGE_NAME" --app-id "$TENCENT_APP_ID"
+
+  oppo:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: dist
+      # OPPO 软件商店:API 传包(换 token → get-upload-url → 上传 → /app/upd),「仅换包」最小字段。
+      - name: Upload to OPPO
+        env:
+          OPPO_CLIENT_ID: ${{ secrets.OPPO_CLIENT_ID }}
+          OPPO_CLIENT_SECRET: ${{ secrets.OPPO_CLIENT_SECRET }}
+          REMARK_INPUT: ${{ inputs.remark }}
+          VERSION_CODE: ${{ needs.build.outputs.version_code }}
+        run: |
+          set -eo pipefail
+          args=(--apk dist/app-release.apk --package "$PACKAGE_NAME" --version-code "$VERSION_CODE")
+          if [ -n "$REMARK_INPUT" ]; then args+=(--update-desc "$REMARK_INPUT"); fi
+          node ./apps/android/scripts/upload-oppo.mjs "${args[@]}"
+
+  xiaomi:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: dist
+      # 小米应用商店:公钥加密 SIG + /dev/push(自包含,加密逻辑 lib/sign.mjs 有单测),「仅换包」最小字段。
+      - name: Upload to Xiaomi
+        env:
+          XIAOMI_USERNAME: ${{ secrets.XIAOMI_USERNAME }}
+          XIAOMI_PRIVATE_KEY: ${{ secrets.XIAOMI_PRIVATE_KEY }}
+          XIAOMI_CERT_BASE64: ${{ secrets.XIAOMI_CERT_BASE64 }}
+          REMARK_INPUT: ${{ inputs.remark }}
+        run: |
+          set -eo pipefail
+          args=(--apk dist/app-release.apk --package "$PACKAGE_NAME")
+          if [ -n "$REMARK_INPUT" ]; then args+=(--update-desc "$REMARK_INPUT"); fi
+          node ./apps/android/scripts/upload-xiaomi.mjs "${args[@]}"
