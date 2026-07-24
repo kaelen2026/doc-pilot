@@ -95,8 +95,8 @@ export default function PrivacyPage() {
           <p>涉及的第三方处理者类别包括:</p>
           <ul className="list-disc space-y-2 pl-5">
             <li>
-              <strong className="font-medium text-ink">AI 模型服务商</strong>:用于生成摘要与回答;
-              <span className="text-ink-faint">(具体服务商名单:______,请据实填写)</span>
+              <strong className="font-medium text-ink">第三方大模型服务商</strong>
+              :用于生成摘要与回答。
             </li>
             <li>
               <strong className="font-medium text-ink">云存储服务</strong>:用于存放你上传的文档;
@@ -146,8 +146,7 @@ export default function PrivacyPage() {
 
         <Section title="七、儿童隐私">
           <p>
-            DocPilot 不面向 <span className="text-ink-faint">[年龄门槛,如 14]</span>{" "}
-            岁以下的儿童,我们不会有意收集其个人信息。
+            DocPilot 不面向 14 岁以下的儿童,我们不会有意收集其个人信息。
             若你认为我们可能收集了此类信息,请联系我们删除。
           </p>
         </Section>
@@ -163,14 +162,14 @@ export default function PrivacyPage() {
           <p>
             如对本隐私政策或你的数据有任何疑问,请联系:
             <br />
-            运营主体:<span className="text-ink-faint">______(请填写)</span>
+            运营主体:w3ctech
             <br />
             邮箱:
             <a
-              href="mailto:privacy@example.com"
+              href="mailto:support@docpilot.app"
               className="rounded-sm text-seal underline-offset-2 outline-ring hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
             >
-              <span className="text-ink-faint">[联系邮箱,请填写]</span>
+              support@docpilot.app
             </a>
           </p>
         </Section>
