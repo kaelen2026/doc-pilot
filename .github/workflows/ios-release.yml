@@ -1,0 +1,125 @@
+name: iOS Release (TestFlight)
+
+# 为什么与 Android 解耦成两个 workflow:iOS 走 App Store 审核可能要数天,
+# 独立触发让 Android 能即时发版而不必等 iOS,反之亦然。
+on:
+  push:
+    tags:
+      - "ios-v*"
+  workflow_dispatch:
+    inputs:
+      marketing_version:
+        description: "覆盖 MARKETING_VERSION(如 0.1.0);留空取 project.yml 的值"
+        required: false
+        type: string
+      build_number:
+        description: "覆盖 build number;留空用时间戳 YYYYMMDDHHMM(单调递增)"
+        required: false
+        type: string
+      skip_preflight:
+        description: "跳过发版前生产冒烟门禁(不推荐;仅在刚单独跑过 preflight 时)"
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  # 同一 ref 的发版串行,且不取消进行中的上传(半途取消会留下脏 build number)。
+  group: ios-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  testflight:
+    # macos-26 提供 Xcode 26 工具链(iOS 26 / Swift 6),与 ci.yml 的 ios job 口径一致。
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      # 发版脚本会 `xcodegen generate` 重新生成工程;runner 镜像不保证预装,显式安装。
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      # 注入生产 API 地址:Release.xcconfig 里是占位 api.example.invalid,preflight 会 fail-closed。
+      # 在临时 checkout 里就地改真(永不提交),同时喂给冒烟与归档,让 TestFlight 包连对后端。
+      - name: Inject production API base URL
+        env:
+          PROD_API_BASE_URL: ${{ vars.IOS_PROD_API_BASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "$PROD_API_BASE_URL" ]; then
+            echo "✗ 缺少仓库变量 IOS_PROD_API_BASE_URL(生产 HTTPS 后端地址)。" >&2
+            exit 1
+          fi
+          # xcconfig 把 // 当注释,用 $() 断开 scheme 后的双斜杠(与文件里既有写法一致)。
+          # shellcheck disable=SC2016  # $() 要的就是字面量(写进 xcconfig 而非 shell 展开)
+          safe="$(printf '%s' "$PROD_API_BASE_URL" | sed 's#://#:/$()/#')"
+          sed -i '' "s|^API_BASE_URL = .*|API_BASE_URL = ${safe}|" apps/ios/Config/Release.xcconfig
+          grep "^API_BASE_URL" apps/ios/Config/Release.xcconfig
+
+      # 分发证书的私钥无法跨 runner 由 API 重建;从 secret base64 解出 .p12 导入一次性 keychain。
+      # keychain 随 runner VM 一起销毁,仓库里不落任何机密(范式源自 orca mobile-ios-release)。
+      - name: Import distribution certificate
+        env:
+          IOS_DIST_CERT_P12: ${{ secrets.IOS_DIST_CERT_P12 }}
+          IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH="$RUNNER_TEMP/docpilot-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"  # 每次运行随机,绝不持久化
+          CERT_PATH="$RUNNER_TEMP/docpilot-dist-cert.p12"
+
+          echo "$IOS_DIST_CERT_P12" | base64 --decode > "$CERT_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$IOS_DIST_CERT_PASSWORD" \
+            -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          # 允许 codesign/xcodebuild 免交互使用私钥。
+          security set-key-partition-list -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" >/dev/null
+          # 把本 keychain 加入搜索链,xcodebuild 才能找到签名身份。
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+          rm -f "$CERT_PATH"
+
+      # 把 ASC API Key(.p8)从 secret 解到临时文件,供发版脚本的 ASC_KEY_PATH 使用。
+      - name: Write App Store Connect API key
+        id: asc_key
+        env:
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          key_path="$RUNNER_TEMP/AuthKey.p8"
+          echo "$ASC_API_KEY_P8" | base64 --decode > "$key_path"
+          echo "path=$key_path" >> "$GITHUB_OUTPUT"
+
+      # 归档(Release,分发签名)→ exportArchive destination=upload 直传 App Store Connect。
+      # 默认先跑 preflight 生产冒烟门禁(见 apps/ios/scripts/preflight-smoke.sh)。
+      - name: Build and upload to TestFlight
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_PATH: ${{ steps.asc_key.outputs.path }}
+          MARKETING_VERSION_INPUT: ${{ inputs.marketing_version }}
+          BUILD_NUMBER_INPUT: ${{ inputs.build_number }}
+          SKIP_PREFLIGHT_INPUT: ${{ inputs.skip_preflight }}
+        run: |
+          # 不开 -u:macOS runner 默认 bash 3.2,空数组 "${arr[@]}" 在 -u 下会报 unbound。
+          set -eo pipefail
+          args=()
+          if [ -n "$MARKETING_VERSION_INPUT" ]; then args+=(--version "$MARKETING_VERSION_INPUT"); fi
+          if [ -n "$BUILD_NUMBER_INPUT" ]; then args+=(--build "$BUILD_NUMBER_INPUT"); fi
+          if [ "$SKIP_PREFLIGHT_INPUT" = "true" ]; then args+=(--skip-preflight); fi
+          ./.claude/skills/ios-test-flight/scripts/upload-testflight.sh "${args[@]}"
+
+      # destination=upload 通常不留本地 .ipa;仅作兜底留存,缺文件不报错。
+      - name: Upload .ipa artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: docpilot-ios-ipa
+          path: apps/ios/build/export/*.ipa
+          if-no-files-found: ignore
