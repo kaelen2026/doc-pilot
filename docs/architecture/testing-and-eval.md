@@ -49,6 +49,10 @@ Playwright 完整闭环：
 删除文档
 ```
 
+E2E 套件同时承载**视觉回归**:关键页(登录 / 文档列表空态 / 账户)× 双主题 × 双视口的
+`toHaveScreenshot` 像素基线,基线只在 Linux(CI)生成与对比,提交进仓库、进 CI 门禁。
+覆盖范围、确定性策略与基线更新流程见 `e2e/README.md`「视觉回归」。
+
 ### 30.5 iOS
 
 CI 在 `macos-26` 最新可用 iOS runtime 的 iPhone 17 Pro Simulator 上执行 Debug 构建和
