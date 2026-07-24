@@ -1,8 +1,9 @@
-name: Android China Release (Huawei AGC)
+name: Android China Release
 
 # 国内安卓商店(无 Google Play)走各厂商官方 API,凭据全留在本 CI、无第三方托管。
 # 与 Play(android-release.yml)、iOS 解耦触发:某商店审核慢不拖累其余。
-# 目前接了华为 AppGallery;小米/OPPO/vivo/应用宝按同样「构建一次 → 逐家上传」模式增量加。
+# 结构:build 一次出签名 APK → huawei / vivo / tencent 并行 fan-out 各自上传
+# (任一家失败不影响其它家)。OPPO / 小米因发布接口要 icon/截图等素材,后续单独接。
 on:
   push:
     tags:
@@ -18,7 +19,7 @@ on:
         required: false
         type: string
       remark:
-        description: "更新说明(3–500 字);留空则不带"
+        description: "更新说明(华为/vivo 用;华为要求 3–500 字);留空则不带"
         required: false
         type: string
       release_type:
@@ -33,11 +34,15 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  PACKAGE_NAME: dev.w3ctech.docpilot
+  ARTIFACT_NAME: docpilot-android-cn-apk
+
 jobs:
-  huawei:
+  build:
     runs-on: ubuntu-latest
-    env:
-      APK_PATH: apps/android/app/build/outputs/apk/release/app-release.apk
+    outputs:
+      version_code: ${{ steps.ver.outputs.code }}
     steps:
       - uses: actions/checkout@v7
 
@@ -58,6 +63,16 @@ jobs:
           echo "$DOC_PILOT_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$ks_path"
           echo "path=$ks_path" >> "$GITHUB_OUTPUT"
 
+      # 统一 versionCode:所有商店拿到同一个包与版本号(vivo 提交时要显式带 versionCode)。
+      - name: Resolve versionCode
+        id: ver
+        env:
+          VERSION_CODE_INPUT: ${{ inputs.version_code }}
+        run: |
+          set -eo pipefail
+          code="${VERSION_CODE_INPUT:-$(date +%s)}"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
       # 复用现有 build-release.sh 出签名 APK(国内商店多数只收 APK,故走 --apk 而非 AAB)。
       - name: Build signed release APK
         env:
@@ -68,20 +83,35 @@ jobs:
           PROD_API_BASE_URL: ${{ vars.ANDROID_PROD_API_BASE_URL }}
           GOOGLE_CLIENT_ID: ${{ vars.ANDROID_GOOGLE_CLIENT_ID }}
           VERSION_NAME_INPUT: ${{ inputs.version_name }}
-          VERSION_CODE_INPUT: ${{ inputs.version_code }}
+          VERSION_CODE: ${{ steps.ver.outputs.code }}
         run: |
           set -eo pipefail
           if [ -z "$PROD_API_BASE_URL" ]; then
             echo "✗ 缺少仓库变量 ANDROID_PROD_API_BASE_URL(生产 HTTPS 后端地址)。" >&2
             exit 1
           fi
-          args=(--api-base "$PROD_API_BASE_URL" --apk)
+          args=(--api-base "$PROD_API_BASE_URL" --apk --code "$VERSION_CODE")
           if [ -n "$GOOGLE_CLIENT_ID" ]; then args+=(--google-client-id "$GOOGLE_CLIENT_ID"); fi
           if [ -n "$VERSION_NAME_INPUT" ]; then args+=(--version "$VERSION_NAME_INPUT"); fi
-          if [ -n "$VERSION_CODE_INPUT" ]; then args+=(--code "$VERSION_CODE_INPUT"); fi
           ./.claude/skills/google-play-release/scripts/build-release.sh "${args[@]}"
 
-      # 华为 AppGallery:官方 Publishing API 直传 + 提交发布(自包含 curl 脚本,无第三方依赖)。
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: apps/android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
+  huawei:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: dist
+      # 华为 AppGallery:官方 Publishing API 直传 + 提交发布(自包含 curl 脚本)。
       - name: Upload to Huawei AppGallery
         env:
           HUAWEI_CLIENT_ID: ${{ secrets.HUAWEI_CLIENT_ID }}
@@ -91,15 +121,106 @@ jobs:
           RELEASE_TYPE_INPUT: ${{ inputs.release_type }}
         run: |
           set -eo pipefail
-          args=(--apk "$APK_PATH")
+          args=(--apk dist/app-release.apk)
           if [ -n "$REMARK_INPUT" ]; then args+=(--remark "$REMARK_INPUT"); fi
           if [ -n "$RELEASE_TYPE_INPUT" ]; then args+=(--release-type "$RELEASE_TYPE_INPUT"); fi
           ./apps/android/scripts/upload-huawei-agc.sh "${args[@]}"
 
-      - name: Upload APK artifact
-        if: always()
-        uses: actions/upload-artifact@v7
+  vivo:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          name: docpilot-android-cn-apk
-          path: ${{ env.APK_PATH }}
-          if-no-files-found: ignore
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: dist
+      # vivo 应用商店:/router/rest 网关,HMAC-SHA256 签名(签名逻辑 lib/sign.mjs 有单测)。
+      - name: Upload to vivo
+        env:
+          VIVO_ACCESS_KEY: ${{ secrets.VIVO_ACCESS_KEY }}
+          VIVO_ACCESS_SECRET: ${{ secrets.VIVO_ACCESS_SECRET }}
+          REMARK_INPUT: ${{ inputs.remark }}
+          VERSION_CODE: ${{ needs.build.outputs.version_code }}
+        run: |
+          set -eo pipefail
+          args=(--apk dist/app-release.apk --package "$PACKAGE_NAME" --version-code "$VERSION_CODE")
+          if [ -n "$REMARK_INPUT" ]; then args+=(--update-desc "$REMARK_INPUT"); fi
+          node ./apps/android/scripts/upload-vivo.mjs "${args[@]}"
+
+  tencent:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: dist
+      # 应用宝:官方 developer_api,COS 预签名上传 + update_app 内置提审(HMAC-SHA256,无 token)。
+      # 前提:该 App 已在开放平台人工上架过(应用宝 API 只更新已上架应用)。
+      - name: Upload to Tencent MyApp
+        env:
+          TENCENT_USER_ID: ${{ secrets.TENCENT_USER_ID }}
+          TENCENT_ACCESS_SECRET: ${{ secrets.TENCENT_ACCESS_SECRET }}
+          TENCENT_APP_ID: ${{ secrets.TENCENT_APP_ID }}
+        run: |
+          set -eo pipefail
+          node ./apps/android/scripts/upload-tencent.mjs \
+            --apk dist/app-release.apk --package "$PACKAGE_NAME" --app-id "$TENCENT_APP_ID"
+
+  oppo:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: dist
+      # OPPO 软件商店:API 传包(换 token → get-upload-url → 上传 → /app/upd),「仅换包」最小字段。
+      - name: Upload to OPPO
+        env:
+          OPPO_CLIENT_ID: ${{ secrets.OPPO_CLIENT_ID }}
+          OPPO_CLIENT_SECRET: ${{ secrets.OPPO_CLIENT_SECRET }}
+          REMARK_INPUT: ${{ inputs.remark }}
+          VERSION_CODE: ${{ needs.build.outputs.version_code }}
+        run: |
+          set -eo pipefail
+          args=(--apk dist/app-release.apk --package "$PACKAGE_NAME" --version-code "$VERSION_CODE")
+          if [ -n "$REMARK_INPUT" ]; then args+=(--update-desc "$REMARK_INPUT"); fi
+          node ./apps/android/scripts/upload-oppo.mjs "${args[@]}"
+
+  xiaomi:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: dist
+      # 小米应用商店:公钥加密 SIG + /dev/push(自包含,加密逻辑 lib/sign.mjs 有单测),「仅换包」最小字段。
+      - name: Upload to Xiaomi
+        env:
+          XIAOMI_USERNAME: ${{ secrets.XIAOMI_USERNAME }}
+          XIAOMI_PRIVATE_KEY: ${{ secrets.XIAOMI_PRIVATE_KEY }}
+          XIAOMI_CERT_BASE64: ${{ secrets.XIAOMI_CERT_BASE64 }}
+          REMARK_INPUT: ${{ inputs.remark }}
+        run: |
+          set -eo pipefail
+          args=(--apk dist/app-release.apk --package "$PACKAGE_NAME")
+          if [ -n "$REMARK_INPUT" ]; then args+=(--update-desc "$REMARK_INPUT"); fi
+          node ./apps/android/scripts/upload-xiaomi.mjs "${args[@]}"
