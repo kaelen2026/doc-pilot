@@ -44,6 +44,17 @@ describe("InMemoryNotificationBus", () => {
 
     expect(received).toHaveLength(0);
   });
+
+  it("close 清空全部订阅,之后的 publish 不再送达", async () => {
+    const bus = new InMemoryNotificationBus();
+    const received: NotificationPulse[] = [];
+    await bus.subscribe(WS, (p) => received.push(p));
+
+    await bus.close();
+    await bus.publish(WS, pulse());
+
+    expect(received).toHaveLength(0);
+  });
 });
 
 /** ioredis 的最小假实现:探针化 publish/subscribe/unsubscribe,并可手动触发 message。 */
@@ -138,5 +149,56 @@ describe("RedisNotificationBus", () => {
 
     subscriber.emit(notificationChannel(WS), JSON.stringify(pulse()));
     expect(received).toEqual([pulse()]);
+  });
+
+  it("没有本地订阅者的频道消息被忽略", async () => {
+    const subscriber = fakeRedis();
+    const bus = new RedisNotificationBus({
+      // biome-ignore lint/suspicious/noExplicitAny: 假 Redis。
+      publisher: fakeRedis() as any,
+      // biome-ignore lint/suspicious/noExplicitAny: 假 Redis。
+      createSubscriber: () => subscriber as any,
+    });
+    const received: NotificationPulse[] = [];
+    await bus.subscribe(WS, (p) => received.push(p));
+
+    // Redis 层退订是 best-effort:handler 已清但底层频道消息仍可能先到一步。
+    subscriber.emit(notificationChannel("ws-other"), JSON.stringify(pulse()));
+
+    expect(received).toHaveLength(0);
+  });
+
+  it("重复调用同一取消订阅函数是幂等的,只对底层 unsubscribe 一次", async () => {
+    const subscriber = fakeRedis();
+    const bus = new RedisNotificationBus({
+      // biome-ignore lint/suspicious/noExplicitAny: 假 Redis。
+      publisher: fakeRedis() as any,
+      // biome-ignore lint/suspicious/noExplicitAny: 假 Redis。
+      createSubscriber: () => subscriber as any,
+    });
+    const off = await bus.subscribe(WS, () => {});
+
+    await off();
+    await off();
+
+    expect(subscriber.unsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  it("close 退出底层订阅连接,且未订阅时 close 也安全", async () => {
+    const subscriber = fakeRedis();
+    const bus = new RedisNotificationBus({
+      // biome-ignore lint/suspicious/noExplicitAny: 假 Redis。
+      publisher: fakeRedis() as any,
+      // biome-ignore lint/suspicious/noExplicitAny: 假 Redis。
+      createSubscriber: () => subscriber as any,
+    });
+    await bus.subscribe(WS, () => {});
+
+    await bus.close();
+    expect(subscriber.quit).toHaveBeenCalledTimes(1);
+
+    // 订阅连接已置空,再次 close 不应再 quit,也不应抛错。
+    await bus.close();
+    expect(subscriber.quit).toHaveBeenCalledTimes(1);
   });
 });
