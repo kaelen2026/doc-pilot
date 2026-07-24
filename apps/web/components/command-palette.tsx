@@ -142,7 +142,7 @@ export function CommandPalette() {
       }}
       role="presentation"
     >
-      <div className="w-full max-w-xl overflow-hidden rounded-xl border-hairline border bg-paper shadow-[0_24px_70px_-24px_rgba(0,0,0,0.45)] animate-[rise_0.2s_cubic-bezier(0.2,0,0,1)_both]">
+      <div className="w-full max-w-xl overflow-hidden rounded-xl border-hairline border bg-paper shadow-paper-modal animate-[rise_0.2s_cubic-bezier(0.2,0,0,1)_both]">
         <div className="border-hairline border-b p-2">
           {/* 命令面板打开即应聚焦输入,这正是其交互契约。 */}
           <Input

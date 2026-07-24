@@ -11,11 +11,11 @@ const buttonVariants = cva(
       variant: {
         // 禁用态贴合墨水纸感：实心/描边按钮落到 sunken-paper + 淡墨，而非半透明叠加
         default:
-          "bg-primary text-primary-foreground shadow-[0_1px_3px_rgba(0,0,0,0.16)] hover:bg-primary/85 disabled:bg-paper-sunken disabled:text-ink-faint disabled:shadow-none",
+          "bg-primary text-primary-foreground shadow-paper-sm hover:bg-primary/85 disabled:bg-paper-sunken disabled:text-ink-faint disabled:shadow-none",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-[0_1px_3px_rgba(0,0,0,0.16)] hover:bg-destructive/90 disabled:bg-paper-sunken disabled:text-ink-faint disabled:shadow-none",
+          "bg-destructive text-destructive-foreground shadow-paper-sm hover:bg-destructive/90 disabled:bg-paper-sunken disabled:text-ink-faint disabled:shadow-none",
         outline:
-          "border border-input bg-card text-ink-soft shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:border-ink-faint hover:text-ink disabled:bg-paper-sunken disabled:text-ink-faint disabled:shadow-none",
+          "border border-input bg-card text-ink-soft shadow-paper-xs hover:border-ink-faint hover:text-ink disabled:bg-paper-sunken disabled:text-ink-faint disabled:shadow-none",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:text-ink-faint",
         ghost: "hover:bg-accent hover:text-accent-foreground disabled:text-ink-faint",

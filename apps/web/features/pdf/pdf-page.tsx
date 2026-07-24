@@ -122,7 +122,7 @@ export function PdfPage({
     <div
       ref={slotRef}
       data-page={pageNumber}
-      className="relative bg-paper-raised shadow-[0_1px_3px_rgba(0,0,0,0.12)]"
+      className="relative bg-paper-raised shadow-paper-sm"
       style={{ width, height: near ? undefined : Math.round(width * aspect) }}
     >
       <div ref={canvasHolderRef} />

@@ -72,7 +72,7 @@ export function SidebarAccount({ collapsed }: { collapsed: boolean }) {
       {open ? (
         <div
           role="menu"
-          className="absolute bottom-full left-2 mb-2 w-[calc(100%-1rem)] min-w-52 origin-bottom rounded-lg border border-hairline bg-card p-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.14)] animate-[rise_0.16s_cubic-bezier(0.2,0,0,1)_both]"
+          className="absolute bottom-full left-2 mb-2 w-[calc(100%-1rem)] min-w-52 origin-bottom rounded-lg border border-hairline bg-card p-1.5 shadow-paper-xl animate-[rise_0.16s_cubic-bezier(0.2,0,0,1)_both]"
         >
           <div className="border-hairline border-b px-2.5 pt-1.5 pb-2.5">
             <p className="truncate font-medium text-ink text-sm">{name}</p>

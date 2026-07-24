@@ -227,7 +227,7 @@ function NotificationPanel({
         left: pos?.left ?? 0,
         visibility: pos ? "visible" : "hidden",
       }}
-      className="fixed z-50 w-[min(22rem,calc(100vw-1rem))] overflow-hidden rounded-lg border border-hairline bg-paper shadow-[0_16px_48px_-16px_rgba(0,0,0,0.35)] animate-[rise_0.2s_cubic-bezier(0.2,0,0,1)_both]"
+      className="fixed z-50 w-[min(22rem,calc(100vw-1rem))] overflow-hidden rounded-lg border border-hairline bg-paper shadow-paper-2xl animate-[rise_0.2s_cubic-bezier(0.2,0,0,1)_both]"
     >
       <div className="flex items-center justify-between border-hairline border-b px-3.5 py-2.5">
         <span className="font-medium text-ink text-sm">通知</span>

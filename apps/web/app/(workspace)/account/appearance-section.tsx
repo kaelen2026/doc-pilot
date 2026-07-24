@@ -32,7 +32,7 @@ export function AppearanceSection() {
                 className={cn(
                   "rounded-md px-3.5 py-1.5 text-sm transition-colors duration-150 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
                   active
-                    ? "bg-card text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]"
+                    ? "bg-card text-ink shadow-paper-xs"
                     : "text-ink-soft [@media(hover:hover)]:hover:text-ink",
                 )}
               >
