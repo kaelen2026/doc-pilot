@@ -8,6 +8,7 @@
   },
   "scripts": {
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage --coverage.thresholds.lines=40 --coverage.thresholds.functions=89 --coverage.thresholds.branches=89 --coverage.thresholds.statements=40",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
