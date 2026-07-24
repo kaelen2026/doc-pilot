@@ -20,7 +20,7 @@ export function PdfSelectionMenu({
 }) {
   return (
     <div
-      className="-translate-x-1/2 -translate-y-full fixed z-20 flex items-center gap-1 rounded-md border border-hairline bg-paper-raised px-1 py-1 shadow-[0_2px_8px_rgba(0,0,0,0.18)]"
+      className="-translate-x-1/2 -translate-y-full fixed z-20 flex items-center gap-1 rounded-md border border-hairline bg-paper-raised px-1 py-1 shadow-paper-md"
       style={{ left: anchor.x, top: anchor.y - 8 }}
     >
       <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={onCopy}>

@@ -76,7 +76,7 @@ export function CitationPopover({
       role="dialog"
       aria-label={`引用原文${citation.pageStart != null ? `,第 ${citation.pageStart} 页` : ""}`}
       style={{ top: pos?.top ?? 0, left: pos?.left ?? 0, visibility: pos ? "visible" : "hidden" }}
-      className="fixed z-50 w-[min(20rem,calc(100vw-1rem))] space-y-1.5 rounded-md border border-hairline bg-paper px-3.5 py-2.5 shadow-[0_8px_28px_-6px_rgba(0,0,0,0.22)]"
+      className="fixed z-50 w-[min(20rem,calc(100vw-1rem))] space-y-1.5 rounded-md border border-hairline bg-paper px-3.5 py-2.5 shadow-paper-xl"
     >
       {citation.pageStart != null ? (
         <p className="text-xs text-seal tabular-nums">第 {citation.pageStart} 页</p>

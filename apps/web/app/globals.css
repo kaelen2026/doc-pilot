@@ -28,6 +28,17 @@
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
+
+  /* 影：纸面抬升的层级刻度，生成 shadow-paper-* 工具类，组件不写裸 rgba。
+     明暗共用一套值——深色下纸面本身变暗，纯黑投影自然融入,无需另值。 */
+  --shadow-paper-xs: 0 1px 2px rgba(0, 0, 0, 0.05); /* 贴面：卡片/输入框静置 */
+  --shadow-paper-sm: 0 1px 3px rgba(0, 0, 0, 0.16); /* 抬升控件：实心按钮/PDF 纸页 */
+  --shadow-paper-md: 0 2px 8px rgba(0, 0, 0, 0.18); /* 小浮层：选区菜单 */
+  --shadow-paper-lg: 0 4px 20px -4px rgba(0, 0, 0, 0.18); /* 悬浮胶囊：回到底部 */
+  --shadow-paper-xl: 0 8px 28px -6px rgba(0, 0, 0, 0.22); /* 弹出层：popover/账户菜单 */
+  --shadow-paper-2xl: 0 16px 48px -16px rgba(0, 0, 0, 0.35); /* 面板：通知铃 */
+  --shadow-paper-modal: 0 24px 70px -24px rgba(0, 0, 0, 0.45); /* 模态：命令面板 */
+  --shadow-paper-drawer: -8px 0 30px -12px rgba(0, 0, 0, 0.28); /* 侧向抽屉：原文抽屉 */
 }
 
 /*

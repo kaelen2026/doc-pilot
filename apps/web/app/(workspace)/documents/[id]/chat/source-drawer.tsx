@@ -30,7 +30,7 @@ export function SourceDrawer({
   return createPortal(
     <aside
       aria-label="原文"
-      className="fixed inset-y-0 right-0 z-40 flex h-screen w-full flex-col border-hairline border-l bg-paper shadow-[-8px_0_30px_-12px_rgba(0,0,0,0.28)] animate-[slideInRight_0.28s_cubic-bezier(0.2,0,0,1)_both] sm:w-[min(560px,80vw)] lg:w-[46vw]"
+      className="fixed inset-y-0 right-0 z-40 flex h-screen w-full flex-col border-hairline border-l bg-paper shadow-paper-drawer animate-[slideInRight_0.28s_cubic-bezier(0.2,0,0,1)_both] sm:w-[min(560px,80vw)] lg:w-[46vw]"
     >
       <header className="flex items-center justify-between gap-3 border-hairline border-b px-4 py-3">
         <div className="flex items-baseline gap-2">
