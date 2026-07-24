@@ -13,6 +13,11 @@ describe("公开资料契约", () => {
     expect(normalizeProfileUrl("javascript:alert(1)")).toBeNull();
   });
 
+  it("解析不了的字符串也归一化为 null(不抛异常,调用方只看 null)", () => {
+    expect(normalizeProfileUrl("not a url")).toBeNull();
+    expect(normalizeProfileUrl("")).toBeNull();
+  });
+
   it("只有完成或部分完成文档可以公开", () => {
     expect(isPublishableDocumentStatus("ready")).toBe(true);
     expect(isPublishableDocumentStatus("partially_ready")).toBe(true);
