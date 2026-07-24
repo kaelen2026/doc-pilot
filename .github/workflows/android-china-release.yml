@@ -1,0 +1,105 @@
+name: Android China Release (Huawei AGC)
+
+# 国内安卓商店(无 Google Play)走各厂商官方 API,凭据全留在本 CI、无第三方托管。
+# 与 Play(android-release.yml)、iOS 解耦触发:某商店审核慢不拖累其余。
+# 目前接了华为 AppGallery;小米/OPPO/vivo/应用宝按同样「构建一次 → 逐家上传」模式增量加。
+on:
+  push:
+    tags:
+      - "android-cn-v*"
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: "覆盖 versionName(如 0.1.0);留空取 build.gradle 的值"
+        required: false
+        type: string
+      version_code:
+        description: "覆盖 versionCode(整数,单调递增);留空用时间戳 date +%s"
+        required: false
+        type: string
+      remark:
+        description: "更新说明(3–500 字);留空则不带"
+        required: false
+        type: string
+      release_type:
+        description: "华为发布类型:留空=正常全量,1=公测"
+        required: false
+        type: string
+
+concurrency:
+  group: android-china-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  huawei:
+    runs-on: ubuntu-latest
+    env:
+      APK_PATH: apps/android/app/build/outputs/apk/release/app-release.apk
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      # 上传密钥库无法进仓库,从 secret base64 解到临时文件,构建后随 runner 销毁。
+      - name: Decode upload keystore
+        id: keystore
+        env:
+          DOC_PILOT_UPLOAD_KEYSTORE_BASE64: ${{ secrets.DOC_PILOT_UPLOAD_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          ks_path="$RUNNER_TEMP/docpilot-upload.jks"
+          echo "$DOC_PILOT_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$ks_path"
+          echo "path=$ks_path" >> "$GITHUB_OUTPUT"
+
+      # 复用现有 build-release.sh 出签名 APK(国内商店多数只收 APK,故走 --apk 而非 AAB)。
+      - name: Build signed release APK
+        env:
+          DOC_PILOT_UPLOAD_KEYSTORE: ${{ steps.keystore.outputs.path }}
+          DOC_PILOT_UPLOAD_STORE_PASSWORD: ${{ secrets.DOC_PILOT_UPLOAD_STORE_PASSWORD }}
+          DOC_PILOT_UPLOAD_KEY_ALIAS: ${{ secrets.DOC_PILOT_UPLOAD_KEY_ALIAS }}
+          DOC_PILOT_UPLOAD_KEY_PASSWORD: ${{ secrets.DOC_PILOT_UPLOAD_KEY_PASSWORD }}
+          PROD_API_BASE_URL: ${{ vars.ANDROID_PROD_API_BASE_URL }}
+          GOOGLE_CLIENT_ID: ${{ vars.ANDROID_GOOGLE_CLIENT_ID }}
+          VERSION_NAME_INPUT: ${{ inputs.version_name }}
+          VERSION_CODE_INPUT: ${{ inputs.version_code }}
+        run: |
+          set -eo pipefail
+          if [ -z "$PROD_API_BASE_URL" ]; then
+            echo "✗ 缺少仓库变量 ANDROID_PROD_API_BASE_URL(生产 HTTPS 后端地址)。" >&2
+            exit 1
+          fi
+          args=(--api-base "$PROD_API_BASE_URL" --apk)
+          if [ -n "$GOOGLE_CLIENT_ID" ]; then args+=(--google-client-id "$GOOGLE_CLIENT_ID"); fi
+          if [ -n "$VERSION_NAME_INPUT" ]; then args+=(--version "$VERSION_NAME_INPUT"); fi
+          if [ -n "$VERSION_CODE_INPUT" ]; then args+=(--code "$VERSION_CODE_INPUT"); fi
+          ./.claude/skills/google-play-release/scripts/build-release.sh "${args[@]}"
+
+      # 华为 AppGallery:官方 Publishing API 直传 + 提交发布(自包含 curl 脚本,无第三方依赖)。
+      - name: Upload to Huawei AppGallery
+        env:
+          HUAWEI_CLIENT_ID: ${{ secrets.HUAWEI_CLIENT_ID }}
+          HUAWEI_CLIENT_SECRET: ${{ secrets.HUAWEI_CLIENT_SECRET }}
+          HUAWEI_APP_ID: ${{ secrets.HUAWEI_APP_ID }}
+          REMARK_INPUT: ${{ inputs.remark }}
+          RELEASE_TYPE_INPUT: ${{ inputs.release_type }}
+        run: |
+          set -eo pipefail
+          args=(--apk "$APK_PATH")
+          if [ -n "$REMARK_INPUT" ]; then args+=(--remark "$REMARK_INPUT"); fi
+          if [ -n "$RELEASE_TYPE_INPUT" ]; then args+=(--release-type "$RELEASE_TYPE_INPUT"); fi
+          ./apps/android/scripts/upload-huawei-agc.sh "${args[@]}"
+
+      - name: Upload APK artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: docpilot-android-cn-apk
+          path: ${{ env.APK_PATH }}
+          if-no-files-found: ignore
