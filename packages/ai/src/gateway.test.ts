@@ -211,4 +211,50 @@ describe("streamText", () => {
     expect(usage.outputTokens).toBeGreaterThan(0);
     expect(recordUsage).toHaveBeenCalledWith(usage, metadata);
   });
+
+  it("usage promise reject 时记录失败 Trace 且不产生未处理拒绝", async () => {
+    const recordTrace = vi.fn();
+    const adapter = createMockAdapter({ streamChunks: ["答"] });
+    vi.spyOn(adapter, "streamText").mockResolvedValue({
+      textStream: (async function* () {
+        yield "答";
+      })(),
+      usage: Promise.reject(new AIError("AI_TIMEOUT")),
+    });
+    const gateway = createAIGateway({
+      routes: { answer: { provider: "mock", model: "mock-large" } },
+      adapters: { mock: adapter },
+      prompts: createPromptRegistry([
+        {
+          id: "document-answer",
+          version: "1.0.0",
+          build: () => ({ system: "回答问题", messages: [] }),
+        },
+      ]),
+      hooks: { recordTrace },
+    });
+
+    const result = await gateway.streamText({
+      capability: "answer",
+      promptId: "document-answer",
+      promptVersion: "1.0.0",
+      messages: [{ role: "user", content: "问题" }],
+      metadata,
+    });
+
+    // 模拟真实调用方：只消费文本流，不 await usage——这正是 unhandled rejection 的场景。
+    let text = "";
+    for await (const chunk of result.textStream) {
+      text += chunk;
+    }
+    // 让挂在 usage promise 上的记录链路跑完。
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(text).toBe("答");
+    expect(recordTrace).toHaveBeenCalledWith(
+      expect.objectContaining({ ok: false, errorCode: "AI_TIMEOUT" }),
+    );
+    // 主动 await 时仍能拿到标准化后的拒绝。
+    await expect(result.usage).rejects.toMatchObject({ code: "AI_TIMEOUT" });
+  });
 });

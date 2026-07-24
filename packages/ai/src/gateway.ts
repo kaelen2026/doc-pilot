@@ -196,26 +196,46 @@ export function createAIGateway(options: AIGatewayOptions): AIGateway {
           maxTokens: route.maxTokens,
         });
         // 流式路径的 Usage 在流结束后才可知，Usage/Trace 记录挂在 usage promise 上。
-        const usage = rawUsagePromise.then(async (raw) => {
-          const built2 = buildUsage(
-            route,
-            input.capability,
-            raw,
-            Math.round(performance.now() - startedAt),
-          );
-          await record(() => hooks.recordUsage?.(built2, input.metadata));
-          await record(() =>
-            hooks.recordTrace?.({
-              ...ctx,
-              provider: route.provider,
-              model: route.model,
-              latencyMs: built2.latencyMs,
-              ok: true,
-              usage: built2,
-            }),
-          );
-          return built2;
-        });
+        const usage = rawUsagePromise
+          .then(async (raw) => {
+            const built2 = buildUsage(
+              route,
+              input.capability,
+              raw,
+              Math.round(performance.now() - startedAt),
+            );
+            await record(() => hooks.recordUsage?.(built2, input.metadata));
+            await record(() =>
+              hooks.recordTrace?.({
+                ...ctx,
+                provider: route.provider,
+                model: route.model,
+                latencyMs: built2.latencyMs,
+                ok: true,
+                usage: built2,
+              }),
+            );
+            return built2;
+          })
+          .catch(async (err) => {
+            // 流中途出错 / provider 未返回用量时同样记录失败 Trace（与下方同步失败路径同形），
+            // 再把标准化错误抛给主动 await usage 的调用方。
+            const normalized = normalizeAIError(err);
+            await record(() =>
+              hooks.recordTrace?.({
+                ...ctx,
+                provider: route.provider,
+                model: route.model,
+                latencyMs: Math.round(performance.now() - startedAt),
+                ok: false,
+                errorCode: normalized.code,
+              }),
+            );
+            throw normalized;
+          });
+        // 调用方可能只消费 textStream 而不 await usage；预挂空 handler 标记拒绝已处理，
+        // 避免 unhandled rejection。主动 await 的调用方仍能收到上面的标准化拒绝。
+        usage.catch(() => {});
         return { textStream, usage };
       } catch (err) {
         const normalized = normalizeAIError(err);
