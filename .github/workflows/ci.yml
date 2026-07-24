@@ -76,8 +76,19 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      # outbox publisher 集成测试要真连 Redis/BullMQ(镜像与本地 compose 同口径)
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       DATABASE_URL: postgres://docpilot:docpilot@localhost:5432/docpilot
+      REDIS_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
