@@ -11,9 +11,10 @@ export const metadata: Metadata = {
 // 生效日期:内容确认后由运营方维护。改动实质条款时应同步更新此日期并在「政策更新」说明。
 const EFFECTIVE_DATE = "2026 年 7 月 23 日";
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, id, children }: { title: string; id?: string; children: ReactNode }) {
   return (
-    <section className="space-y-3">
+    // id 让政策小节可被 #锚点 直达(如 Play Data safety 要求的账户删除 URL);scroll-mt 避免锚定后被顶栏遮挡
+    <section id={id} className="scroll-mt-20 space-y-3">
       <h2 className="font-display text-xl font-medium tracking-[-0.01em] text-ink">{title}</h2>
       <div className="space-y-3 text-[15px] leading-[1.75] text-ink-soft">{children}</div>
     </section>
@@ -112,7 +113,7 @@ export default function PrivacyPage() {
           </p>
         </Section>
 
-        <Section title="四、数据保存与删除">
+        <Section id="account-deletion" title="四、数据保存与删除">
           <p>
             我们在为你提供服务期间保存上述数据。你可以随时在 app 内删除单个文档,或
             <strong className="font-medium text-ink">删除整个账户</strong>。
