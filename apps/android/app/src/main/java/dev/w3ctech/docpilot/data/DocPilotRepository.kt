@@ -55,7 +55,8 @@ class DocPilotRepository(private val api: ApiClient, private val sessions: Sessi
   suspend fun notifications(): List<NotificationItem> = withContext(Dispatchers.IO) { api.decode<NotificationsResponse>("/notifications").notifications }
   suspend fun usage(): Usage = withContext(Dispatchers.IO) { api.decode<UsageResponse>("/me/usage").usage }
   suspend fun search(query: String): List<SearchResult> = withContext(Dispatchers.IO) {
-    api.decode<SearchResponse>("/search?q=${URLEncoder.encode(query, Charsets.UTF_8)}").results
+    // Charset 重载要求 API 33(minSdk 31 会 NoSuchMethodError),改用 API 1 起可用的字符串重载
+    api.decode<SearchResponse>("/search?q=${URLEncoder.encode(query, "UTF-8")}").results
   }
 
   suspend fun upload(resolver: ContentResolver, uri: Uri): String = withContext(Dispatchers.IO) {
@@ -102,7 +103,7 @@ class DocPilotRepository(private val api: ApiClient, private val sessions: Sessi
   }
   suspend fun scheduleDeletion() = withContext(Dispatchers.IO) { api.request("/me/deletion", "POST").close() }
   suspend fun approveDevice(code: String) = withContext(Dispatchers.IO) {
-    api.decode<Map<String, Boolean>>("/api/auth/device?user_code=${URLEncoder.encode(code, Charsets.UTF_8)}")
+    api.decode<Map<String, Boolean>>("/api/auth/device?user_code=${URLEncoder.encode(code, "UTF-8")}")
     api.request("/api/auth/device/approve", "POST", """{"userCode":${q(code)}}""").close()
   }
   suspend fun registerPush(token: String) = withContext(Dispatchers.IO) {
