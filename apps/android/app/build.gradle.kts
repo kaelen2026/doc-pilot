@@ -14,12 +14,23 @@ android {
   namespace = "dev.w3ctech.docpilot"
   compileSdk = 36
 
+  signingConfigs {
+    create("release") {
+      // 上传密钥的路径与口令全部经 Gradle property(由构建脚本用 -P 从环境变量注入),仓库里不留任何机密。
+      storeFile = providers.gradleProperty("DOC_PILOT_UPLOAD_STORE_FILE").orNull?.let(::file)
+      storePassword = providers.gradleProperty("DOC_PILOT_UPLOAD_STORE_PASSWORD").orNull
+      keyAlias = providers.gradleProperty("DOC_PILOT_UPLOAD_KEY_ALIAS").orNull
+      keyPassword = providers.gradleProperty("DOC_PILOT_UPLOAD_KEY_PASSWORD").orNull
+    }
+  }
+
   defaultConfig {
     applicationId = "dev.w3ctech.docpilot"
     minSdk = 31
     targetSdk = 36
-    versionCode = 1
-    versionName = "0.1.0"
+    // 版本号可被构建脚本经 property 覆盖,缺省回退当前字面量(便于本地构建)。
+    versionCode = providers.gradleProperty("DOC_PILOT_VERSION_CODE").map(String::toInt).orElse(1).get()
+    versionName = providers.gradleProperty("DOC_PILOT_VERSION_NAME").orElse("0.1.0").get()
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     vectorDrawables.useSupportLibrary = true
     buildConfigField("String", "API_BASE_URL", "\"${providers.gradleProperty("DOC_PILOT_API_URL").orElse("http://10.0.2.2:3001").get()}\"")
@@ -30,6 +41,7 @@ android {
     release {
       isMinifyEnabled = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+      signingConfig = signingConfigs.getByName("release")
     }
   }
 
