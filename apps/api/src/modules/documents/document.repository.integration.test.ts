@@ -1,5 +1,11 @@
 import { db, queryClient } from "@doc-pilot/database";
-import { documents, user, workspaces } from "@doc-pilot/database/schema";
+import {
+  documents,
+  outboxEvents,
+  processingJobs,
+  user,
+  workspaces,
+} from "@doc-pilot/database/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { scopedDocumentRepo } from "./document.repository";
@@ -15,6 +21,8 @@ const checksumA = `${runId}-sha256`;
 let workspaceA = "";
 let workspaceB = "";
 let documentA = "";
+// 正向 completeUploadTx 测试创建的文档:outbox_events 无外键、不随 user 级联,须记下来显式清理。
+let uploadedDocumentId = "";
 
 beforeAll(async () => {
   await db.insert(user).values([
@@ -60,6 +68,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  if (uploadedDocumentId) {
+    await db.delete(outboxEvents).where(eq(outboxEvents.aggregateId, uploadedDocumentId));
+  }
   // 删 user 级联清掉 workspace / documents(与 conversation 集成测试同法)。
   await db.delete(user).where(eq(user.id, userA));
   await db.delete(user).where(eq(user.id, userB));
@@ -119,5 +130,67 @@ describe("scopedDocumentRepo database invariants", () => {
     // A 的文档状态未被 B 的越权确认改动,仍是初始 pending_upload。
     const stillPending = await scopedDocumentRepo(workspaceA).findById(documentA);
     expect(stillPending?.status).toBe("pending_upload");
+  });
+
+  it("合法确认上传原子落库(completeUploadTx):恰好 1 行 outbox + 1 行 job 且关联一致", async () => {
+    // Transactional Outbox 的正向面(ADR-005):状态变更 + ProcessingJob + outbox_events
+    // 必须在一次事务里同时落库,且三者的关联字段(documentId / workspaceId /
+    // processingVersion / jobIdempotencyKey)完全一致——Publisher 与 Worker 全靠它们接力。
+    const created = await scopedDocumentRepo(workspaceA).insertDocument({
+      ownerId: userA,
+      title: "upload-ok",
+      originalFilename: "upload-ok.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 123,
+      idempotencyKey: `${runId}-upload-ok`,
+    });
+    uploadedDocumentId = created.id;
+    const jobIdempotencyKey = `${runId}-upload-ok-job`;
+
+    const { document, alreadyQueued } = await scopedDocumentRepo(workspaceA).completeUploadTx({
+      documentId: created.id,
+      processingVersion: 1,
+      sizeBytes: 123,
+      provider: "minio",
+      bucket: "docs",
+      objectKey: `${runId}/upload-ok.pdf`,
+      contentType: "application/pdf",
+      jobIdempotencyKey,
+    });
+
+    expect(alreadyQueued).toBe(false);
+    expect(document.status).toBe("queued");
+    const [docRow] = await db.select().from(documents).where(eq(documents.id, created.id));
+    expect(docRow?.status).toBe("queued");
+
+    const jobs = await db
+      .select()
+      .from(processingJobs)
+      .where(eq(processingJobs.documentId, created.id));
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      workspaceId: workspaceA,
+      type: "process_document",
+      status: "pending",
+      idempotencyKey: jobIdempotencyKey,
+      payload: { documentId: created.id, workspaceId: workspaceA, processingVersion: 1 },
+    });
+
+    const events = await db
+      .select()
+      .from(outboxEvents)
+      .where(eq(outboxEvents.aggregateId, created.id));
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      aggregateType: "document",
+      eventType: "document.processing.requested",
+      status: "pending",
+      payload: {
+        documentId: created.id,
+        workspaceId: workspaceA,
+        processingVersion: 1,
+        jobIdempotencyKey,
+      },
+    });
   });
 });
