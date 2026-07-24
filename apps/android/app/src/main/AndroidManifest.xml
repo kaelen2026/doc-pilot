@@ -11,6 +11,8 @@
   <application
     android:name=".DocPilotApplication"
     android:allowBackup="false"
+    android:dataExtractionRules="@xml/data_extraction_rules"
+    android:icon="@mipmap/ic_launcher"
     android:label="DocPilot"
     android:theme="@style/Theme.DocPilot"
     android:usesCleartextTraffic="false">
