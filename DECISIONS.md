@@ -34,3 +34,13 @@
   - reconcile 统一 → 下次要改动 reconcile 写路径、或新增第三个后台写入点时（趁机收敛）。
   - 文案常量 → 若限额（50MB/500 页）真的要调整、且发现文案没跟着改导致不一致时。
 - **相关**：PR #50（分页 + 契约收敛）、PR #48（`passesProcessingGuard` 收敛）；pipeline 守卫见 `pipeline.md §24`。
+
+## 2026-07-24 决策：账户删除的异步交接用「flag + 周期轮询」而非 Transactional Outbox 三件套
+
+- **选了什么**：账户删除不走「状态变更 + `ProcessingJob` + `outbox_events` 同事务」的标准异步交接，而是：
+  - API 侧 `requestAccountDeletion` 只做一件事——置位 `user.deletion_scheduled_at = now + 冷静期`（`ACCOUNT_DELETION_COOLDOWN_MS`，7 天；幂等，重复请求不重置倒计时；撤销即清空该列）。
+  - worker 侧 maintenance 队列上的周期任务 `purge-account`（repeatable job，`ACCOUNT_PURGE.intervalMs` = 60s）每轮扫描 `deletion_scheduled_at <= now` 的到期账户（partial index 支撑），守卫式硬删：单事务内「收集对象 key → 原子 WHERE 删 user 行（仍到期才命中，撤销则 0 行跳过）→ 登记 `pending_object_deletions`」，随后 drain 阶段实际删 S3 对象（失败留死信，下轮重试）。
+- **否掉了什么 / 为什么**：否掉「为账删单独走 outbox + processing_jobs」。Outbox 三件套解决的是「DB 状态已变、但发往 BullMQ 的消息可能丢」的窗口；而账删的交接本身就持久在 DB（`deletion_scheduled_at` 一列即全部交接状态），worker 直接轮询 DB，**没有丢失窗口可言**——与 reconcile 是同一类「以 DB 为队列」的周期任务（`purge-account` 的调度、去重、处理器分发都仿 reconcile）。且账删有 7 天冷静期语义，天然不要求秒级触达，轮询的分钟级延迟完全够；期间撤销只需清列，比撤销一条已入队消息简单得多。为账删再造 outbox 事件 + job 状态机，只会多出两张表的生命周期要维护，换不来任何保证。
+- **当时的前提**：账删是目前唯一的「宽限期到期后执行」型任务;maintenance 队列已有 reconcile 的 repeatable 基建可复用;CLAUDE.md 的「Transactional Outbox for all async handoff」针对的是请求处理中直接 publish BullMQ 的丢失窗口，本方案不经请求路径发消息，不违反该不变量的本意。
+- **何时重审**：若出现更多同类「延迟执行/到期触发」任务（如订阅到期降级、文档保留期清理），值得把「flag + 轮询 + 守卫删除」抽成通用模式或统一调度；若宽限期语义变化（如支持「立即删除」或到期精度要求进入秒级），轮询间隔与该模型需重估。
+- **相关**：`apps/api/src/modules/me/me.service.ts`、`apps/worker/src/purge-account/`（purger / repository / object-drain / processor）、`packages/contracts/src/account.ts`（`ACCOUNT_DELETION_COOLDOWN_*` / `ACCOUNT_PURGE` / `OBJECT_PURGE`）；Outbox 不变量见 [`docs/adr/`](docs/adr/) ADR-005 与 `pipeline.md`。
