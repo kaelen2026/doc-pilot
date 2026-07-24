@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage --coverage.thresholds.lines=40 --coverage.thresholds.functions=89 --coverage.thresholds.branches=89 --coverage.thresholds.statements=40",
+    "test:coverage": "vitest run --coverage --coverage.thresholds.lines=80 --coverage.thresholds.functions=97 --coverage.thresholds.branches=97 --coverage.thresholds.statements=80",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
