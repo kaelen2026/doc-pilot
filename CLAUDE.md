@@ -32,7 +32,7 @@
 完整脚本见根 `package.json`(Turbo 把 `build` / `dev` / `typecheck` / `test` 扇出到各 workspace)。非显然的几条:
 
 - `pnpm dev:local` 先起 Docker Compose 再 `dev`;`pnpm compose:up` / `compose:down` 单独起停本地基建(Postgres / Redis / MinIO)。
-- `pnpm test` 默认不碰 DB;DB 集成测试另跑 `pnpm --filter @doc-pilot/api test:integration`,E2E 跑 `pnpm test:e2e`。
+- `pnpm test` 默认不碰 DB;DB 集成测试另跑 `pnpm --filter @doc-pilot/api test:integration`,E2E 跑 `pnpm test:e2e`。**`pnpm test:coverage` 例外**:api/worker 的 coverage 口径含集成测试(`vitest.coverage.config.ts`),本地跑需先 `pnpm compose:up`。
 - `pnpm db:generate` / `pnpm db:migrate` 委托 `@doc-pilot/database`(Drizzle)。
 - 生产部署用 `docker-compose.prod.yml`,见 [`docs/runbooks/deployment.md`](docs/runbooks/deployment.md)。
 

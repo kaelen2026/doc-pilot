@@ -50,6 +50,33 @@ jobs:
 
   coverage:
     runs-on: ubuntu-latest
+    # api/worker 的 coverage 口径含集成测试(vitest.coverage.config.ts),需要真实 Postgres/Redis。
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: docpilot
+          POSTGRES_PASSWORD: docpilot
+          POSTGRES_DB: docpilot
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U docpilot"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://docpilot:docpilot@localhost:5432/docpilot
+      REDIS_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -58,6 +85,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm db:migrate
       - run: pnpm test:coverage
 
   integration:
